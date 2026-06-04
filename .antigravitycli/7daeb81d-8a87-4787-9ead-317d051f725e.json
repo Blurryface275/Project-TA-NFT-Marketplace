@@ -1,0 +1,14 @@
+{
+  "id":  "7daeb81d-8a87-4787-9ead-317d051f725e",
+  "name":  "D:\\STEVE\\Semester 6\\RM\\Project NFT Marketplace",
+  "projectResources":  {
+    "resources":  [
+      {
+        "gitFolder":  {
+          "folderUri":  "file://D:/STEVE/Semester 6/RM/Project NFT Marketplace",
+          "allowWrite":  true
+        }
+      }
+    ]
+  }
+}
