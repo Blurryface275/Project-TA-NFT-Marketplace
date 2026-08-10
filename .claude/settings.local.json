@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pdftotext -layout \"dokumen/TA_Benedictus Leonardo Edward Stephen Sugianto_160423176.pdf\" \"C:/Users/drons/AppData/Local/Temp/claude/d--STEVE-Project-NFT-Marketplace/936990c1-4b0d-4de2-9edf-8718f2cca700/scratchpad/ta.txt\")"
+    ]
+  }
+}
