@@ -143,14 +143,36 @@ pengundian acak, atau perebutan flash sale.
 ### 4.4 Pengikatan identitas (KYC)
 Aturan: **satu tiket → satu alamat dompet → satu identitas nyata.**
 
-- Yang disimpan **di blockchain**: hanya sidik jari digitalnya,
-  `keccak256(data KTP + salt)`
-- Data KTP **asli**: hanya di database MySQL, **di luar** blockchain
+> **Diperketat 7 Agustus 2026.** Rancangan awal masih menyimpan data KTP
+> **asli** di MySQL. Itu sudah **tidak berlaku**. Sekarang data KTP asli
+> **tidak disimpan dalam bentuk terbaca di mana pun** — tidak di blockchain,
+> tidak di MySQL. Data masuk ke server, dihitung hash-nya, lalu **dibuang**.
+
+- Yang disimpan **di blockchain**: `keccak256(NIK + nama + tanggal lahir + salt)`
+  — *salt* acak berbeda tiap pengguna
+- Yang disimpan **di MySQL**: **dua** nilai hash, bukan data mentah —
+  1. `salt` milik pengguna itu (perlu disimpan supaya hash di atas bisa
+     dicek ulang nanti)
+  2. `keccak256(NIK + pepper sistem)` — hash kedua ini memakai *pepper*
+     (rahasia yang **sama** untuk semua pengguna, disimpan **di luar**
+     database) khusus supaya NIK yang sama selalu menghasilkan nilai yang
+     sama, sehingga pendaftaran ganda (KF-11) bisa dideteksi lewat kunci
+     unik di database — sesuatu yang **tidak bisa** dilakukan smart contract
+     karena *salt*-nya berbeda tiap pengguna
 
 **Ini hash, bukan enkripsi.** Enkripsi bisa dibuka kalau kuncinya bocor. Hash
 tidak bisa dibalik sama sekali, jadi kerahasiaan KTP terjaga selamanya
 walaupun isi blockchain terbuka untuk umum. *Salt* mencegah penebakan dengan
 mencoba semua kemungkinan.
+
+**Akibat langsung:** karena data aslinya tidak pernah tersimpan, sistem
+**tidak akan pernah bisa menampilkannya kembali** — termasuk ke pemiliknya
+sendiri. Verifikasi identitas di lokasi acara (petugas venue) karena itu
+dibalik arahnya: **petugas memasukkan NIK dari KTP fisik**, sistem
+menghitung hash-nya dan membandingkan, jawabannya cuma "cocok" atau "tidak
+cocok" — bukan menampilkan data siapa pun. Rincian lengkapnya ada di
+`docs/04-rancangan-database-erd.md` Bagian 5 dan `docs/09-keterbatasan-sistem.md`
+Bagian 2–3.
 
 ### 4.5 Pembatasan pemindahan tiket (allowlist)
 Tiket **tidak** dimatikan total seperti Soulbound Token. Smart contract hanya
@@ -210,17 +232,28 @@ membuka halaman web sama sekali — itulah alasan lapisan 4.7 tetap diperlukan.
 
 ## 6. Status Smart Contract Saat Ini
 
-**`TicketContract.sol` — sebagian sudah ada**
+**`TicketContract.sol` — kerangka awal, logika utamanya belum ditulis**
 
-Sudah ada: `createEvent()`, struktur `EventInfo`, pemeriksaan `eventId`,
-pemaksaan kuota, `mintTicket()`.
+Sudah ada (bentuknya saja, badan fungsi masih kosong): warisan `ERC721` +
+`Ownable`, enam custom error, struct `EventInfo` dan `TicketCategory`, dua
+mapping (event dan kategori bersarang), dua event log (`EventCreated`,
+`CategoryCreated`), constructor, serta tanda tangan fungsi `createEvent()`
+dan `addCategory()` dengan pengubah `onlyOwner`.
 
-Belum ada: pemeriksaan sidik jari digital KTP, pemeriksaan tanda tangan
-EIP-712.
+**Badan `createEvent()` dan `addCategory()` masih kosong** — belum ada
+pemeriksaan `eventId`, belum ada pemaksaan kuota, belum ada penyimpanan data
+ke mapping, belum ada `emit`. Memanggilnya sekarang berhasil dikompilasi
+tapi tidak melakukan apa-apa.
 
-**`MarketplaceContract.sol` — belum diimplementasi sama sekali**
+Belum ada sama sekali: `mintTicket()`, pemeriksaan sidik jari digital KTP,
+pemeriksaan tanda tangan EIP-712, penimpaan `_update` untuk pembatasan
+allowlist, penimpaan `isApprovedForAll`.
 
-Rencana: pembatasan allowlist, penguncian harga jual ulang.
+**`MarketplaceContract.sol` — belum diimplementasi sama sekali**, berkasnya
+sendiri belum dibuat.
+
+Rencana: pembatasan allowlist, penguncian harga jual ulang, verifikasi
+tanda tangan digital.
 
 ---
 
@@ -319,9 +352,9 @@ mengembalikan kode kesalahan tanpa membatalkan.
 
 | Alat | Versi | Cara pasang / catatan penting |
 |---|---|---|
-| **Foundry** | 1.7.0 | `curl -L https://foundry.paradigm.xyz \| bash` lalu `foundryup`. Sekarang `foundryup` memasang jalur **stabil** secara bawaan (dulu nightly). Paket npm-nya **sudah tidak diterbitkan**. Di Windows wajib Git Bash atau WSL |
-| **Solidity** | 0.8.36 | Versi bawaan EVM sudah berpindah (cancun → prague → osaka). **Wajib** menulis `evm_version` dan `solc_version` secara eksplisit di `foundry.toml`, jangan mengandalkan bawaan |
-| **OpenZeppelin Contracts** | 5.6.1 | `npm install @openzeppelin/contracts` atau `forge install OpenZeppelin/openzeppelin-contracts`. Pragma minimum sudah naik ke 0.8.24 |
+| **Foundry** | 1.7.1 | `curl -L https://foundry.paradigm.xyz \| bash` lalu `foundryup`. Sekarang `foundryup` memasang jalur **stabil** secara bawaan (dulu nightly). Paket npm-nya **sudah tidak diterbitkan**. Di Windows wajib Git Bash atau WSL. **Sudah terpasang** di lingkungan Edward |
+| **Solidity** | 0.8.36 | Versi bawaan EVM sudah berpindah (cancun → prague → osaka). **Wajib** menulis `evm_version` dan `solc_version` secara eksplisit di `foundry.toml`, jangan mengandalkan bawaan. `contracts/foundry.toml` **sudah** mengunci `solc_version = "0.8.36"` dan `evm_version = "prague"` |
+| **OpenZeppelin Contracts** | 5.7.0 | `npm install @openzeppelin/contracts` atau `forge install OpenZeppelin/openzeppelin-contracts`. Pragma minimum sudah naik ke 0.8.24. *Remapping* `@openzeppelin/contracts/` sudah dibuat otomatis oleh Foundry 1.7.x, tidak perlu `remappings.txt` manual. **Sudah terpasang** di `contracts/lib/openzeppelin-contracts` |
 | **ZeroDev SDK** | 5.5.10 | `npm i @zerodev/sdk @zerodev/ecdsa-validator viem`. Paket lama `@zerodevapp/sdk` dan `zerodev-sdk` **sudah usang**, jangan dipakai |
 | **EntryPoint (ERC-4337)** | v0.7 | Alamat resmi: `0x0000000071727De22E5E9d8BAf0edAc6f37da032`, sama di Sepolia. Panggil lewat `getEntryPoint("0.7")` dengan `KERNEL_V3_1`. Versi v0.8 sudah ada tapi belum jadi bawaan SDK — **untuk tugas akhir ini pakai v0.7** |
 | **NestJS** | 11.x | `npm install -g @nestjs/cli@11` lalu `nest new nama-proyek`. Butuh Node.js 20 ke atas. Versi 11 memakai Express 5 |
@@ -432,22 +465,40 @@ jadi lebih berat. Sambungkan hanya yang benar-benar dipakai rutin.
 
 ## 11. Status Implementasi Terkini
 
-**Diperbarui terakhir: 6 Agustus 2026**
+**Diperbarui terakhir: 7 Agustus 2026**
 
 | Bagian | Status |
 |---|---|
-| Smart contract: KYC hash + salt | Belum dimulai |
-| Smart contract: pembatasan allowlist | Belum dimulai |
+| Folder `docs/` (00–09, format buku tugas akhir) | **Selesai ditulis**, siap diangkat ke Bab 3–4. `04` masih DRAF menunggu pembimbing |
+| Folder `docs/modules/` (01–09, status implementasi kode, bahasa santai) | **Selesai ditulis**, dijaga tetap sinkron dengan kode aktual |
+| Toolchain Foundry + OpenZeppelin | **Terpasang**: Foundry 1.7.1, OpenZeppelin 5.7.0. Lihat Bagian 9.2 |
+| `contracts/foundry.toml` | **Sudah dikunci**: `solc_version 0.8.36`, `evm_version prague`, `optimizer` aktif |
+| Smart contract: kerangka `TicketContract.sol` (struct, mapping, event, constructor) | **Sudah ada** |
+| Smart contract: logika `createEvent()` / `addCategory()` | **Belum** — badan fungsi masih kosong |
+| Smart contract: `mintTicket()` | Belum dimulai |
+| Smart contract: KYC hash + *salt* + *pepper* | Belum dimulai (rancangan datanya sudah final, lihat Bagian 4.4) |
+| Smart contract: pembatasan allowlist (`_update`) | Belum dimulai |
 | Smart contract: penguncian harga jual ulang | Belum dimulai |
+| `MarketplaceContract.sol` | Belum dimulai, berkas belum dibuat |
+| Backend (NestJS) | Belum dimulai, proyek belum di-*scaffold* |
+| Frontend (Next.js) | Belum dimulai, proyek belum di-*scaffold* |
+| Pengujian (`contracts/test/`) | Folder ada, **kosong** — belum ada satu skenario pun |
 | ZeroDev SDK + koneksi Alchemy | Belum dicoba sama sekali |
-| Entity Relationship Diagram (rancangan database) | Belum ada draf |
+| Entity Relationship Diagram (rancangan database) | **Draf sudah ada** — `docs/04-rancangan-database-erd.md`, status DRAF menunggu pembimbing |
 
 **Hambatan yang sedang berjalan:** rancangan database wajib dikonsultasikan
-ke pembimbing sebelum dikerjakan. Perkiraan slot konsultasi sekitar 14
-Agustus 2026. Akibatnya **seluruh pekerjaan backend dan database ikut
-tertahan** sampai disetujui.
+ke pembimbing sebelum **disetujui final**, meski drafnya sudah selesai.
+Perkiraan slot konsultasi sekitar 14 Agustus 2026. Akibatnya spesifikasi API
+(`docs/06-spesifikasi-api.md`) ikut tertahan di tahap "daftar kasar".
 
-> Perbarui tabel ini setiap kali ada perubahan berarti.
+**Batas waktu yang perlu diperhatikan:** batas penambahan fitur baru kode
+adalah **10 Agustus 2026** (Bagian 1). Per pembaruan ini progres smart
+contract baru sebatas kerangka — jauh dari fitur inti (anti-calo,
+anti-pemalsuan) yang jadi klaim utama tugas akhir.
+
+> Perbarui tabel ini setiap kali ada perubahan berarti. Sejak 7 Agustus 2026
+> ini dilakukan otomatis oleh asisten setiap sesi pengerjaan kode/dokumen,
+> atas permintaan Edward — lihat catatan di memori asisten.
 
 ---
 
