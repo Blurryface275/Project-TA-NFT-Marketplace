@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: SEE LICENSE IN LICENSE
-pragma solidity 0.8.36;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.26;
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract TicketContract is ERC721, Ownable{    
+contract TicketContract is ERC721, Ownable{
 
     // Custom Error -> untuk menunjukkan pesan error jika kondis error terpenuhi
     error EventAlreadyExists(uint256 eventId); // error jika event yang sama sudah pernah dibuat
@@ -32,6 +32,19 @@ contract TicketContract is ERC721, Ownable{
         uint32 minted; // atau sold alias jumlah terjual
     }
 
+    struct TicketInfo {
+        uint256 eventId;
+        uint256 categoryId;
+        uint96 originalPrice; // dikunci permanen saat minting, jadi calo tidak bisa markup harga nantinya
+        bool used; // status check i di lokasi acara
+    }
+
+    address public marketplaceAddress; // alamat kontrak marketplace resmi
+    address public systemSigner; // address signer backend yang merilis signature
+    uint256 private _nextTokenId; // penghitung ID token NFT
+    mapping(uint256 => TicketInfo) private _tickets; // mapping untuk menyimpan data ticket berdasarkan tokenid
+    mapping(address => bytes32) private userIdentities; // data hash KYC KTP (wallet siap, milik identity hash yang mana)
+    mapping(uint256 => bool) private usedNonces; // mekanisme anti replay attack signature, jadi nandain kalau nonce ini sudah eprnah dipakai   
     mapping(uint256 => EventInfo) private events;
     mapping(uint256 => mapping(uint256 => TicketCategory)) private categories;
 
@@ -50,6 +63,34 @@ contract TicketContract is ERC721, Ownable{
         address organizer,
         uint64  eventTimestamp,
         uint32  maxPerWallet) external onlyOwner{
+        if(eventId==0){ // jika tidak ada event id maka revert
+            revert ForbiddenZero();
+        }
+        if(organizer==address(0)){ // jika tidak ada organizer maka revert
+            revert EmptyIssuerWalletAddress();
+        }
+        if(eventTimestamp<=block.timestamp){ // kalau tanggal event lebih awal daripada pembuatan tiket maka revert
+            revert EventAlreadyPassed();
+        }
+        if(maxPerWallet==0){ // jika jumlah maksimal pembelian tiket per wallet adalah 0, amka revert
+            revert ForbiddenZero();
+        }
+        if (events[eventId].exists){
+            revert EventAlreadyExists(eventId);
+        }
+
+        // masukkan nilai ke EventInfo
+        events[eventId] = EventInfo({
+            exists: true,
+            organizer: organizer,
+            eventTimestamp: eventTimestamp,
+            maxPerWallet: maxPerWallet,
+            salesOpen: true
+        });
+
+        // emit log event
+        emit EventCreated(eventId, organizer, eventTimestamp, maxPerWallet);
+
         
     }
 
@@ -57,6 +98,26 @@ contract TicketContract is ERC721, Ownable{
     uint256 categoryId,
     uint96  price,
     uint32  quota) external onlyOwner{
+        if (!events[eventId].exists) {
+            revert EventNotFound(eventId);
+        }
+        if (categoryId == 0 || quota == 0 || price == 0) {
+            revert ForbiddenZero();
+        }
+        if (categories[eventId][categoryId].exists) {
+            revert CategoryAlreadyExist(eventId, categoryId);
+        }
+
+        // masukkan nilai ke Category
+        categories[eventId][categoryId] = TicketCategory({
+            exists: true,
+            price: price,
+            quota: quota,
+            minted: 0
+        });
+
+        // emit log event untuk category
+        emit CategoryCreated(eventId, categoryId, price, quota);
 
     }
 
