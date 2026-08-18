@@ -13,6 +13,7 @@ contract TicketContract is ERC721, Ownable{
     error EventAlreadyPassed(); // waktu pelaksanaann event udah lewat
     error EmptyIssuerWalletAddress(); // error jika alamat penyelenggara kosong
     error ForbiddenZero(); // nilai 0 yang tidak diijinkan untuk semua variabel
+    error NotAuthorized(); // error jika yang memanggil fungsi bukan owner atau organizer
     
 
     // Struct 
@@ -119,6 +120,37 @@ contract TicketContract is ERC721, Ownable{
         // emit log event untuk category
         emit CategoryCreated(eventId, categoryId, price, quota);
 
+    }
+
+    function setSalesOpen(uint256 eventId, bool open) external {
+        if(!events[eventId].exists){
+            revert EventNotFound(eventId);
+        }
+        // hanya organizer yang boleh membuka penjualan
+        if(msg.sender != events[eventId].organizer && msg.sender != owner()){
+            revert NotAuthorized();
+        }
+        events[eventId].salesOpen = open; // modify salesOpen
+    }
+
+    function setMarketplace(address _marketplace) public onlyOwner{
+        if (_marketplace == address(0)){
+            revert ForbiddenZero();
+        }
+        // mengubah alamat marketplace
+        marketplaceAddress = _marketplace;
+    }
+    function setSystemSigner(address _signer) public{
+        // validasi awal
+        if(msg.sender != owner()) {
+            revert NotAuthorized();
+        }
+        if(_signer == address(0)){
+            revert ForbiddenZero();
+        }
+
+        // mengubah sistem signer menjadi signer yg benar
+        systemSigner = _signer;
     }
 
 
