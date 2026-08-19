@@ -48,6 +48,8 @@ contract TicketContract is ERC721, Ownable{
     mapping(uint256 => bool) private usedNonces; // mekanisme anti replay attack signature, jadi nandain kalau nonce ini sudah eprnah dipakai   
     mapping(uint256 => EventInfo) private events;
     mapping(uint256 => mapping(uint256 => TicketCategory)) private categories;
+    mapping(uint256 => mapping(address => uint32)) private walletPurchases;
+
 
     // Event
     // event digunakan untuk menuliskan log langsung ke dalam blockchain
@@ -140,11 +142,7 @@ contract TicketContract is ERC721, Ownable{
         // mengubah alamat marketplace
         marketplaceAddress = _marketplace;
     }
-    function setSystemSigner(address _signer) public{
-        // validasi awal
-        if(msg.sender != owner()) {
-            revert NotAuthorized();
-        }
+    function setSystemSigner(address _signer) public onlyOwner{
         if(_signer == address(0)){
             revert ForbiddenZero();
         }
