@@ -12,28 +12,24 @@ bisa dipertanggungjawabkan di depan penguji.
 
 ## 1. Status Pelaksanaan
 
-**Per 7 Agustus 2026: seluruh isi berkas ini berstatus
-`[BELUM DIIMPLEMENTASI]`.**
+**Per 2 September 2026: sebagian `TicketContract.sol` sudah ditulis; sisanya
+dan seluruh `MarketplaceContract.sol` masih `[BELUM DIIMPLEMENTASI]`.**
 
-Isi folder `contracts/` saat ini:
+Keadaan folder `contracts/` saat ini:
 
-| Berkas | Isi |
+| Bagian | Status |
 |---|---|
-| `contracts/src/Counter.sol` | Kerangka bawaan Foundry, bukan bagian sistem |
-| `contracts/test/Counter.t.sol` | Kerangka bawaan Foundry |
-| `contracts/script/Counter.s.sol` | Kerangka bawaan Foundry |
+| `TicketContract.sol` — struct, mapping (`userIdentities`, `usedNonces`, `walletPurchases`), custom error | Sudah ada |
+| `createEvent()`, `addCategory()` — validasi lengkap + emit | Sudah ada, **belum diuji** |
+| `setSalesOpen()`, `setMarketplace()`, `setSystemSigner()` | Sudah ada, **belum diuji** |
+| `mintTicket()`, `registerIdentity()`, gerbang EIP-712, penimpaan `_update` (allowlist), penukaran tiket | `[BELUM DIIMPLEMENTASI]` |
+| `MarketplaceContract.sol` | `[BELUM DIIMPLEMENTASI]` — bentuknya menunggu keputusan K2 |
+| `contracts/test/` | **Kosong** — menulis test adalah pekerjaan pertama berikutnya |
 
-Berkas `TicketContract.sol` dan `MarketplaceContract.sol` **belum ada**.
-
-> **Catatan penyelarasan:** `CLAUDE.md` Bagian 6 dan `tasks.md` Langkah 7 masih
-> menyatakan bahwa `createEvent()`, struktur `EventInfo`, pemeriksaan `eventId`,
-> pemaksaan kuota, dan `mintTicket()` "sudah ada". Pemeriksaan terhadap
-> repositori pada 7 Agustus 2026 menunjukkan **berkasnya belum ada sama sekali**.
-> Berkas ini mengikuti keadaan repositori yang sebenarnya. Kedua berkas catatan
-> tersebut perlu diperbarui.
-
-Kolom status akan ditambahkan pada tabel-tabel di bawah begitu ada bagian
-pertama yang selesai dikerjakan.
+> **Catatan penyelarasan 2 September 2026:** status di atas dicocokkan
+> langsung dengan isi repositori. Urutan pengerjaan: `TASKS.md` Fase B–C.
+> Keputusan yang menahan sebagian pekerjaan (K2, K3, K10):
+> `docs/kerja/keputusan.md`.
 
 ---
 

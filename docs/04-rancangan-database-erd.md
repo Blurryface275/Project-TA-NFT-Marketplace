@@ -23,6 +23,13 @@ tabel-tabel database beserta hubungan antar tabelnya.
 > **Setelah konsultasi:** ubah baris status di paling atas menjadi
 > `STATUS: DISETUJUI [tanggal]`, lalu catat perubahan yang diminta pembimbing
 > di Bagian 19. Catatan itu berguna saat menulis Bab 4.
+>
+> **Tambahan 2 September 2026:** rancangan ternyata berkembang di luar berkas
+> ini — versi terbaru ada di `design/erd-nft.mwb` (25 Agustus) dan
+> `kamus-data-bab4.docx`, dan **berbeda** dari isi berkas ini (skema KYC,
+> kolom kata sandi, tabel yang hilang/bertambah). Sebelum keputusan **K10**
+> putus (`docs/kerja/keputusan.md`), berkas ini JANGAN dipakai sebagai acuan
+> skema; setelah K10 putus, tulis ulang berkas ini mengikuti ERD final.
 
 ---
 

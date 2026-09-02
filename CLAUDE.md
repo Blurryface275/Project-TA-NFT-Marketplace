@@ -35,10 +35,17 @@
 - **Nomor Pokok Mahasiswa (NRP):** 160423176
 - **Program Studi:** Teknik Informatika, Fakultas Teknik, Universitas Surabaya
 - **Dosen Pembimbing:** Maya Hilda Lestari Louk dan Dr. Daniel Soesanto
-- **Target sidang tugas akhir:** November 2026
-- **Batas akhir penambahan fitur baru:** 10 Agustus 2026. Setelah tanggal ini
-  Edward mulai magang, sehingga kegiatan pemrograman turun menjadi hanya
-  perbaikan kesalahan (*bugfix*) pada fitur yang sudah jalan.
+- **Target sidang tugas akhir:** mulai 17 November 2026 (LSTA 10 November)
+- **Tenggat antara (ditetapkan awal September 2026):** kuesioner SUS disebar
+  19 September; draf Bab 5 26 September; titik go/no-go 6–8 Oktober; setor
+  Bab 5 10 Oktober; setor Bab 6 17 Oktober; cek plagiarisme + ACC pembimbing
+  1–7 November. Rincian harian/mingguan: `docs/kerja/panduan-pengerjaan.md`.
+  Checklist per fase: `TASKS.md`.
+- **Kapasitas kerja:** 4–5 jam per hari kerja (sambil magang), lebih longgar
+  di akhir pekan. Konsultasi pembimbing tiap Senin 09.00.
+- Catatan: batas lama "penambahan fitur berhenti 10 Agustus 2026" **tidak
+  berlaku lagi** — digantikan jadwal di atas. Pembekuan fitur yang nyata:
+  18 September malam (menjelang kuesioner) dan 31 Oktober (kode selesai).
 
 **Masalah yang diselesaikan:** pemalsuan tiket event dan manipulasi harga
 tiket di pasar sekunder (penjualan kembali oleh calo dengan harga jauh di
@@ -143,6 +150,15 @@ pengundian acak, atau perebutan flash sale.
 ### 4.4 Pengikatan identitas (KYC)
 Aturan: **satu tiket → satu alamat dompet → satu identitas nyata.**
 
+> **⚠ SEDANG DISENGKETAKAN — keputusan K10, target konsultasi 7 September
+> 2026.** Uraian di bawah adalah keputusan 7 Agustus (hash + salt + pepper,
+> tanpa data KTP terbaca di mana pun). Namun ERD terbaru
+> (`design/erd-nft.mwb`, 24–25 Agustus) dan `kamus-data-bab4.docx` memakai
+> skema berbeda: `full_name` terbaca + `ktp_photo` + satu `nik_hash`, tanpa
+> salt/pepper, plus kolom kata sandi. **Jangan mengimplementasikan versi mana
+> pun sebelum K10 putus** — perbandingan lengkap di
+> `docs/kerja/keputusan.md`.
+
 > **Diperketat 7 Agustus 2026.** Rancangan awal masih menyimpan data KTP
 > **asli** di MySQL. Itu sudah **tidak berlaku**. Sekarang data KTP asli
 > **tidak disimpan dalam bentuk terbaca di mana pun** — tidak di blockchain,
@@ -232,28 +248,24 @@ membuka halaman web sama sekali — itulah alasan lapisan 4.7 tetap diperlukan.
 
 ## 6. Status Smart Contract Saat Ini
 
-**`TicketContract.sol` — kerangka awal, logika utamanya belum ditulis**
+**Diperbarui 2 September 2026.** Rincian tugas: `TASKS.md` Fase B–D.
 
-Sudah ada (bentuknya saja, badan fungsi masih kosong): warisan `ERC721` +
-`Ownable`, enam custom error, struct `EventInfo` dan `TicketCategory`, dua
-mapping (event dan kategori bersarang), dua event log (`EventCreated`,
-`CategoryCreated`), constructor, serta tanda tangan fungsi `createEvent()`
-dan `addCategory()` dengan pengubah `onlyOwner`.
+**`TicketContract.sol` — sebagian sudah ditulis, belum ada test.**
 
-**Badan `createEvent()` dan `addCategory()` masih kosong** — belum ada
-pemeriksaan `eventId`, belum ada pemaksaan kuota, belum ada penyimpanan data
-ke mapping, belum ada `emit`. Memanggilnya sekarang berhasil dikompilasi
-tapi tidak melakukan apa-apa.
+Sudah ada dan berfungsi: tujuh custom error, struct `EventInfo` /
+`TicketCategory` / `TicketInfo` (dengan `originalPrice` dan `used`), mapping
+`userIdentities` (hash KYC), `usedNonces` (anti pengulangan tanda tangan),
+`walletPurchases`, `createEvent()` lengkap (validasi + emit), `addCategory()`
+lengkap, `setSalesOpen()` (organizer atau owner), `setMarketplace()`,
+`setSystemSigner()`.
 
-Belum ada sama sekali: `mintTicket()`, pemeriksaan sidik jari digital KTP,
-pemeriksaan tanda tangan EIP-712, penimpaan `_update` untuk pembatasan
-allowlist, penimpaan `isApprovedForAll`.
+Belum ada sama sekali: `mintTicket()`, `registerIdentity()` (menunggu K10),
+gerbang EIP-712, penimpaan `_update` untuk pembatasan allowlist, penimpaan
+`isApprovedForAll`, penukaran tiket — dan **belum ada satu pun test**
+(`contracts/test/` kosong; menulis test adalah pekerjaan pertama berikutnya).
 
-**`MarketplaceContract.sol` — belum diimplementasi sama sekali**, berkasnya
-sendiri belum dibuat.
-
-Rencana: pembatasan allowlist, penguncian harga jual ulang, verifikasi
-tanda tangan digital.
+**`MarketplaceContract.sol` — belum dibuat.** Bentuknya menunggu keputusan
+K2 (listing on-chain penuh, atau hanya `executeResale()` yang on-chain).
 
 ---
 
@@ -429,9 +441,10 @@ hasil akhirnya pendek:
 
 - Mencari sesuatu di dalam proposal PDF ("bagian mana yang menyebut Soulbound
   Token?")
-- **Pemeriksaan konsistensi seluruh folder `docs/`** — ini Langkah 11 di
-  `tasks.md`, dan paling cocok dikerjakan sub-agent karena harus membuka
-  sepuluh berkas tapi hasilnya cuma daftar temuan
+- **Pemeriksaan konsistensi seluruh folder `docs/`** — dulu Langkah 11 di
+  `tasks.md` lama (kini digantikan `TASKS.md`; isi lama:
+  `git show 075d78b:tasks.md`), dan paling cocok dikerjakan sub-agent karena
+  harus membuka sepuluh berkas tapi hasilnya cuma daftar temuan
 - Menelusuri kode yang sudah ada ("di mana kuota event diperiksa?")
 - Memeriksa apakah sebuah sumber rujukan benar-benar ada dan sesuai
 - Mencocokkan sebuah pola dengan dokumentasi resmi terbaru
@@ -465,36 +478,32 @@ jadi lebih berat. Sambungkan hanya yang benar-benar dipakai rutin.
 
 ## 11. Status Implementasi Terkini
 
-**Diperbarui terakhir: 7 Agustus 2026**
+**Diperbarui terakhir: 2 September 2026**
+
+Checklist kerja per fase: `TASKS.md` (root). Jadwal harian/mingguan:
+`docs/kerja/panduan-pengerjaan.md`. Log sebelas keputusan terbuka (K1–K11):
+`docs/kerja/keputusan.md`.
 
 | Bagian | Status |
 |---|---|
-| Folder `docs/` (00–09, format buku tugas akhir) | **Selesai ditulis**, siap diangkat ke Bab 3–4. `04` masih DRAF menunggu pembimbing |
-| Folder `docs/modules/` (01–09, status implementasi kode, bahasa santai) | **Selesai ditulis**, dijaga tetap sinkron dengan kode aktual |
-| Toolchain Foundry + OpenZeppelin | **Terpasang**: Foundry 1.7.1, OpenZeppelin 5.7.0. Lihat Bagian 9.2 |
-| `contracts/foundry.toml` | **Sudah dikunci**: `solc_version 0.8.36`, `evm_version prague`, `optimizer` aktif |
-| Smart contract: kerangka `TicketContract.sol` (struct, mapping, event, constructor) | **Sudah ada** |
-| Smart contract: logika `createEvent()` / `addCategory()` | **Belum** — badan fungsi masih kosong |
-| Smart contract: `mintTicket()` | Belum dimulai |
-| Smart contract: KYC hash + *salt* + *pepper* | Belum dimulai (rancangan datanya sudah final, lihat Bagian 4.4) |
-| Smart contract: pembatasan allowlist (`_update`) | Belum dimulai |
-| Smart contract: penguncian harga jual ulang | Belum dimulai |
-| `MarketplaceContract.sol` | Belum dimulai, berkas belum dibuat |
-| Backend (NestJS) | Belum dimulai, proyek belum di-*scaffold* |
-| Frontend (Next.js) | Belum dimulai, proyek belum di-*scaffold* |
-| Pengujian (`contracts/test/`) | Folder ada, **kosong** — belum ada satu skenario pun |
-| ZeroDev SDK + koneksi Alchemy | Belum dicoba sama sekali |
-| Entity Relationship Diagram (rancangan database) | **Draf sudah ada** — `docs/04-rancangan-database-erd.md`, status DRAF menunggu pembimbing |
+| `docs/` 00–09 + `docs/modules/` | **Ada** (dipulihkan 2 Sep setelah sempat terhapus). Bagian status 01 dan 05 sudah disinkronkan; isi 01/03/04/05/07/09 menunggu revisi hasil K10 |
+| `docs/kerja/` | **Baru, 2 Sep**: keputusan.md, panduan-pengerjaan.md, catatan-konsultasi.md, alamat-kontrak.md, catatan-spike-passkey.md — berkas kerja, tidak masuk buku |
+| ERD | **Dua versi bertentangan (K10):** `docs/04` lama (hash + salt + pepper) vs `design/erd-nft.mwb` 25 Agu + `kamus-data-bab4.docx` (`full_name` + `ktp_photo` + `nik_hash` + kata sandi). Belum final sampai K10 putus |
+| `TicketContract.sol` | **Terisi sebagian** — lihat Bagian 6. **Belum ada test** |
+| `MarketplaceContract.sol` | Belum ada — menunggu K2 (target 7 Sep) |
+| Test (`contracts/test/`) | **Kosong** — pekerjaan pertama berikutnya (mulai 3 Sep, tidak terblokir keputusan apa pun) |
+| Backend NestJS / Frontend Next.js | Belum ada — mulai ±11 Sep / ±14 Sep sesuai panduan |
+| `spike/` registrasi passkey ZeroDev | **Dihapus 2 Sep** (hanya uji coba, tidak dirawat). Temuan + cara memulihkan kode: `docs/kerja/catatan-spike-passkey.md`. Belum terbukti: smart account + UserOperation tersponsori (bahan K7) |
+| Toolchain | Foundry di `~/.foundry/bin` (tidak otomatis di PATH sesi non-interaktif); OpenZeppelin 5.7.0; **dua** foundry.toml (root yang dipakai — jaga identik dengan `contracts/foundry.toml`) |
+| Deploy Sepolia, akun Midtrans, akun Pinata, hosting | Belum. Akun Midtrans dan Pinata belum ada jejaknya; hosting = K11 (batas 10 Sep). Klaim "gas policy ZeroDev aktif" belum terbukti — buktinya 1 transaksi tersponsori (`TASKS.md` Fase D) |
 
-**Hambatan yang sedang berjalan:** rancangan database wajib dikonsultasikan
-ke pembimbing sebelum **disetujui final**, meski drafnya sudah selesai.
-Perkiraan slot konsultasi sekitar 14 Agustus 2026. Akibatnya spesifikasi API
-(`docs/06-spesifikasi-api.md`) ikut tertahan di tahap "daftar kasar".
+**Hambatan aktif:** sebelas keputusan terbuka (K1–K11), terutama **K10
+(skema KYC)** yang memblokir kontrak, backend, dan narasi keamanan Bab 4 —
+target putus di konsultasi 7 September.
 
-**Batas waktu yang perlu diperhatikan:** batas penambahan fitur baru kode
-adalah **10 Agustus 2026** (Bagian 1). Per pembaruan ini progres smart
-contract baru sebatas kerangka — jauh dari fitur inti (anti-calo,
-anti-pemalsuan) yang jadi klaim utama tugas akhir.
+**Tenggat terdekat:** kuesioner **19 September** — lingkupnya hanya alur
+pembelian; jual ulang dan penukaran tiket menyusul untuk uji fungsional
+Oktober.
 
 > Perbarui tabel ini setiap kali ada perubahan berarti. Sejak 7 Agustus 2026
 > ini dilakukan otomatis oleh asisten setiap sesi pengerjaan kode/dokumen,

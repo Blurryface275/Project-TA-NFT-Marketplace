@@ -1,3 +1,20 @@
-﻿spike/
-design/
+# Rahasia — kunci API dan konfigurasi lingkungan. Jangan pernah di-commit.
 .env
+
+# Dependensi
+node_modules/
+
+# Hasil build Foundry (foundry.toml root menaruh cache di folder ini)
+cache/
+out/
+
+# Hasil build backend/frontend (untuk nanti)
+dist/
+.next/
+
+# Percobaan sekali pakai — sudah dihapus 2 Sep 2026; baris ini penjaga
+# kalau folder yang sama dibuat lagi. Temuannya: docs/kerja/catatan-spike-passkey.md
+spike/
+
+# Catatan: design/ SENGAJA tidak diabaikan — isinya (erd-nft.mwb, diagram yEd)
+# adalah sumber gambar Bab 3-4 yang harus ikut riwayat git.

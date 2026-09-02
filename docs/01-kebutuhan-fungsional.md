@@ -18,14 +18,17 @@ kode KF ada di Bagian 13.
 
 ## 1. Status Pelaksanaan
 
-**Per 7 Agustus 2026: seluruh kebutuhan di berkas ini berstatus
-`[BELUM DIIMPLEMENTASI]`.**
+**Per 2 September 2026: hampir seluruh kebutuhan masih
+`[BELUM DIIMPLEMENTASI]`.** Yang sudah ada di kode: `TicketContract.sol`
+berisi pembuatan event dan kategori (menyentuh sebagian KF-13 – KF-20), tapi
+**belum ada satu pun test**, jadi belum ada yang layak disebut selesai. Kolom
+status per baris ditambahkan begitu ada kebutuhan pertama yang benar-benar
+selesai (berfungsi + teruji). Status pengerjaan terkini: `TASKS.md` di root.
 
-Folder `contracts/` baru berisi kerangka bawaan Foundry (`Counter.sol`), dan
-belum ada berkas program untuk `TicketContract` maupun `MarketplaceContract`.
-Karena statusnya seragam, kolom status tidak ditulis berulang di setiap baris
-tabel. Kolom itu **ditambahkan begitu ada kebutuhan pertama yang selesai
-dikerjakan.**
+> **Peringatan 2 September 2026:** kebutuhan modul M2 (KYC, KF-07 – KF-12)
+> ditulis berdasarkan skema hash + salt + pepper. ERD terbaru
+> (`design/erd-nft.mwb`) memakai skema berbeda. Jangan implementasi sebelum
+> keputusan K10 putus — lihat `docs/kerja/keputusan.md`.
 
 ---
 

@@ -1,334 +1,243 @@
-# tasks.md — Urutan Pembuatan Folder `docs/`
+# TASKS.md — Peta Kerja Menuju Sidang (2 September – 17 November 2026)
 
-> **Sebelum mulai:** baca `CLAUDE.md` sampai habis, terutama Bagian 3
-> (daftar isi proposal yang sudah kedaluwarsa) dan Bagian 10 (larangan).
-> Banyak isi proposal PDF sudah tidak berlaku; menyalinnya mentah-mentah akan
-> menghasilkan dokumen yang saling bertentangan.
+> Berkas ini menggantikan `tasks.md` lama (checklist penyusunan folder `docs/`,
+> yang tugasnya sudah selesai). Isi lama tetap bisa dibaca lewat
+> `git show 075d78b:tasks.md`.
+>
+> **Cara pakai:** tugas dikelompokkan per **fase**, bukan per tanggal. Jadwal
+> harian dan mingguan ada di panduan pengerjaan (jawaban asisten, 2 September
+> 2026). Satu kotak hanya boleh dicentang bila **bukti selesai**-nya terpenuhi —
+> tidak ada "hampir selesai".
+>
+> **Penanda:**
+> - `[MEMBLOKIR → X]` — tugas ini menahan X; kerjakan lebih dulu.
+> - `[TERBLOKIR K-n]` — belum boleh dikerjakan sebelum keputusan nomor n.
+> - `[BATAS: tanggal]` — lewat tanggal ini belum selesai = jalankan aturan
+>   meleset di panduan pengerjaan.
+>
+> Perbarui berkas ini setiap Senin sesudah konsultasi.
 
----
-
-## A. Tujuan Akhir
-
-Menghasilkan satu folder `docs/` berisi kebutuhan sistem dari awal sampai
-akhir, yang:
-
-1. Sesuai dengan arsitektur final, bukan versi lama di proposal.
-2. Bisa dipakai sebagai acuan tunggal saat menulis kode.
-3. Bisa diangkat langsung menjadi bahan Bab 3 dan Bab 4 buku tugas akhir.
-
----
-
-## B. Hasil Akhir yang Diharapkan
-
-```
-docs/
-├── 00-ringkasan-sistem.md
-├── 01-kebutuhan-fungsional.md
-├── 02-kebutuhan-non-fungsional.md
-├── 03-arsitektur-sistem.md
-├── 04-rancangan-database-erd.md      ← statusnya DRAF sampai pembimbing setuju
-├── 05-spesifikasi-smart-contract.md
-├── 06-spesifikasi-api.md
-├── 07-alur-pengguna.md
-├── 08-daftar-istilah.md
-└── 09-keterbatasan-sistem.md
-```
-
-**⚠️ Penting: nomor berkas ≠ urutan pengerjaan.**
-Nomor di depan nama berkas hanya mengatur urutan **membaca**. Urutan
-**mengerjakannya** berbeda, dan dijelaskan di Bagian D.
+**Terakhir diperbarui: 2 September 2026, sore — Fase A sudah dieksekusi.**
 
 ---
 
-## C. Peta Ketergantungan — Kenapa Urutannya Begitu
+## 0. Keputusan Terbuka (K1–K11)
 
-Beberapa dokumen tidak bisa ditulis sebelum dokumen lain selesai:
+Sumber K1–K9: daftar Edward per 1 September. K10–K11: temuan pemeriksaan
+repositori 2 September. Jangan menulis kode yang bergantung pada keputusan
+yang belum diambil.
 
-| Dokumen ini… | …baru bisa ditulis setelah | Alasannya |
-|---|---|---|
-| Kebutuhan fungsional (01) | Arsitektur (03) | Daftar fitur harus cocok dengan rancangan yang sudah final, bukan sebaliknya |
-| Alur pengguna (07) | Kebutuhan fungsional (01) | Alur adalah rangkaian dari fitur-fitur yang sudah didaftar |
-| Spesifikasi API (06) | Rancangan database (04) **disetujui** | Titik-titik layanan API mengambil dan menyimpan data dari tabel; kalau tabelnya masih bisa berubah, API-nya ikut berubah |
-| Semua dokumen | Daftar istilah (08) | Supaya penyebutan istilah seragam di seluruh berkas |
-
-**Akibat langsung dari peta ini:** rancangan database sedang tertahan menunggu
-konsultasi pembimbing, jadi **spesifikasi API adalah dokumen terakhir yang
-boleh difinalkan.** Jangan memaksakan urutan nomor berkas.
-
----
-
-## D. Urutan Pengerjaan
-
-### LANGKAH 1 — Daftar Istilah (`08-daftar-istilah.md`)
-
-**Kenapa duluan:** semua dokumen lain akan memakai istilah ini. Kalau
-disamakan sejak awal, tidak perlu perbaikan menyeluruh di akhir.
-
-**Isi yang harus ada:**
-- Semua istilah dari Bagian 2 `CLAUDE.md`, disalin dan boleh diperluas
-- Istilah khusus proyek: `eventId`, `originalPrice`, allowlist, Paymaster,
-  hash KTP, pasar sekunder, jastip
-- Setiap istilah dijelaskan untuk pembaca yang **belum tentu paham
-  blockchain** — penguji sidang belum tentu ahli blockchain
-
-**Tanda selesai:** setiap singkatan yang muncul di dokumen lain sudah ada
-kepanjangan dan penjelasannya di sini.
+| No | Keputusan | Target | Memblokir apa |
+|---|---|---|---|
+| K1 | Seberapa formal verifikasi dokumen penyelenggara event (ERD sudah punya `organizers.status` pending/approved/rejected + `verified_by`) | Konsultasi 7 Sep | Modul penyelenggara di backend; Bab 4 |
+| K2 | Pencatatan listing jual ulang: transaksi on-chain terpisah, atau cukup `executeResale()` yang on-chain | Konsultasi 7 Sep | **Seluruh `MarketplaceContract.sol` (Fase C)**; spesifikasi API; Bab 4 |
+| K3 | Batas tiket per wallet masih berlaku atau tidak (kontrak sudah telanjur punya `maxPerWallet` dan `walletPurchases`) | Konsultasi 7 Sep | `mintTicket()` (Fase B); kemungkinan revisi `createEvent()` |
+| K4 | Apakah log audit dituntut konsentrasi Network & Cyber Security | Konsultasi 7 Sep (boleh mundur 14 Sep) | Tabel log/riwayat masuk; KNF terkait |
+| K5 | Kolom `username` perlu batasan unik atau tidak | Konsultasi 7 Sep | Migrasi database backend (Fase E) |
+| K6 | Peran passkey server ZeroDev terhadap tabel `passkey_credentials` di MySQL (dua-duanya menyimpan credential — siapa sumber kebenaran?) | Konsultasi 7 Sep | Modul auth backend (Fase E) |
+| K7 | Backend mengirim transaksi sebagai EOA biasa, atau merelay UserOperation ERC-4337 (diagram `design/desain-blockchain-2.png` condong ke UserOperation lewat backend) | **Usulan: majukan ke 7 Sep** (semula tanpa tanggal — padahal memblokir backend mulai ±9 Sep) | Modul koneksi blockchain backend; klaim Paymaster di Bab 4; bukti sponsorship Fase D |
+| K8 | Penanganan bila kuota sponsorship Paymaster habis setelah pembayaran Midtrans diterima | Konsultasi 14 Sep | Prosedur operasional saat kuesioner (Fase G) |
+| K9 | Metode dokumentasi uji fungsional Bab 6: otomasi atau manual berbasis skenario (uji per fungsi Foundry/API **bukan** bagian keputusan ini — itu wajib sejak awal) | Konsultasi 14 Sep | Fase H (eksekusinya tetap Oktober) |
+| K10 | **Skema KYC mana yang berlaku:** (a) hash + salt + pepper tanpa satu pun data KTP terbaca (CLAUDE.md 4.4, docs lama), atau (b) `full_name` terbaca + `ktp_photo` + satu `nik_hash` + verifikasi manual (ERD 24–25 Agustus + kamus data Bab 4). Dua-duanya ada di repositori dan saling bertentangan | **Konsultasi 7 Sep** | `registerIdentity()` di kontrak (Fase B); modul KYC backend (Fase E); narasi keamanan/privasi Bab 4; revisi docs 01/03/04/05/07/09 |
+| K11 | Tempat hosting publik untuk kuesioner: frontend, backend, MySQL, dan URL webhook Midtrans harus bisa diakses responden dari internet (belum pernah dibahas di dokumen mana pun) | Keputusan sendiri, paling lambat 10 Sep | Fase G |
 
 ---
 
-### LANGKAH 2 — Ringkasan Sistem (`00-ringkasan-sistem.md`)
+## Fase A — Kebersihan Repositori & Bahan Konsultasi `[BATAS: 6 Sep]`
 
-**Kenapa di sini:** ini pondasi yang mengikat semua dokumen lain, dan
-bahannya sudah tersedia.
+- [x] Nasib berkas terhapus (2 Sep): `docs/` **dipulihkan** dari commit
+  `075d78b`; `design/` sudah di-commit Edward sendiri; `spike/` dihapus
+  Edward (kodenya tetap di riwayat git — lihat
+  `docs/kerja/catatan-spike-passkey.md`).
+- [x] `.gitignore` root ditulis ulang lengkap (2 Sep): `.env`,
+  `node_modules/`, `cache/`, `out/`, `dist/`, `.next/`, `spike/`. `design/`
+  **sengaja tetap dilacak git** — isinya sumber diagram Bab 3–4.
+- [x] `.env` dan `cache/solidity-files-cache.json` dikeluarkan dari pelacakan
+  (`git rm --cached`, 2 Sep). Catatan: keduanya sempat ter-commit pagi ini,
+  jadi project id ZeroDev ada di riwayat git — ini testnet, risikonya kecil;
+  kalau mau benar-benar bersih, buat project baru di dasbor ZeroDev
+  (opsional).
+- [x] Bahan konsultasi 7 Sep tersusun: `docs/kerja/keputusan.md` (K1–K11,
+  opsi + akibat + usulan). **Baca ulang dan tambahkan pendapatmu sendiri
+  sebelum Senin.**
+- [x] `CLAUDE.md` disinkronkan (2 Sep): jadwal baru di Bagian 1, peringatan
+  K10 di Bagian 4.4, status kontrak di Bagian 6, tabel status di Bagian 11.
+- [ ] **Commit hasil penataan 2 Sep** (docs pulih + docs/kerja + .gitignore +
+  un-track .env/cache + TASKS.md). **Bukti:** `git status` bersih.
+- [ ] Setelah K10 putus: finalisasi `CLAUDE.md` Bagian 4.4 + revisi docs
+  01/03/04/05/07/09 mengikuti skema terpilih. `[TERBLOKIR K10]`
 
-**Isi yang harus ada:**
-- Masalah yang diselesaikan (pemalsuan tiket dan manipulasi harga di pasar
-  sekunder) — ambil dari latar belakang proposal, **bagian ini masih valid**
-- Tujuan sistem
-- Manfaat bagi penyelenggara acara dan bagi konsumen
-- Batasan lingkup: kategori event yang dicakup, memakai jaringan uji coba
-  Sepolia, pembayaran hanya simulasi
-- Ringkasan satu paragraf tentang bagaimana sistem menyelesaikan masalah itu
+## Fase B — `TicketContract.sol` Selesai dan Teruji `[BATAS: 9 Sep]`
 
-**Tanda selesai:** orang yang belum pernah dengar proyek ini bisa paham
-sistemnya untuk apa hanya dengan membaca berkas ini.
+Sudah ada: struct, mapping, error, `createEvent()`, `addCategory()`,
+`setSalesOpen()`, `setMarketplace()`, `setSystemSigner()`. Belum ada test
+sama sekali.
 
----
+- [ ] Test Foundry untuk yang **sudah ada**: `createEvent`, `addCategory`,
+  `setSalesOpen` (termasuk semua jalur revert). **Bukti:** `forge test` hijau.
+- [ ] `registerIdentity()` sesuai K10 + `mintTicket()` menolak dompet yang
+  belum ber-KYC. `[TERBLOKIR K10]` **Bukti:** test.
+- [ ] `mintTicket()`: cek event ada + `salesOpen`, kategori ada, kuota
+  (`minted < quota`), batas per wallet (sesuai K3), simpan `TicketInfo` dengan
+  `originalPrice`, `_safeMint`, emit. `[TERBLOKIR K3, K10]`
+  **Bukti:** test skenario sukses + tiap jalur revert.
+- [ ] Gerbang EIP-712: struct izin mint (pembeli, event, kategori, nonce,
+  deadline), `_hashTypedDataV4` + pemulihan penanda tangan = `systemSigner`,
+  nonce sekali pakai, deadline. Perhatikan CLAUDE.md Bagian 9.1 jebakan 2–3.
+  **Bukti:** test tanda tangan salah / nonce dipakai ulang / kedaluwarsa —
+  semuanya revert.
+- [ ] Penimpaan `_update()`: mint dan burn tetap lolos; perpindahan biasa hanya
+  boleh lewat marketplace (CLAUDE.md 9.1 jebakan 1). **Bukti:** test transfer
+  langsung antar dompet revert; jalur marketplace lolos.
+  `[MEMBLOKIR → Fase C, uji keamanan Fase H]`
+- [ ] Gas snapshot pertama (`forge snapshot`). **Bukti:** berkas snapshot ada.
+- [ ] `markUsed()` / penukaran di lokasi acara — **boleh ditunda sampai sesudah
+  19 Sep** (alur pendukung, bukan alur utama).
 
-### LANGKAH 3 — Arsitektur Sistem (`03-arsitektur-sistem.md`)
+## Fase C — `MarketplaceContract.sol` `[TERBLOKIR K2]` `[BATAS: 10 Sep]`
 
-**Kenapa sebelum daftar kebutuhan:** arsitektur sudah final dan disetujui
-pembimbing. Daftar fitur harus menyesuaikan arsitektur, bukan kebalikannya.
+- [ ] Rancang bentuk kontrak sesuai hasil K2 (listing on-chain penuh vs hanya
+  `executeResale()` on-chain).
+- [ ] Penguncian harga: harga jual **dipaksa sama** dengan `originalPrice` dari
+  `TicketContract`; penjual tidak pernah bisa memasukkan angka harga.
+  **Bukti:** test upaya menjual di atas harga asal revert / tidak mungkin dari
+  bentuk fungsinya.
+- [ ] `executeResale()`: perpindahan NFT lewat jalur allowlist, tercatat.
+  **Bukti:** test integrasi mint → tawarkan → beli di Foundry.
+- [ ] Test keamanan (bahan Fase H): transfer di luar allowlist gagal,
+  price-lock tidak bisa dilanggar. **Bukti:** berkas test khusus keamanan.
 
-**Isi yang harus ada:**
-- Gambaran tiga bagian besar: tampilan web (Next.js), server (NestJS), dan
-  dua smart contract di blockchain
-- Alur data antar bagian: dari pengguna → server → blockchain → kembali
-- Uraian setiap keputusan arsitektur dari Bagian 4 `CLAUDE.md`, **beserta
-  alasan kenapa dipilih**, bukan hanya "apa"-nya:
-  - Kenapa satu kontrak untuk banyak event (Model B), bukan satu kontrak per
-    event
-  - Kenapa hash, bukan enkripsi, untuk data KTP
-  - Kenapa allowlist, bukan Soulbound Token
-  - Kenapa penyaring bot dan tanda tangan digital keduanya diperlukan
-- Pemisahan data: apa yang disimpan di dalam blockchain, apa yang di IPFS,
-  apa yang di MySQL — beserta alasan pembagiannya
+## Fase D — Deploy ke Sepolia `[BATAS: 11 Sep]`
 
-**Tanda selesai:** setiap pilihan arsitektur punya penjelasan "kenapa", bukan
-sekadar daftar teknologi.
+- [ ] Skrip deploy Foundry: kedua kontrak + `setMarketplace` +
+  `setSystemSigner`. **Bukti:** alamat kontrak tercatat di catatan kerja.
+- [ ] Seed on-chain: 1 event + ≥1 kategori. **Bukti:** transaksi sukses.
+- [ ] **Bukti sponsorship gas:** 1 transaksi sukses sesuai hasil K7 — kalau
+  UserOperation: satu UserOperation tersponsori Paymaster ZeroDev di Sepolia;
+  kalau EOA: satu transaksi EOA backend. Ini sekaligus membuktikan klaim "gas
+  policy aktif" yang belum pernah terverifikasi. **Bukti:** hash transaksi.
+  `[TERBLOKIR K7]`
 
----
+## Fase E — Backend NestJS `[TERBLOKIR K5, K6, K7, K10]` `[BATAS: 15 Sep]`
 
-### LANGKAH 4 — Kebutuhan Fungsional (`01-kebutuhan-fungsional.md`)
+- [ ] Scaffold NestJS 11 + TypeORM (pakai `DataSource`, bukan API lama) +
+  MySQL; migrasi sesuai ERD final satu versi. **Bukti:** migrasi jalan di
+  database kosong.
+- [ ] Auth sesuai ERD: pendaftaran + masuk + registrasi passkey (angkat hasil
+  `spike/`) + simpan `wallet_address`. **Bukti:** test API
+  daftar → masuk → passkey → wallet tercatat.
+- [ ] Modul KYC sesuai K10. **Bukti:** test API; data tersimpan sesuai skema.
+- [ ] Modul event + katalog (termasuk `on_chain_event_id`). **Bukti:** endpoint
+  daftar/detail berfungsi.
+- [ ] Midtrans sandbox: buat transaksi Snap, terima webhook, idempoten (webhook
+  ganda tidak mencetak tiket ganda). **Bukti:** pembayaran uji berstatus lunas
+  memicu mint. `[MEMBLOKIR → Fase G]`
+- [ ] Pipeline mint: webhook lunas → kirim transaksi sesuai K7 → tunggu
+  konfirmasi → tulis `ticket_cache` (+ catat lama konfirmasi sejak awal —
+  datanya dibutuhkan Bab 6). **Bukti:** NFT muncul di Sepolia + baris
+  `ticket_cache` terisi.
+- [ ] Pinata: unggah gambar/metadata event, simpan CID. **Bukti:** CID bisa
+  dibuka lewat gateway.
+- [ ] Cloudflare Turnstile diverifikasi di sisi server pada endpoint pembelian
+  (lihat §12 — boleh dipotong).
+- [ ] Test API per modul, berjalan seiring kode (wajib, bukan bagian K9).
 
-**Kenapa di sini:** sudah ada draf 27 kebutuhan fungsional yang tersebar di 8
-modul. Tugasnya **merapikan dan memeriksa**, bukan membuat dari nol.
+## Fase F — Frontend Next.js `[BATAS: 17 Sep]`
 
-**Isi yang harus ada:**
-- Konsolidasi draf 27 kebutuhan fungsional yang sudah ada
-- Setiap kebutuhan diberi kode agar mudah dirujuk, misalnya `KF-01`
-- Dikelompokkan per modul
-- Perlu ada modul untuk sisi **penyelenggara acara** (membuat event, mengatur
-  kuota) — ini sempat kurang jelas di ruang lingkup proposal
+- [ ] Scaffold Next.js + halaman: daftar akun, masuk, isi KYC, katalog, detail
+  event, beli (Midtrans Snap), status pesanan, tiket saya. **Bukti:** orang
+  selain Edward bisa menyelesaikan alur beli tanpa dipandu.
+- [ ] Halaman jual ulang — **wajib ada sebelum uji fungsional Oktober; boleh
+  belum ada saat kuesioner 19 Sep** (kuesioner hanya skenario pembelian).
+- [ ] Panel penyelenggara/admin — boleh diganti skrip seed (lihat §12).
 
-**Pemeriksaan wajib sebelum dianggap selesai:**
-- [ ] Tidak ada satu pun kebutuhan yang menyebut flash sale atau
-      commit-reveal
-- [ ] Tidak ada yang menyebut tiket "tidak bisa dipindahkan sama sekali" —
-      yang benar adalah hanya bisa lewat marketplace resmi
-- [ ] Sudah ada kebutuhan untuk pendaftaran identitas (KYC)
+## Fase G — Jalur Tembus + Kuesioner `[BATAS KERAS: 19 Sep; mundur maksimal 26 Sep]`
 
----
+- [ ] Hosting publik terpasang sesuai K11; webhook Midtrans tembus dari
+  internet. **Bukti:** alur beli sukses dari jaringan di luar rumah.
+- [ ] **GERBANG 16 Sep:** uji tembus ujung-ke-ujung di URL publik
+  (daftar → KYC → beli → bayar sandbox → NFT tercetak → tiket tampil).
+- [ ] Skenario responden tertulis + kuesioner SUS 10 butir (pakai adaptasi
+  bahasa Indonesia dari sumber tepercaya yang bisa dirujuk — jangan
+  menerjemahkan sendiri tanpa rujukan) + formulir daring.
+- [ ] Uji pilot ≥2 orang → perbaikan → **bekukan fitur 18 Sep malam**.
+- [ ] Sebar kuesioner 19 Sep; pantau; cadangkan jawaban harian; pantau kuota
+  Paymaster di dasbor ZeroDev selama periode responden (K8).
+  **Bukti:** jumlah responden tercatat per hari.
 
-### LANGKAH 5 — Kebutuhan Non-Fungsional (`02-kebutuhan-non-fungsional.md`)
+## Fase H — Verifikasi untuk Bab 6 (Oktober, metode sesuai K9)
 
-**Isi yang harus ada:**
-- Konsolidasi draf 15 kebutuhan non-fungsional dalam 7 kategori standar
-  ISO/IEC 25010 (standar internasional tentang mutu perangkat lunak)
-- Setiap kebutuhan diberi kode, misalnya `KNF-01`
+- [ ] Uji fungsional alur 1 (pendaftaran akun + identitas), alur 2 (pembelian),
+  alur 3 (penjualan kembali) — terdokumentasi sesuai K9.
+- [ ] Uji keamanan di Sepolia, dengan bukti transaksi: percobaan transfer di
+  luar allowlist **gagal**; percobaan melanggar price-lock **gagal**;
+  pembuktian kepemilikan NFT lewat kueri on-chain.
+- [ ] Pengukuran biaya gas per fungsi (createEvent, addCategory,
+  registerIdentity, mintTicket, fungsi marketplace).
+- [ ] Pengukuran waktu konfirmasi minting (jumlah sampel disepakati
+  pembimbing).
+- [ ] Rekap kuesioner SUS: skor per responden, rata-rata, interpretasi.
+- [ ] Semua penanda `[BUTUH DATA UJI]` di dokumen terisi angka hasil ukur.
 
-**Aturan keras:** target angka kinerja — kecepatan tanggap, biaya gas, waktu
-konfirmasi transaksi — **belum boleh diisi** karena belum ada pengujian
-sungguhan. Tulis `[BUTUH DATA UJI]` di tempat angkanya. Mengarang angka di
-sini berisiko besar saat sidang, karena penguji bisa meminta bukti
-pengukurannya.
+## Fase I — Penulisan dan Administrasi
 
----
-
-### LANGKAH 6 — Alur Pengguna (`07-alur-pengguna.md`)
-
-**Kenapa setelah kebutuhan fungsional:** alur adalah rangkaian dari
-fitur-fitur yang sudah didaftar di langkah 4.
-
-**Isi yang harus ada — tiga alur utama, bukan empat:**
-
-1. **Pendaftaran akun dan identitas**
-   Daftar pakai email → verifikasi email → sistem membuatkan dompet otomatis
-   → pengguna mengisi data KTP → data di-*hash* dan disimpan di blockchain,
-   data aslinya di MySQL
-
-2. **Pembelian tiket biasa**
-   Pilih event dan tiket → lolos penyaring bot → bayar lewat Midtrans →
-   pembayaran diverifikasi → tiket NFT dicetak ke dompet pengguna →
-   keterangan tiket disimpan di IPFS
-
-3. **Penjualan kembali tiket**
-   Pilih tiket yang mau dijual → harga otomatis dikunci sama dengan harga beli
-   awal → tiket ditawarkan hanya di marketplace resmi → begitu terjual,
-   kepemilikan berpindah lewat `MarketplaceContract`
-
-**Catatan:** proposal menyebut empat alur karena masih memasukkan flash sale.
-Sekarang tinggal tiga.
-
----
-
-### LANGKAH 7 — Spesifikasi Smart Contract (`05-spesifikasi-smart-contract.md`)
-
-**Isi yang harus ada — bedakan dengan jelas mana yang sudah jadi dan mana
-yang belum:**
-
-**`TicketContract.sol`**
-
-| Bagian | Status | Keterangan |
-|---|---|---|
-| `createEvent()` | Sudah ada | Membuat event baru |
-| Struktur `EventInfo` | Sudah ada | Menyimpan keterangan event |
-| Pemeriksaan `eventId` | Sudah ada | Memastikan event yang dituju ada |
-| Pemaksaan kuota | Sudah ada | Mencegah tiket terjual melebihi kuota |
-| `mintTicket()` | Sudah ada | Mencetak tiket NFT |
-| Pemeriksaan hash KTP | `[BELUM DIIMPLEMENTASI]` | Rumus: `keccak256(data KTP + salt)` |
-| Pemeriksaan tanda tangan EIP-712 | `[BELUM DIIMPLEMENTASI]` | Lapisan kontrol akses |
-
-**`MarketplaceContract.sol`** — seluruhnya `[BELUM DIIMPLEMENTASI]`
-
-| Bagian | Keterangan |
-|---|---|
-| Pembatasan allowlist | Hanya kontrak ini yang boleh memindahkan tiket |
-| Penguncian harga jual ulang | Harga dikunci sama dengan `originalPrice` |
-
-**Wajib ditulis:** penjelasan bahwa smart contract bersifat terbuka dan bisa
-dipanggil siapa saja lewat RPC. Ini bukan cacat, tapi sifat bawaan blockchain,
-dan itulah alasan lapisan tanda tangan digital diperlukan.
-
----
-
-### LANGKAH 8 — Rancangan Database (`04-rancangan-database-erd.md`)
-
-**⚠️ SEDANG TERTAHAN.** Pembimbing meminta rancangan ini dikonsultasikan
-lebih dulu sebelum dikerjakan. Perkiraan slot konsultasi sekitar 14 Agustus
-2026.
-
-**Yang boleh dikerjakan sekarang:** menyusun **draf** untuk dibawa
-konsultasi. Draf yang rapi membuat sesi konsultasi jauh lebih efektif
-daripada datang dengan tangan kosong.
-
-**Baris pertama berkas ini wajib bertuliskan:**
-```
-STATUS: DRAF — MENUNGGU PERSETUJUAN PEMBIMBING
-```
-
-**Isi yang harus ada:**
-- Tabel-tabel yang menyimpan data di luar blockchain, berdasarkan poin 10
-  ruang lingkup proposal: pengguna, event, kategori tiket, salinan data tiket,
-  riwayat pesanan, penawaran jual ulang, notifikasi, riwayat masuk
-- **Tambahan yang belum ada di proposal:** tabel penyimpanan data KTP asli
-  beserta *salt*-nya
-- Untuk setiap tabel: nama kolom, jenis data, kunci utama, dan hubungan antar
-  tabel
-
-**Yang wajib DIHAPUS dari daftar tabel di proposal:**
-- Tabel flash sale
-- Tabel data commit fase flash sale
-- Kolom `commitHash`
-- Kolom pengingat flash sale
-
-Semua itu sudah tidak relevan karena commit-reveal dihapus.
-
-**Setelah konsultasi:** ubah baris status menjadi
-`STATUS: DISETUJUI [tanggal]`, dan catat di bagian bawah berkas apa saja
-perubahan yang diminta pembimbing. Catatan ini berguna saat menulis Bab 4.
+- [ ] Bab 4 dikunci: ERD, kamus data, dan arsitektur konsisten **satu versi**
+  (dua `ENUM` yang masih "menunggu konfirmasi nilai" di kamus data terisi).
+  `[TERBLOKIR K1, K3, K5, K10]`
+- [ ] Draf Bab 5 selesai — **26 Sep**; setor Bab 5 — **10 Okt**.
+- [ ] Titik keputusan go/no-go — **6–8 Okt** (kriteria di panduan pengerjaan).
+- [ ] Setor Bab 6 — **17 Okt**; draf Bab 7 — 17 Okt.
+- [ ] Rakit naskah lengkap + revisi — 18–31 Okt.
+- [ ] Cek plagiarisme → ACC pembimbing → ajukan sidang — 1–7 Nov.
+- [ ] LSTA — 10 Nov. Sidang — mulai 17 Nov.
 
 ---
 
-### LANGKAH 9 — Spesifikasi API (`06-spesifikasi-api.md`)
+## §11. TIDAK BOLEH DIPOTONG (terkunci di metodologi proposal)
 
-**⚠️ Jangan difinalkan sebelum Langkah 8 disetujui.** Titik-titik layanan API
-mengambil data dari tabel; kalau tabelnya masih berubah, pekerjaan ini
-terbuang.
+1. Uji fungsional **tiga alur utama** (pendaftaran akun + identitas,
+   pembelian, penjualan kembali).
+2. Uji keamanan: percobaan transfer di luar allowlist.
+3. Uji keamanan: percobaan melanggar penguncian harga (price-lock).
+4. Pembuktian kepemilikan NFT.
+5. Pengukuran biaya gas per fungsi.
+6. Pengukuran waktu konfirmasi minting.
+7. Pengujian subjek nyata dengan skenario pembelian tiket.
+8. Kuesioner kemudahan penggunaan dengan instrumen SUS.
 
-**Yang boleh dikerjakan sementara:** daftar kasar titik layanan yang
-dibutuhkan tiap alur, tanpa merinci bentuk datanya.
+Turunan yang otomatis ikut wajib: kedua kontrak terpasang di Sepolia; alur
+pembelian bisa dipakai orang lain; alur penjualan kembali berfungsi (minimal
+cukup untuk diuji fungsional, tidak harus dipoles).
 
-**Isi yang harus ada (setelah database disetujui):**
-- Titik layanan untuk pendaftaran dan verifikasi identitas
-- Titik layanan untuk daftar event dan pembelian tiket
-- Titik layanan untuk penerimaan hasil pembayaran dari Midtrans
-- Titik layanan untuk penawaran dan pembelian tiket jual ulang
-- Untuk setiap titik layanan: cara pemanggilan, data yang dikirim, data yang
-  dikembalikan, dan pesan kesalahan yang mungkin muncul
+## §12. BOLEH DIPOTONG bila waktu habis (urutan memotong)
 
----
+1. Panel penyelenggara/admin di web → ganti skrip seed.
+2. Notifikasi (modul M9 di docs lama).
+3. Riwayat masuk / log audit — **kecuali K4 memutuskan wajib**.
+4. Penukaran tiket di lokasi acara (`markUsed`) → catat di keterbatasan.
+5. Batas tiket per wallet — mengikuti K3.
+6. Verifikasi alamat surel saat pendaftaran (bila skema akhirnya memang
+   pakai kata sandi, sesuai ERD baru).
+7. Multi-kategori per event → cukup satu kategori.
+8. Polesan tampilan halaman jual ulang (fungsional minimal cukup).
+9. Cloudflare Turnstile — potong paling terakhir, wajib dicatat jujur di
+   keterbatasan dan tidak diklaim di Bab 4.
 
-### LANGKAH 10 — Keterbatasan Sistem (`09-keterbatasan-sistem.md`)
+Apa pun di §11 tidak pernah boleh masuk daftar ini.
 
-**Isi yang harus ada:**
-- Keterbatasan pengikatan identitas KTP: calo dan jastip sering sudah
-  memegang data KTP pembeli sebelum perebutan tiket, sehingga pengikatan
-  identitas bisa ditembus dalam kondisi itu
-- Keterbatasan karena memakai jaringan uji coba, bukan jaringan sungguhan
-- Keterbatasan karena pembayaran hanya simulasi
-- Keterbatasan lain yang ditemukan selama pemrograman — tambahkan seiring
-  jalan
+## §13. Asumsi dan Risiko yang Harus Diverifikasi
 
-**Kenapa ini penting:** menuliskan keterbatasan sendiri lebih baik daripada
-ditemukan penguji saat sidang. Menunjukkan bahwa perancang sadar batas
-sistemnya justru menambah kredibilitas.
-
----
-
-### LANGKAH 11 — Pemeriksaan Konsistensi Menyeluruh
-
-Dikerjakan paling akhir, setelah semua berkas ada.
-
-**Daftar periksa:**
-- [ ] Tidak ada berkas yang menyebut Soulbound Token sebagai bagian aktif
-      sistem
-- [ ] Tidak ada berkas yang menyebut commit-reveal atau flash sale sebagai
-      bagian aktif sistem
-- [ ] Tidak ada berkas yang menyebut Chainlink VRF sebagai bagian aktif
-      sistem
-- [ ] Jumlah alur utama konsisten: **tiga**, bukan empat
-- [ ] Semua penyebutan KYC konsisten: hash satu arah, bukan enkripsi
-- [ ] Semua penyebutan tanda tangan digital dibingkai sebagai "lapisan
-      kontrol akses berstandar industri", bukan sebagai tambalan kelemahan
-- [ ] Semua angka kinerja yang belum diukur masih bertanda `[BUTUH DATA UJI]`
-- [ ] Kalau ada rujukan ke Aldweesh (2023), sudah diganti Feulner dkk. (2022)
-- [ ] Setiap singkatan teknis punya kepanjangan di daftar istilah
-- [ ] Berkas rancangan database masih bertanda DRAF kalau pembimbing belum
-      menyetujui
-
----
-
-## E. Aturan Penulisan yang Berlaku untuk Semua Dokumen
-
-1. **Bahasa Indonesia**, karena akan diangkat menjadi isi buku tugas akhir.
-2. **Setiap singkatan ditulis kepanjangannya** saat pertama kali muncul.
-3. **Setiap keputusan disertai alasan.** Pola yang dipakai: apa yang dipilih →
-   kenapa dipilih → apa akibatnya. Jangan hanya mendaftar teknologi.
-4. **Bedakan dengan tegas** antara yang sudah jadi, yang sedang dikerjakan,
-   dan yang masih rencana. Gunakan penanda `[BELUM DIIMPLEMENTASI]`.
-5. **Jangan mengarang angka.** Gunakan `[BUTUH DATA UJI]`.
-6. **Jangan mengarang sumber rujukan.**
-
----
-
-## F. Catatan Status
-
-**6 Agustus 2026**
-- Rancangan database masih tertahan menunggu konsultasi pembimbing, perkiraan
-  sekitar 14 Agustus. Langkah 8 dan 9 ikut tertahan.
-- Langkah 1 sampai 7 **tidak bergantung pada database**, jadi bisa dikerjakan
-  penuh sekarang tanpa menunggu siapa pun.
-- Batas penambahan fitur baru 10 Agustus 2026 berlaku untuk **kode**, bukan
-  untuk dokumen. Penulisan folder `docs/` tetap boleh berjalan selama masa
-  magang.
+- Akun Midtrans sandbox + kuncinya **tidak ada jejaknya di repositori** —
+  buat/verifikasi sebelum Fase E.
+- Akun Pinata + kuncinya — sama, belum ada jejak.
+- Layanan pengirim surel belum dipilih (hanya relevan bila verifikasi surel
+  dipertahankan).
+- Klaim "gas policy ZeroDev aktif" belum terbukti dari repositori — buktikan
+  lewat butir bukti sponsorship di Fase D.
+- Spike passkey baru membuktikan **registrasi** (pubX, pubY, authenticatorId).
+  Pembuatan smart account + pengiriman UserOperation tersponsori **belum pernah
+  dicoba** — risiko teknis terbesar K7.
+- Foundry terpasang di `~/.foundry/bin` tapi tidak ada di PATH sesi
+  non-interaktif — jalankan lewat Git Bash yang PATH-nya benar.
+- Hasil kuesioner butuh aplikasi stabil: selama responden aktif, jangan ubah
+  kode kecuali kerusakan fatal.
