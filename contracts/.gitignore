@@ -9,6 +9,10 @@ out/
 
 # Docs
 docs/
+design/
+
+# Spike configuration
+spike/
 
 # Dotenv file
 .env

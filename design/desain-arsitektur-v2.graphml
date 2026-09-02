@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:java="http://www.yworks.com/xml/yfiles-common/1.0/java" xmlns:sys="http://www.yworks.com/xml/yfiles-common/markup/primitives/2.0" xmlns:x="http://www.yworks.com/xml/yfiles-common/markup/2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:y="http://www.yworks.com/xml/graphml" xmlns:yed="http://www.yworks.com/xml/yed/3" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://www.yworks.com/xml/schema/graphml/1.1/ygraphml.xsd">
+  <key attr.name="Description" attr.type="string" for="graph" id="d0"/>
+  <key for="node" id="d6" yfiles.type="nodegraphics"/>
+  <key for="edge" id="d10" yfiles.type="edgegraphics"/>
+  <graph edgedefault="directed" id="G">
+    <data key="d0"/>
+
+    <node id="n0">
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="100.0" width="520.0" x="40.0" y="40.0"/>
+          <y:Fill color="#0B1929" transparent="false"/>
+          <y:BorderStyle color="#38E1C6" type="line" width="1.5"/>
+          <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Consolas" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" horizontalTextPosition="left" modelName="internal" modelPosition="tl" textColor="#E8F4F2" verticalTextPosition="bottom" visible="true" xml:space="preserve">  LAPISAN 1 -- TAMPILAN (Next.js)
+
+  Yang dilihat pengguna. Tidak menyimpan
+  rahasia apa pun.</y:NodeLabel>
+          <y:Shape type="roundrectangle"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+
+    <node id="n1">
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="230.0" width="520.0" x="40.0" y="180.0"/>
+          <y:Fill color="#0B1929" transparent="false"/>
+          <y:BorderStyle color="#38E1C6" type="line" width="1.5"/>
+          <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Consolas" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" horizontalTextPosition="left" modelName="internal" modelPosition="tl" textColor="#E8F4F2" verticalTextPosition="bottom" visible="true" xml:space="preserve">  LAPISAN 2 -- SERVER (NestJS)
+
+  Otak sistem. Satu-satunya yang:
+  - memproses foto KTP sementara (tidak
+    pernah disimpan), hanya menyimpan
+    hash NIK
+  - memegang kunci ADMIN sistem (onlyOwner)
+    -- bukan kunci wallet pengguna
+  - memerintahkan pencetakan tiket + bayar
+    gas (Paymaster)
+
+  MySQL | Midtrans (sandbox) | Pinata (IPFS) | Cloudflare Turnstile</y:NodeLabel>
+          <y:Shape type="roundrectangle"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+
+    <node id="n2outer">
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="300.0" width="520.0" x="40.0" y="430.0"/>
+          <y:Fill color="#0B1929" transparent="true"/>
+          <y:BorderStyle color="#38E1C6" type="line" width="1.5"/>
+          <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Consolas" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" horizontalTextPosition="left" modelName="internal" modelPosition="tl" textColor="#E8F4F2" verticalTextPosition="bottom" visible="true" xml:space="preserve">  LAPISAN 3 -- BLOCKCHAIN (Sepolia Testnet)</y:NodeLabel>
+          <y:Shape type="roundrectangle"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+
+    <node id="n2a">
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="150.0" width="230.0" x="60.0" y="490.0"/>
+          <y:Fill color="#132A3D" transparent="false"/>
+          <y:BorderStyle color="#38E1C6" type="line" width="1.0"/>
+          <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Consolas" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" horizontalTextPosition="left" modelName="internal" modelPosition="tl" textColor="#E8F4F2" verticalTextPosition="bottom" visible="true" xml:space="preserve">  TicketContract
+  (ERC-721)
+
+  - event + kuota
+  - kepemilikan (ownerOf)
+  - originalPrice
+  - status penggunaan</y:NodeLabel>
+          <y:Shape type="rectangle"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+
+    <node id="n2b">
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="150.0" width="230.0" x="310.0" y="490.0"/>
+          <y:Fill color="#132A3D" transparent="false"/>
+          <y:BorderStyle color="#38E1C6" type="line" width="1.0"/>
+          <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Consolas" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" horizontalTextPosition="left" modelName="internal" modelPosition="tl" textColor="#E8F4F2" verticalTextPosition="bottom" visible="true" xml:space="preserve">  MarketplaceContract
+
+  - resale listing
+  - PRICE LOCK = originalPrice
+  - satu-satunya yg boleh
+    pindahkan tiket</y:NodeLabel>
+          <y:Shape type="rectangle"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+
+    <node id="n2c">
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="50.0" width="480.0" x="60.0" y="670.0"/>
+          <y:Fill color="#132A3D" transparent="false"/>
+          <y:BorderStyle color="#38E1C6" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Consolas" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" horizontalTextPosition="center" modelName="internal" modelPosition="c" textColor="#E8F4F2" verticalTextPosition="bottom" visible="true" xml:space="preserve">ERC-4337: EntryPoint v0.7 + Paymaster + smart account</y:NodeLabel>
+          <y:Shape type="rectangle"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+
+    <edge id="e0" source="n0" target="n1">
+      <data key="d10">
+        <y:PolyLineEdge>
+          <y:LineStyle color="#38E1C6" type="line" width="1.5"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:EdgeLabel alignment="center" fontFamily="Consolas" fontSize="10" textColor="#38E1C6" modelName="centered" xml:space="preserve">HTTPS</y:EdgeLabel>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+
+    <edge id="e1" source="n1" target="n2outer">
+      <data key="d10">
+        <y:PolyLineEdge>
+          <y:LineStyle color="#38E1C6" type="line" width="1.5"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:EdgeLabel alignment="center" fontFamily="Consolas" fontSize="10" textColor="#38E1C6" modelName="centered" xml:space="preserve">RPC lewat Alchemy</y:EdgeLabel>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+
+    <edge id="e2" source="n2b" target="n2a">
+      <data key="d10">
+        <y:PolyLineEdge>
+          <y:LineStyle color="#9CA3AF" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+
+  </graph>
+</graphml>
