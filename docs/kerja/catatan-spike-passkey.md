@@ -19,14 +19,25 @@ Vite ^8.2.2, TypeScript ~6.0.
 ## Apa yang TERBUKTI
 
 - Registrasi passkey lewat prompt biometrik browser berhasil dan
-  mengembalikan objek berisi `pubX`, `pubY`, `authenticatorId` (nilai bigint
-  perlu diubah ke string sebelum di-JSON-kan).
+  mengembalikan objek berisi `pubX`, `pubY`, `authenticatorId`, dan
+  `authenticatorIdHash` (nilai bigint perlu diubah ke string sebelum
+  di-JSON-kan).
 - Perlu penjaga anti klik ganda — pemanggilan `toWebAuthnKey` dua kali
   bersamaan membuat prompt bentrok.
 - Perlu polyfill `Buffer` di browser (`globalThis.Buffer = Buffer` dari paket
   `buffer`) sebelum impor pustaka ZeroDev — tanpa ini gagal di runtime.
   Dependensi `buffer` waktu itu terpasang di `package.json` **root** (masih
   ada di sana).
+- `rpId` mengikat passkey ke **satu domain**. Passkey yang dibuat di
+  `localhost` tidak berlaku di domain produksi. Akibat operasionalnya:
+  responden kuesioner mendaftar langsung di domain produksi, dan akun uji
+  coba `localhost` tidak bisa dibawa ke sana.
+- API ZeroDev v3 memakai **satu** URL untuk bundler sekaligus paymaster.
+- Gas policy sudah diaktifkan di dasbor ZeroDev (2 September) — tetap
+  dianggap belum terbukti sampai satu UserOperation tersponsori berhasil.
+- Pelajaran alat: berkas yang dibuat dengan `>`/`>>` di Windows PowerShell
+  5.1 tersimpan UTF-16 dan tidak terbaca git (kejadian nyata pada
+  `.gitignore` pagi ini). Pakai `Set-Content -Encoding utf8`.
 
 ## Apa yang BELUM terbukti (bahan keputusan K7)
 

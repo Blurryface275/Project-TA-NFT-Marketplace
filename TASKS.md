@@ -24,8 +24,8 @@
 ## 0. Keputusan Terbuka (K1–K11)
 
 Sumber K1–K9: daftar Edward per 1 September. K10–K11: temuan pemeriksaan
-repositori 2 September. Jangan menulis kode yang bergantung pada keputusan
-yang belum diambil.
+repositori 2 September. K12–K13: revisi passkey 2 September (K6 digabung ke
+K12). Jangan menulis kode yang bergantung pada keputusan yang belum diambil.
 
 | No | Keputusan | Target | Memblokir apa |
 |---|---|---|---|
@@ -34,12 +34,14 @@ yang belum diambil.
 | K3 | Batas tiket per wallet masih berlaku atau tidak (kontrak sudah telanjur punya `maxPerWallet` dan `walletPurchases`) | Konsultasi 7 Sep | `mintTicket()` (Fase B); kemungkinan revisi `createEvent()` |
 | K4 | Apakah log audit dituntut konsentrasi Network & Cyber Security | Konsultasi 7 Sep (boleh mundur 14 Sep) | Tabel log/riwayat masuk; KNF terkait |
 | K5 | Kolom `username` perlu batasan unik atau tidak | Konsultasi 7 Sep | Migrasi database backend (Fase E) |
-| K6 | Peran passkey server ZeroDev terhadap tabel `passkey_credentials` di MySQL (dua-duanya menyimpan credential — siapa sumber kebenaran?) | Konsultasi 7 Sep | Modul auth backend (Fase E) |
+| K6 | **Digabung ke K12** (topik sama, arah sudah disepakati) | — | — |
 | K7 | Backend mengirim transaksi sebagai EOA biasa, atau merelay UserOperation ERC-4337 (diagram `design/desain-blockchain-2.png` condong ke UserOperation lewat backend) | **Usulan: majukan ke 7 Sep** (semula tanpa tanggal — padahal memblokir backend mulai ±9 Sep) | Modul koneksi blockchain backend; klaim Paymaster di Bab 4; bukti sponsorship Fase D |
 | K8 | Penanganan bila kuota sponsorship Paymaster habis setelah pembayaran Midtrans diterima | Konsultasi 14 Sep | Prosedur operasional saat kuesioner (Fase G) |
 | K9 | Metode dokumentasi uji fungsional Bab 6: otomasi atau manual berbasis skenario (uji per fungsi Foundry/API **bukan** bagian keputusan ini — itu wajib sejak awal) | Konsultasi 14 Sep | Fase H (eksekusinya tetap Oktober) |
 | K10 | **Skema KYC mana yang berlaku:** (a) hash + salt + pepper tanpa satu pun data KTP terbaca (CLAUDE.md 4.4, docs lama), atau (b) `full_name` terbaca + `ktp_photo` + satu `nik_hash` + verifikasi manual (ERD 24–25 Agustus + kamus data Bab 4). Dua-duanya ada di repositori dan saling bertentangan | **Konsultasi 7 Sep** | `registerIdentity()` di kontrak (Fase B); modul KYC backend (Fase E); narasi keamanan/privasi Bab 4; revisi docs 01/03/04/05/07/09 |
 | K11 | Tempat hosting publik untuk kuesioner: frontend, backend, MySQL, dan URL webhook Midtrans harus bisa diakses responden dari internet (belum pernah dibahas di dokumen mana pun) | Keputusan sendiri, paling lambat 10 Sep | Fase G |
+| K12 | Tabel `passkey_credentials` menyimpan **salinan penuh** kredensial (`pub_x`, `pub_y`, `credential_id`) supaya backend bisa memverifikasi sendiri asal `wallet_address` — arah sudah disepakati, tinggal diformalkan (menggantikan K6) | Konsultasi 7 Sep | Modul auth backend (Fase E) |
+| K13 | Bentuk kolom public key passkey: dua kolom `pub_x`/`pub_y` (disarankan) atau satu kolom gabungan | Sebelum entity TypeORM, ±11 Sep | Migrasi database (Fase E) |
 
 ---
 
@@ -65,7 +67,10 @@ yang belum diambil.
 - [ ] **Commit hasil penataan 2 Sep** (docs pulih + docs/kerja + .gitignore +
   un-track .env/cache + TASKS.md). **Bukti:** `git status` bersih.
 - [ ] Setelah K10 putus: finalisasi `CLAUDE.md` Bagian 4.4 + revisi docs
-  01/03/04/05/07/09 mengikuti skema terpilih. `[TERBLOKIR K10]`
+  01/03/04/05/07/09 mengikuti skema terpilih — termasuk model autentikasi
+  hibrida (masuk aplikasi = email + kata sandi; tanda tangan transaksi =
+  passkey) yang membuat KF-01 – KF-04 (docs/01 modul M1) dan Alur 1 (docs/07)
+  perlu ditulis ulang. `[TERBLOKIR K10]`
 
 ## Fase B — `TicketContract.sol` Selesai dan Teruji `[BATAS: 9 Sep]`
 

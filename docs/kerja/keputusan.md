@@ -1,4 +1,4 @@
-# Log Keputusan (K1–K11)
+# Log Keputusan (K1–K13)
 
 > **Berkas kerja — tidak pernah masuk buku tugas akhir.**
 > Satu bagian per keputusan: konteks, opsi beserta akibatnya, usulan asisten
@@ -17,12 +17,14 @@
 | K3 | Batas tiket per wallet | 7 Sep | BELUM PUTUS |
 | K4 | Log audit dituntut konsentrasi? | 7 Sep (boleh 14 Sep) | BELUM PUTUS |
 | K5 | `username` unik? | 7 Sep | BELUM PUTUS |
-| K6 | Passkey server ZeroDev vs tabel `passkey_credentials` | 7 Sep | BELUM PUTUS |
+| K6 | Passkey server ZeroDev vs tabel `passkey_credentials` | — | **DIGABUNG KE K12** |
 | K7 | EOA relay vs UserOperation ERC-4337 | 7 Sep (usulan) | BELUM PUTUS |
 | K8 | Kuota Paymaster habis setelah pembayaran | 14 Sep | BELUM PUTUS |
 | K9 | Metode dokumentasi uji fungsional Bab 6 | 14 Sep | BELUM PUTUS |
 | K10 | **Skema KYC mana yang berlaku** | **7 Sep** | BELUM PUTUS |
 | K11 | Hosting publik untuk kuesioner | ≤10 Sep (putusan sendiri) | BELUM PUTUS |
+| K12 | Isi tabel `passkey_credentials`: salinan penuh (menggantikan K6) | 7 Sep | ARAH DISEPAKATI — diformalkan 7 Sep |
+| K13 | Bentuk kolom public key passkey: dua kolom atau satu | Sebelum entity TypeORM (±11 Sep) | BELUM PUTUS |
 
 ---
 
@@ -97,20 +99,10 @@ mahal kalau diubah setelah data terisi.
 
 ## K6 — Peran passkey server ZeroDev terhadap tabel `passkey_credentials`
 
-**Konteks:** spike memakai `passkeyServerUrl` ZeroDev — artinya ZeroDev
-menyimpan credential passkey di servernya. Tabel `passkey_credentials` MySQL
-menyimpan hal serupa (`credential_id`, `public_key`, `counter`).
-
-**Opsi & akibat:**
-- (a) Hapus tabel — ZeroDev satu-satunya sumber kebenaran.
-- (b) Tabel = cermin metadata (daftar "perangkat terdaftar", deteksi ganda),
-  verifikasi kriptografis tetap di ZeroDev/dompet.
-- (c) Verifikasi WebAuthn mandiri di backend tanpa passkey server ZeroDev —
-  paling berat, praktis menulis ulang sebagian kerja ZeroDev.
-
-**Usulan asisten:** (b), dan jelaskan pembagian perannya di Bab 4.
-
-**Hasil:** _BELUM PUTUS._
+**Digabung ke K12 (2 September).** Topik yang sama muncul lagi di revisi
+passkey dengan arah yang sudah disepakati (salinan penuh kredensial) — lihat
+K12 di bawah. Usulan lama bagian ini (cermin metadata saja) **tidak berlaku
+lagi**.
 
 ## K7 — Backend kirim transaksi: EOA biasa, atau merelay UserOperation ERC-4337
 
@@ -185,6 +177,11 @@ revisi docs 01/03/04/05/07/09 + CLAUDE.md 4.4 + narasi Bab 4.
 **Hasil:** _BELUM PUTUS._ ⚠ Memblokir `registerIdentity()`, modul KYC
 backend, dan penulisan ulang Bab 4.
 
+_Catatan 2 September:_ badan `CLAUDE.md` Bagian 4.4 kini menampilkan versi
+ERD (yang lebih baru) sebagai skema berjalan, dengan versi 7 Agustus sebagai
+catatan pembanding. Itu keputusan **penyajian**, bukan hasil K10 — keputusan
+tetap diambil di konsultasi 7 September.
+
 ## K11 — Hosting publik untuk kuesioner 19 September
 
 **Kebutuhan:** URL publik untuk responden; backend menerima webhook Midtrans
@@ -196,3 +193,29 @@ seperti Railway/Render; MySQL bisa juga layanan terkelola. Kriteria: webhook
 stabil, biaya ringan untuk ±2 bulan, gampang redeploy.
 
 **Hasil:** _BELUM PUTUS._ Batas: 10 Sep.
+
+## K12 — Isi tabel `passkey_credentials`: salinan penuh (menggantikan K6)
+
+**Konteks:** passkey server ZeroDev sudah menyimpan kredensial sebagai bagian
+alur `toWebAuthnKey`. Pertanyaannya: MySQL menyimpan salinan penuh
+(`pub_x`, `pub_y`, `credential_id`) atau hanya pemetaan?
+
+**Arah yang sudah disepakati (2 September):** salinan penuh — backend perlu
+memverifikasi sendiri bahwa `wallet_address` benar diturunkan dari passkey
+terdaftar, bukan memercayai alamat yang dikirim klien. Menggantikan usulan
+lama di K6.
+
+**Hasil:** _ARAH DISEPAKATI — diformalkan di konsultasi 7 September._
+
+## K13 — Bentuk kolom public key di `passkey_credentials`
+
+**Konteks:** public key passkey berupa dua koordinat (`pubX`, `pubY`), bukan
+satu nilai.
+
+**Opsi:** (a) dua kolom `pub_x` dan `pub_y`; (b) satu kolom gabungan.
+
+**Arah yang disarankan:** dua kolom terpisah — keduanya dipakai terpisah
+saat merekonstruksi validator.
+
+**Hasil:** _BELUM PUTUS._ Harus putus sebelum penulisan entity TypeORM
+(±11 September).

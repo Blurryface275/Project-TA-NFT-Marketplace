@@ -39,7 +39,7 @@ dan penukaran tiket menyusul untuk uji fungsional Oktober.
 | Min 13/9 | Midtrans Snap + webhook idempoten + pipeline mint + `ticket_cache`; catat lama konfirmasi sejak sekarang (data Bab 6 gratis) | Bayar uji → NFT tercetak di Sepolia |
 | **Sen 14/9** | **Konsultasi: K8 + K9** + laporan kemajuan. Sore: scaffold Next.js + halaman daftar/masuk/katalog | K9 putus; katalog menampilkan data nyata |
 | Sel 15/9 | Frontend: detail event, beli, redirect Snap, status pesanan, tiket saya | Alur beli lokal tembus ujung-ke-ujung |
-| **Rab 16/9** | **GERBANG:** pasang semua ke hosting K11; uji dari jaringan luar | 1 pembelian sukses dari luar rumah |
+| **Rab 16/9** | **GERBANG:** pasang semua ke hosting K11; uji dari jaringan luar. Ingat `rpId`: passkey terikat domain — akun uji dibuat langsung di domain produksi, passkey `localhost` tidak berlaku di sana | 1 pembelian sukses dari luar rumah |
 | Kam 17/9 | Perbaikan; skenario responden tertulis + formulir SUS 10 butir (pakai adaptasi bahasa Indonesia yang bersumber jelas); uji pilot ≥2 orang | Pilot selesai + daftar perbaikan |
 | Jum 18/9 | Perbaiki temuan pilot; **bekukan fitur malam ini** | Tidak ada perubahan kode setelah malam ini |
 | **Sab 19/9** | **SEBAR KUESIONER.** Pantau, cadangkan jawaban, catat insiden, cek kuota Paymaster | Jumlah responden tercatat |

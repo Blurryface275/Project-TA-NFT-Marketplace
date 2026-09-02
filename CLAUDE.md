@@ -13,18 +13,18 @@
 
 ## 0. Cara Memakai File Ini
 
-| Bagian | Isinya | Kapan dibaca |
-|---|---|---|
-| Bagian 1 | Siapa dan proyek apa | Sekali di awal |
-| Bagian 2 | Kamus istilah | Baca sebelum bagian 4 |
-| Bagian 3 | Isi proposal yang sudah tidak berlaku | **Wajib**, sebelum menyentuh proposal PDF |
-| Bagian 4 | Arsitektur final | Setiap kali menulis kode atau dokumen teknis |
-| Bagian 5–6 | Teknologi dan status kode | Sebelum implementasi |
-| Bagian 7 | Keterbatasan yang disadari | Sebelum menulis dokumen |
-| **Bagian 8** | **Batas peran: asisten menjelaskan, Edward menulis kode** | **Setiap kali diminta bantuan teknis** |
-| **Bagian 9** | **Versi pustaka terkini** | **Sebelum memberi contoh sintaks apa pun** |
-| **Bagian 10** | **Cara memakai sub-agent** | **Saat tugas butuh banyak pencarian** |
-| Bagian 11–12 | Status terkini dan larangan | Sebelum memberi saran apa pun |
+| Bagian        | Isinya                                                    | Kapan dibaca                                 |
+| ------------- | --------------------------------------------------------- | -------------------------------------------- |
+| Bagian 1      | Siapa dan proyek apa                                      | Sekali di awal                               |
+| Bagian 2      | Kamus istilah                                             | Baca sebelum bagian 4                        |
+| Bagian 3      | Isi proposal yang sudah tidak berlaku                     | **Wajib**, sebelum menyentuh proposal PDF    |
+| Bagian 4      | Arsitektur final                                          | Setiap kali menulis kode atau dokumen teknis |
+| Bagian 5–6    | Teknologi dan status kode                                 | Sebelum implementasi                         |
+| Bagian 7      | Keterbatasan yang disadari                                | Sebelum menulis dokumen                      |
+| **Bagian 8**  | **Batas peran: asisten menjelaskan, Edward menulis kode** | **Setiap kali diminta bantuan teknis**       |
+| **Bagian 9**  | **Versi pustaka terkini**                                 | **Sebelum memberi contoh sintaks apa pun**   |
+| **Bagian 10** | **Cara memakai sub-agent**                                | **Saat tugas butuh banyak pencarian**        |
+| Bagian 11–12  | Status terkini dan larangan                               | Sebelum memberi saran apa pun                |
 
 ---
 
@@ -72,7 +72,7 @@ atas harga resmi).
   blockchain lewat internet. Siapa pun bisa memakai cara ini, tidak harus
   lewat situs web resmi kita.
 - **EOA (Externally Owned Account)** — dompet biasa yang dikendalikan kunci
-  pribadi manusia. Lawannya adalah *smart account* (dompet berupa program).
+  pribadi manusia. Lawannya adalah _smart account_ (dompet berupa program).
 
 **Standar dan protokol yang dipakai**
 
@@ -87,12 +87,25 @@ atas harga resmi).
 - **EIP-712** — standar penandatanganan data digital dengan format yang bisa
   dibaca manusia.
 - **ECDSA** — metode matematis di balik tanda tangan digital tersebut.
-- **ERC-1271** — standar cara *smart account* membuktikan tanda tangannya sah.
+- **ERC-1271** — standar cara _smart account_ membuktikan tanda tangannya sah.
   Berbeda dari cara EOA. **Penting untuk proyek ini** (lihat Bagian 9).
-- **keccak256** — fungsi *hash*, pengubah data menjadi sidik jari digital.
+- **Passkey** — pasangan kunci kriptografis yang dibuat dan disimpan di
+  perangkat pengguna. Menggantikan kata sandi dan frasa rahasia.
+- **WebAuthn** — standar resmi W3C yang mengatur cara peramban memakai
+  passkey.
+- **P-256 (secp256r1)** — kurva eliptik yang dipakai passkey. **Berbeda dari
+  secp256k1** yang dipakai Ethereum, sehingga verifikasi tanda tangan passkey
+  di blockchain butuh penanganan khusus dan lebih mahal.
+- **CREATE2** — cara menghitung alamat kontrak secara pasti sebelum kontraknya
+  dibuat. Dipakai menurunkan alamat dompet dari public key passkey.
+- **TPM / Secure Enclave** — penyimpanan kunci berbasis hardware. Kunci di
+  dalamnya bisa dipakai tapi tidak bisa dibaca keluar.
+- **BIP-39** — standar frasa pemulihan 12 kata. Di sini hanya untuk keadaan
+  darurat, bukan pemakaian sehari-hari.
+- **keccak256** — fungsi _hash_, pengubah data menjadi sidik jari digital.
   **Satu arah**: dari data bisa dibuat sidik jari, tapi dari sidik jari
   **tidak bisa** kembali ke data aslinya.
-- **Salt** — data acak tambahan sebelum di-*hash*, mencegah penebakan isi asli
+- **Salt** — data acak tambahan sebelum di-_hash_, mencegah penebakan isi asli
   dengan mencoba satu per satu.
 - **IPFS** — penyimpanan file tersebar, untuk keterangan tiket.
 - **Pinata** — layanan penjaga agar file IPFS tidak hilang.
@@ -116,15 +129,15 @@ atas harga resmi).
 Berkas `Proposal_TA_160423176.pdf` adalah versi **awal**. Arsitektur sudah
 berubah setelah dibahas dengan pembimbing.
 
-| Tertulis di proposal (SUDAH TIDAK DIPAKAI) | Yang benar sekarang | Alasan perubahan |
-|---|---|---|
-| **Soulbound Token** — tiket sama sekali tidak bisa dipindahkan | **Pembatasan allowlist** — bisa dipindahkan, tapi hanya lewat kontrak marketplace resmi | Tiket tetap perlu bisa dijual ulang secara sah, asal harganya terkunci |
-| **Commit-Reveal Scheme** — pembelian dua tahap | **Dihapus.** Diganti pendaftaran satu tahap | Masalah yang diatasinya adalah perebutan cepat saat flash sale; karena keuntungan calo sudah dimatikan lewat penguncian harga, insentif berebut hilang |
-| **Flash sale** sebagai salah satu dari empat alur utama | **Tidak ada.** Alur utama tinggal **tiga** | Ikut terhapus bersama commit-reveal |
-| **Chainlink VRF** — pengundian acak | **Tidak dipakai** | Persaingan dinilai sudah cukup sehat |
-| Ruang lingkup poin 7: *"tidak mencakup KYC formal"* | **KYC ditambahkan** lewat data Kartu Tanda Penduduk | Agar satu tiket terikat pada satu orang nyata |
-| Ruang lingkup poin 6 soal serangan Sybil | Perlu ditulis ulang | Alasannya berubah setelah commit-reveal dan VRF dihapus |
-| Model smart contract tidak jelas | **Model B**: satu kontrak untuk banyak event, dibedakan `eventId` | Lebih sederhana dan hemat biaya |
+| Tertulis di proposal (SUDAH TIDAK DIPAKAI)                     | Yang benar sekarang                                                                     | Alasan perubahan                                                                                                                                       |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Soulbound Token** — tiket sama sekali tidak bisa dipindahkan | **Pembatasan allowlist** — bisa dipindahkan, tapi hanya lewat kontrak marketplace resmi | Tiket tetap perlu bisa dijual ulang secara sah, asal harganya terkunci                                                                                 |
+| **Commit-Reveal Scheme** — pembelian dua tahap                 | **Dihapus.** Diganti pendaftaran satu tahap                                             | Masalah yang diatasinya adalah perebutan cepat saat flash sale; karena keuntungan calo sudah dimatikan lewat penguncian harga, insentif berebut hilang |
+| **Flash sale** sebagai salah satu dari empat alur utama        | **Tidak ada.** Alur utama tinggal **tiga**                                              | Ikut terhapus bersama commit-reveal                                                                                                                    |
+| **Chainlink VRF** — pengundian acak                            | **Tidak dipakai**                                                                       | Persaingan dinilai sudah cukup sehat                                                                                                                   |
+| Ruang lingkup poin 7: _"tidak mencakup KYC formal"_            | **KYC ditambahkan** lewat data Kartu Tanda Penduduk                                     | Agar satu tiket terikat pada satu orang nyata                                                                                                          |
+| Ruang lingkup poin 6 soal serangan Sybil                       | Perlu ditulis ulang                                                                     | Alasannya berubah setelah commit-reveal dan VRF dihapus                                                                                                |
+| Model smart contract tidak jelas                               | **Model B**: satu kontrak untuk banyak event, dibedakan `eventId`                       | Lebih sederhana dan hemat biaya                                                                                                                        |
 
 **Bagian proposal yang masih valid:** latar belakang, rumusan masalah, tujuan,
 manfaat, kategori event, Sepolia Testnet, Midtrans sandbox, IPFS/Pinata, dan
@@ -137,65 +150,70 @@ susunan teknologi dasar.
 Sudah disetujui pembimbing. Perubahan hanya atas permintaan Edward.
 
 ### 4.1 Bentuk tiket
+
 Setiap tiket adalah satu NFT standar **ERC-721** di **Sepolia Testnet**.
 
 ### 4.2 Satu kontrak untuk banyak event (Model B)
+
 Hanya ada **satu** `TicketContract`. Pembeda antar event adalah `eventId`.
 Setiap event punya kuota sendiri yang dipaksakan smart contract.
 
 ### 4.3 Alur pembelian: satu tahap
+
 Satu tahap bernama **"Pendaftaran"**. Tidak ada tahap sembunyi-sembunyi,
 pengundian acak, atau perebutan flash sale.
 
 ### 4.4 Pengikatan identitas (KYC)
+
 Aturan: **satu tiket → satu alamat dompet → satu identitas nyata.**
 
-> **⚠ SEDANG DISENGKETAKAN — keputusan K10, target konsultasi 7 September
-> 2026.** Uraian di bawah adalah keputusan 7 Agustus (hash + salt + pepper,
-> tanpa data KTP terbaca di mana pun). Namun ERD terbaru
-> (`design/erd-nft.mwb`, 24–25 Agustus) dan `kamus-data-bab4.docx` memakai
-> skema berbeda: `full_name` terbaca + `ktp_photo` + satu `nik_hash`, tanpa
-> salt/pepper, plus kolom kata sandi. **Jangan mengimplementasikan versi mana
-> pun sebelum K10 putus** — perbandingan lengkap di
-> `docs/kerja/keputusan.md`.
+> **⚠ BELUM PUTUS — keputusan K10, target konsultasi 7 September 2026.**
+> Dua versi skema pernah dirancang. Badan bagian ini mengikuti versi yang
+> **lebih baru** (ERD `design/erd-nft.mwb` 24–25 Agustus +
+> `kamus-data-bab4.docx`); versi 7 Agustus diringkas sebagai catatan
+> pembanding di bawah. **Jangan mengimplementasikan versi mana pun sebelum
+> K10 putus** — perbandingan lengkap di `docs/kerja/keputusan.md`.
 
-> **Diperketat 7 Agustus 2026.** Rancangan awal masih menyimpan data KTP
-> **asli** di MySQL. Itu sudah **tidak berlaku**. Sekarang data KTP asli
-> **tidak disimpan dalam bentuk terbaca di mana pun** — tidak di blockchain,
-> tidak di MySQL. Data masuk ke server, dihitung hash-nya, lalu **dibuang**.
+**Yang perlu disiapkan sebelum konsultasi 7 September:** versi ERD menyimpan
+`full_name` dalam bentuk terbaca dan `ktp_photo`. Ini keputusan privasi, bukan
+detail teknis. Siapkan jawaban untuk pertanyaan "kenapa foto KTP disimpan
+padahal narasi keamanan menyatakan data identitas tidak disimpan terbaca" —
+pertanyaan ini wajar muncul di sidang untuk konsentrasi Network & Cyber
+Security.
 
-- Yang disimpan **di blockchain**: `keccak256(NIK + nama + tanggal lahir + salt)`
-  — *salt* acak berbeda tiap pengguna
-- Yang disimpan **di MySQL**: **dua** nilai hash, bukan data mentah —
-  1. `salt` milik pengguna itu (perlu disimpan supaya hash di atas bisa
-     dicek ulang nanti)
-  2. `keccak256(NIK + pepper sistem)` — hash kedua ini memakai *pepper*
-     (rahasia yang **sama** untuk semua pengguna, disimpan **di luar**
-     database) khusus supaya NIK yang sama selalu menghasilkan nilai yang
-     sama, sehingga pendaftaran ganda (KF-11) bisa dideteksi lewat kunci
-     unik di database — sesuatu yang **tidak bisa** dilakukan smart contract
-     karena *salt*-nya berbeda tiap pengguna
+**Skema berjalan (versi ERD 24–25 Agustus):**
 
-**Ini hash, bukan enkripsi.** Enkripsi bisa dibuka kalau kuncinya bocor. Hash
-tidak bisa dibalik sama sekali, jadi kerahasiaan KTP terjaga selamanya
-walaupun isi blockchain terbuka untuk umum. *Salt* mencegah penebakan dengan
-mencoba semua kemungkinan.
+- Tabel `kyc_records` di MySQL menyimpan `full_name` (terbaca, sesuai KTP),
+  `nik_hash` (`CHAR(66)`, **unik** — rumus hash-nya belum dituliskan di
+  rancangan mana pun, tetapkan saat K10), `ktp_photo` (path/URL foto KTP),
+  dan `verified_at` (verifikasi manual oleh admin); terikat satu-ke-satu ke
+  `users`.
+- Pendaftaran ganda dicegah lewat kunci unik `nik_hash`.
+- Yang dicatat ke blockchain: hash identitas ke mapping `userIdentities` di
+  `TicketContract` — bahan persis hash ini ikut keputusan K10.
 
-**Akibat langsung:** karena data aslinya tidak pernah tersimpan, sistem
-**tidak akan pernah bisa menampilkannya kembali** — termasuk ke pemiliknya
-sendiri. Verifikasi identitas di lokasi acara (petugas venue) karena itu
-dibalik arahnya: **petugas memasukkan NIK dari KTP fisik**, sistem
-menghitung hash-nya dan membandingkan, jawabannya cuma "cocok" atau "tidak
-cocok" — bukan menampilkan data siapa pun. Rincian lengkapnya ada di
-`docs/04-rancangan-database-erd.md` Bagian 5 dan `docs/09-keterbatasan-sistem.md`
-Bagian 2–3.
+**Catatan pembanding — skema 7 Agustus (kandidat yang bersaing di K10):**
+data KTP tidak disimpan terbaca di mana pun. Yang disimpan:
+`keccak256(NIK + nama + tanggal lahir + salt)` di blockchain (salt acak per
+pengguna), plus `salt` dan `keccak256(NIK + pepper sistem)` di MySQL
+(pepper = rahasia tunggal di luar database, supaya NIK ganda terdeteksi lewat
+kunci unik). Konsekuensinya sistem tidak pernah bisa menampilkan data KTP ke
+siapa pun, dan verifikasi di lokasi acara dibalik: petugas memasukkan NIK
+dari KTP fisik → jawaban sistem hanya "cocok / tidak cocok". Kekuatannya:
+privasi dan narasi keamanan; kelemahannya: verifikasi manual mustahil dan
+salah ketik data = hash tidak cocok. Rincian versi ini masih ada di
+`docs/04-rancangan-database-erd.md` Bagian 5 dan
+`docs/09-keterbatasan-sistem.md` Bagian 2–3 — kedua berkas itu **masih
+menganut versi lama**; jangan dipakai sebagai acuan skema sampai K10 putus.
 
 ### 4.5 Pembatasan pemindahan tiket (allowlist)
+
 Tiket **tidak** dimatikan total seperti Soulbound Token. Smart contract hanya
 mengizinkan **`MarketplaceContract`** menjalankan perpindahan kepemilikan.
 Akibatnya tiket tidak bisa dijual diam-diam di luar sistem.
 
 ### 4.6 Penguncian harga jual ulang — senjata utama anti-calo
+
 Harga jual ulang **otomatis dikunci sama dengan `originalPrice`**. Penjual
 tidak bisa mengambil untung.
 
@@ -204,6 +222,7 @@ bisa dijual lewat satu pintu, dan di pintu itu harga dikunci — memborong tiket
 jadi tidak menguntungkan.
 
 ### 4.7 Gerbang tanda tangan digital (EIP-712 + ECDSA)
+
 Fungsi penting hanya bisa dipanggil dengan tanda tangan digital sah dari
 sistem.
 
@@ -212,15 +231,51 @@ kontrol akses berstandar industri"**. Jangan pernah menyebutnya tambalan atas
 kelemahan smart contract. Smart contract memang terbuka dan bisa dipanggil
 siapa saja lewat RPC — itu sifat bawaan blockchain, bukan cacat rancangan.
 
-### 4.8 Dompet otomatis untuk pengguna awam (ERC-4337)
-Pengguna mendaftar cukup dengan email. Dompet dibuat otomatis lewat **ZeroDev
-SDK**. Pengguna tidak perlu tahu kunci pribadi dan **tidak perlu punya aset
-kripto** karena biaya gas ditanggung sistem lewat **Paymaster**.
+### 4.8 Dompet otomatis untuk pengguna awam (ERC-4337 + passkey)
+
+**Model autentikasi hibrida.** Ada dua hal berbeda yang sering tertukar:
+
+| Untuk apa | Pakai apa |
+| --- | --- |
+| Masuk ke akun aplikasi | Email + kata sandi |
+| Menandatangani transaksi blockchain | Passkey (WebAuthn) |
+
+Keduanya terpisah. Kata sandi tidak bisa dipakai menandatangani transaksi,
+dan passkey tidak dipakai untuk login akun biasa.
+
+**Cara dompet dibuat.** Saat mendaftarkan passkey, perangkat pengguna
+membangkitkan sepasang kunci ECC pada kurva P-256. Private key masuk ke
+penyimpanan terlindungi hardware (TPM di Windows, Secure Enclave di perangkat
+Apple) dan **tidak bisa diekspor oleh siapa pun** — termasuk oleh sistem ini.
+Yang keluar ke aplikasi hanya public key (koordinat `pubX` dan `pubY`) dan
+credential ID.
+
+Public key itulah yang jadi bahan salt CREATE2. Alamat dompet dihitung secara
+deterministik dari situ lewat ZeroDev SDK, memakai Kernel sebagai smart
+account dan EntryPoint v0.7. Alamatnya sudah sah menerima NFT sebelum kontrak
+dompetnya di-deploy; deployment baru terjadi saat UserOperation pertama
+dikirim, dan biayanya ditanggung sistem lewat Paymaster.
+
+**Akibatnya pengguna tidak perlu punya aset kripto sama sekali**, dan tidak
+pernah diminta menyimpan frasa rahasia dalam pemakaian sehari-hari.
+
+**Ini tetap self-custody.** Sistem tidak bisa menandatangani atas nama
+pengguna, karena kuncinya tidak ada di sistem. Jangan pernah menulis bahwa
+"kendali dompet bergantung pada sistem" — itu salah dan menghancurkan
+justifikasi pemakaian ERC-4337.
+
+**Pemulihan saat perangkat hilang.** Dua jalur: menambah perangkat baru
+(wajib disetujui tanda tangan dari perangkat yang sudah terdaftar), atau
+passphrase BIP-39 12 kata untuk kasus darurat perangkat tunggal hilang.
+Jalur kedua hanya bisa mendaftarkan perangkat baru lewat backend dengan
+pembatasan laju percobaan — tidak bisa dipakai menandatangani transaksi
+langsung.
 
 Ini menjawab langsung temuan penelitian terdahulu bahwa hambatan utama adopsi
 tiket NFT adalah rendahnya pemahaman masyarakat terhadap blockchain.
 
 ### 4.9 Pencegahan bot (Cloudflare Turnstile)
+
 Menyaring bot di sisi situs web.
 
 **Sering salah dipahami:** penyaring bot dan pengamanan smart contract adalah
@@ -232,17 +287,17 @@ membuka halaman web sama sekali — itulah alasan lapisan 4.7 tetap diperlukan.
 
 ## 5. Susunan Teknologi
 
-| Bagian | Teknologi | Fungsinya |
-|---|---|---|
-| Smart contract | Solidity + Foundry | Bahasa dan alat uji program blockchain |
-| Backend | NestJS + TypeORM | Logika sistem dan penghubung database |
-| Database | MySQL | Data operasional di luar blockchain |
-| Frontend | Next.js | Halaman web yang dilihat pengguna |
-| Penghubung blockchain | Alchemy | Jalur komunikasi backend ke Ethereum |
-| Dompet otomatis | ZeroDev SDK | Membuat dompet ERC-4337 |
-| Penyimpanan keterangan tiket | IPFS lewat Pinata | Nama event, tanggal, lokasi, gambar |
-| Pembayaran | Midtrans sandbox | Simulasi pembayaran |
-| Penyaring bot | Cloudflare Turnstile | Membedakan manusia dan robot |
+| Bagian                       | Teknologi            | Fungsinya                              |
+| ---------------------------- | -------------------- | -------------------------------------- |
+| Smart contract               | Solidity + Foundry   | Bahasa dan alat uji program blockchain |
+| Backend                      | NestJS + TypeORM     | Logika sistem dan penghubung database  |
+| Database                     | MySQL                | Data operasional di luar blockchain    |
+| Frontend                     | Next.js              | Halaman web yang dilihat pengguna      |
+| Penghubung blockchain        | Alchemy              | Jalur komunikasi backend ke Ethereum   |
+| Dompet otomatis              | ZeroDev SDK          | Membuat dompet ERC-4337                |
+| Penyimpanan keterangan tiket | IPFS lewat Pinata    | Nama event, tanggal, lokasi, gambar    |
+| Pembayaran                   | Midtrans sandbox     | Simulasi pembayaran                    |
+| Penyaring bot                | Cloudflare Turnstile | Membedakan manusia dan robot           |
 
 ---
 
@@ -312,6 +367,11 @@ ditanya "kenapa barisnya begini?".
   salah dan kenapa**, biar Edward yang memperbaiki
 - Mengambil alih tugas hanya karena lebih cepat begitu
 
+**Berlaku untuk kode spike juga** (ditegaskan 2 September 2026). Kode
+percobaan tetap ditulis Edward; asisten hanya menjelaskan pola dan tanda
+tangan fungsi. Kalau suatu saat mau dikecualikan, ubah paragraf ini secara
+eksplisit.
+
 ### Cara menjawab yang benar
 
 Kalau Edward bertanya "bagaimana cara membatasi transfer NFT?", jangan
@@ -344,7 +404,7 @@ lalu bedakan: `from == address(0)` berarti pencetakan, `to == address(0)`
 berarti pembakaran — keduanya harus tetap diizinkan, hanya perpindahan biasa
 yang dibatasi.
 
-**Jebakan 2 — pengguna proyek ini memakai *smart account*, bukan EOA.**
+**Jebakan 2 — pengguna proyek ini memakai _smart account_, bukan EOA.**
 Karena memakai ERC-4337, tanda tangan pengguna divalidasi lewat **ERC-1271**,
 bukan tanda tangan EOA biasa. Akibatnya `ECDSA.recover` saja **tidak cukup**
 kalau penanda tangannya adalah dompet pengguna. Untuk kasus itu gunakan
@@ -362,39 +422,39 @@ mengembalikan kode kesalahan tanpa membatalkan.
 
 ### 9.2 Tabel versi
 
-| Alat | Versi | Cara pasang / catatan penting |
-|---|---|---|
-| **Foundry** | 1.7.1 | `curl -L https://foundry.paradigm.xyz \| bash` lalu `foundryup`. Sekarang `foundryup` memasang jalur **stabil** secara bawaan (dulu nightly). Paket npm-nya **sudah tidak diterbitkan**. Di Windows wajib Git Bash atau WSL. **Sudah terpasang** di lingkungan Edward |
-| **Solidity** | 0.8.36 | Versi bawaan EVM sudah berpindah (cancun → prague → osaka). **Wajib** menulis `evm_version` dan `solc_version` secara eksplisit di `foundry.toml`, jangan mengandalkan bawaan. `contracts/foundry.toml` **sudah** mengunci `solc_version = "0.8.36"` dan `evm_version = "prague"` |
-| **OpenZeppelin Contracts** | 5.7.0 | `npm install @openzeppelin/contracts` atau `forge install OpenZeppelin/openzeppelin-contracts`. Pragma minimum sudah naik ke 0.8.24. *Remapping* `@openzeppelin/contracts/` sudah dibuat otomatis oleh Foundry 1.7.x, tidak perlu `remappings.txt` manual. **Sudah terpasang** di `contracts/lib/openzeppelin-contracts` |
-| **ZeroDev SDK** | 5.5.10 | `npm i @zerodev/sdk @zerodev/ecdsa-validator viem`. Paket lama `@zerodevapp/sdk` dan `zerodev-sdk` **sudah usang**, jangan dipakai |
-| **EntryPoint (ERC-4337)** | v0.7 | Alamat resmi: `0x0000000071727De22E5E9d8BAf0edAc6f37da032`, sama di Sepolia. Panggil lewat `getEntryPoint("0.7")` dengan `KERNEL_V3_1`. Versi v0.8 sudah ada tapi belum jadi bawaan SDK — **untuk tugas akhir ini pakai v0.7** |
-| **NestJS** | 11.x | `npm install -g @nestjs/cli@11` lalu `nest new nama-proyek`. Butuh Node.js 20 ke atas. Versi 11 memakai Express 5 |
-| **TypeORM** | 1.1.0 | `npm install typeorm reflect-metadata`. **Versi 1.0 mengganti `Connection` menjadi `DataSource`** dan menghapus `createConnection`, `getConnection`, `getRepository`. Tutorial lama akan gagal |
-| **mysql2** | 3.23.2 | `npm install mysql2` |
-| **Next.js** | 16.2.x | `npx create-next-app@latest`. App Router adalah bawaan. **`params` dan `searchParams` sekarang berupa Promise — wajib di-`await`.** Berkas `middleware.ts` berganti nama jadi `proxy.ts` |
-| **wagmi + viem** | 2.x | `npm i wagmi viem @tanstack/react-query`. Versi 2 mengganti nama banyak hook: `usePrepareContractWrite` → `useSimulateContract`, `useContractWrite` → `useWriteContract` |
-| **Pinata** | 2.5.6 | Paketnya sekarang **cukup `pinata`** — `npm i pinata`. Paket lama `@pinata/sdk` dan `pinata-web3` sudah usang. Pemanggilan sekarang `pinata.upload.public.file(...)` dan jawabannya berisi `cid`, bukan `IpfsHash` seperti dulu |
-| **Midtrans** | midtrans-client 1.4.x | `npm install midtrans-client`. Sandbox: `new midtransClient.Snap({ isProduction: false, ... })` |
-| **Cloudflare Turnstile** | — | Verifikasi **wajib di sisi server** ke `https://challenges.cloudflare.com/turnstile/v0/siteverify`. Token hanya berlaku 300 detik dan **sekali pakai** |
+| Alat                       | Versi                 | Cara pasang / catatan penting                                                                                                                                                                                                                                                                                            |
+| -------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Foundry**                | 1.7.1                 | `curl -L https://foundry.paradigm.xyz \| bash` lalu `foundryup`. Sekarang `foundryup` memasang jalur **stabil** secara bawaan (dulu nightly). Paket npm-nya **sudah tidak diterbitkan**. Di Windows wajib Git Bash atau WSL. **Sudah terpasang** di lingkungan Edward                                                    |
+| **Solidity**               | 0.8.36                | Versi bawaan EVM sudah berpindah (cancun → prague → osaka). **Wajib** menulis `evm_version` dan `solc_version` secara eksplisit di `foundry.toml`, jangan mengandalkan bawaan. `contracts/foundry.toml` **sudah** mengunci `solc_version = "0.8.36"` dan `evm_version = "prague"`                                        |
+| **OpenZeppelin Contracts** | 5.7.0                 | `npm install @openzeppelin/contracts` atau `forge install OpenZeppelin/openzeppelin-contracts`. Pragma minimum sudah naik ke 0.8.24. _Remapping_ `@openzeppelin/contracts/` sudah dibuat otomatis oleh Foundry 1.7.x, tidak perlu `remappings.txt` manual. **Sudah terpasang** di `contracts/lib/openzeppelin-contracts` |
+| **ZeroDev SDK**            | 5.5.10                | `npm i @zerodev/sdk @zerodev/passkey-validator viem`. Paket lama `@zerodevapp/sdk` dan `zerodev-sdk` **sudah usang**. `@zerodev/ecdsa-validator` hanya relevan bila penanda tangannya EOA — untuk dompet pengguna proyek ini yang dipakai `@zerodev/passkey-validator`. `toWebAuthnKey` mensyaratkan `passkeyServerUrl` dari dasbor ZeroDev; peran passkey server terhadap tabel `passkey_credentials` = keputusan K12                                                                                                                                                                                       |
+| **EntryPoint (ERC-4337)**  | v0.7                  | Alamat resmi: `0x0000000071727De22E5E9d8BAf0edAc6f37da032`, sama di Sepolia. Panggil lewat `getEntryPoint("0.7")`. Versi kernel `[PERLU VERIFIKASI]`: catatan lama menyebut `KERNEL_V3_1`, tutorial passkey resmi ZeroDev memakai `KERNEL_V3_3` — kunci setelah terbukti jalan di kode (percobaan lanjutan ≤ 10 Sep). Versi v0.8 sudah ada tapi belum jadi bawaan SDK — **untuk tugas akhir ini pakai v0.7**                                                                                           |
+| **NestJS**                 | 11.x                  | `npm install -g @nestjs/cli@11` lalu `nest new nama-proyek`. Butuh Node.js 20 ke atas. Versi 11 memakai Express 5                                                                                                                                                                                                        |
+| **TypeORM**                | 1.1.0                 | `npm install typeorm reflect-metadata`. **Versi 1.0 mengganti `Connection` menjadi `DataSource`** dan menghapus `createConnection`, `getConnection`, `getRepository`. Tutorial lama akan gagal                                                                                                                           |
+| **mysql2**                 | 3.23.2                | `npm install mysql2`                                                                                                                                                                                                                                                                                                     |
+| **Next.js**                | 16.2.x                | `npx create-next-app@latest`. App Router adalah bawaan. **`params` dan `searchParams` sekarang berupa Promise — wajib di-`await`.** Berkas `middleware.ts` berganti nama jadi `proxy.ts`                                                                                                                                 |
+| **wagmi + viem**           | 2.x                   | `npm i wagmi viem @tanstack/react-query`. Versi 2 mengganti nama banyak hook: `usePrepareContractWrite` → `useSimulateContract`, `useContractWrite` → `useWriteContract`                                                                                                                                                 |
+| **Pinata**                 | 2.5.6                 | Paketnya sekarang **cukup `pinata`** — `npm i pinata`. Paket lama `@pinata/sdk` dan `pinata-web3` sudah usang. Pemanggilan sekarang `pinata.upload.public.file(...)` dan jawabannya berisi `cid`, bukan `IpfsHash` seperti dulu                                                                                          |
+| **Midtrans**               | midtrans-client 1.4.x | `npm install midtrans-client`. Sandbox: `new midtransClient.Snap({ isProduction: false, ... })`                                                                                                                                                                                                                          |
+| **Cloudflare Turnstile**   | —                     | Verifikasi **wajib di sisi server** ke `https://challenges.cloudflare.com/turnstile/v0/siteverify`. Token hanya berlaku 300 detik dan **sekali pakai**                                                                                                                                                                   |
 
 ### 9.3 Sumber dokumentasi resmi
 
-| Alat | Alamat |
-|---|---|
-| Foundry | https://book.getfoundry.sh/ |
-| Solidity | https://docs.soliditylang.org/ |
+| Alat         | Alamat                                       |
+| ------------ | -------------------------------------------- |
+| Foundry      | https://book.getfoundry.sh/                  |
+| Solidity     | https://docs.soliditylang.org/               |
 | OpenZeppelin | https://docs.openzeppelin.com/contracts/5.x/ |
-| ZeroDev | https://docs.zerodev.app/ |
-| Alchemy | https://accountkit.alchemy.com/ |
-| NestJS | https://docs.nestjs.com/ |
-| TypeORM | https://typeorm.io/ |
-| Next.js | https://nextjs.org/docs |
-| wagmi | https://wagmi.sh/ |
-| viem | https://viem.sh/ |
-| Pinata | https://docs.pinata.cloud/ |
-| Midtrans | https://docs.midtrans.com/ |
-| Turnstile | https://developers.cloudflare.com/turnstile/ |
+| ZeroDev      | https://docs.zerodev.app/                    |
+| Alchemy      | https://accountkit.alchemy.com/              |
+| NestJS       | https://docs.nestjs.com/                     |
+| TypeORM      | https://typeorm.io/                          |
+| Next.js      | https://nextjs.org/docs                      |
+| wagmi        | https://wagmi.sh/                            |
+| viem         | https://viem.sh/                             |
+| Pinata       | https://docs.pinata.cloud/                   |
+| Midtrans     | https://docs.midtrans.com/                   |
+| Turnstile    | https://developers.cloudflare.com/turnstile/ |
 
 ### 9.4 Aturan saat memberi contoh sintaks
 
@@ -417,7 +477,7 @@ mengembalikan kode kesalahan tanpa membatalkan.
 
 ### 10.1 Masalahnya
 
-Setiap sesi punya "meja kerja" (*context window*) dengan luas terbatas.
+Setiap sesi punya "meja kerja" (_context window_) dengan luas terbatas.
 Semua yang dibaca — isi berkas, hasil pencarian, daftar direktori — menumpuk
 di meja itu. Kalau meja penuh dengan hasil pencarian, tidak ada ruang tersisa
 untuk pekerjaan sesungguhnya, dan kualitas jawaban menurun.
@@ -428,11 +488,11 @@ untuk pekerjaan sesungguhnya, dan kualitas jawaban menurun.
 terpisah**. Ia disuruh mencari sesuatu, mengaduk-aduk banyak berkas di
 mejanya sendiri, lalu **hanya melaporkan kesimpulannya** ke meja utama.
 
-| Tanpa sub-agent | Dengan sub-agent |
-|---|---|
-| Baca berkas 1, 2, 3, cari, daftar isi direktori — **semua menumpuk di meja utama** | Semua kegiatan itu terjadi di meja sub-agent |
-| Meja utama penuh sebelum pekerjaan asli dimulai | Meja utama hanya menerima satu kalimat kesimpulan |
-| Sisa ruang sedikit untuk menulis dan meninjau | Ruang tetap lega |
+| Tanpa sub-agent                                                                    | Dengan sub-agent                                  |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Baca berkas 1, 2, 3, cari, daftar isi direktori — **semua menumpuk di meja utama** | Semua kegiatan itu terjadi di meja sub-agent      |
+| Meja utama penuh sebelum pekerjaan asli dimulai                                    | Meja utama hanya menerima satu kalimat kesimpulan |
+| Sisa ruang sedikit untuk menulis dan meninjau                                      | Ruang tetap lega                                  |
 
 ### 10.3 Kapan asisten sebaiknya memakai sub-agent
 
@@ -481,23 +541,34 @@ jadi lebih berat. Sambungkan hanya yang benar-benar dipakai rutin.
 **Diperbarui terakhir: 2 September 2026**
 
 Checklist kerja per fase: `TASKS.md` (root). Jadwal harian/mingguan:
-`docs/kerja/panduan-pengerjaan.md`. Log sebelas keputusan terbuka (K1–K11):
+`docs/kerja/panduan-pengerjaan.md`. Log tiga belas keputusan terbuka (K1–K13; K6 digabung ke K12):
 `docs/kerja/keputusan.md`.
 
-| Bagian | Status |
-|---|---|
-| `docs/` 00–09 + `docs/modules/` | **Ada** (dipulihkan 2 Sep setelah sempat terhapus). Bagian status 01 dan 05 sudah disinkronkan; isi 01/03/04/05/07/09 menunggu revisi hasil K10 |
-| `docs/kerja/` | **Baru, 2 Sep**: keputusan.md, panduan-pengerjaan.md, catatan-konsultasi.md, alamat-kontrak.md, catatan-spike-passkey.md — berkas kerja, tidak masuk buku |
-| ERD | **Dua versi bertentangan (K10):** `docs/04` lama (hash + salt + pepper) vs `design/erd-nft.mwb` 25 Agu + `kamus-data-bab4.docx` (`full_name` + `ktp_photo` + `nik_hash` + kata sandi). Belum final sampai K10 putus |
-| `TicketContract.sol` | **Terisi sebagian** — lihat Bagian 6. **Belum ada test** |
-| `MarketplaceContract.sol` | Belum ada — menunggu K2 (target 7 Sep) |
-| Test (`contracts/test/`) | **Kosong** — pekerjaan pertama berikutnya (mulai 3 Sep, tidak terblokir keputusan apa pun) |
-| Backend NestJS / Frontend Next.js | Belum ada — mulai ±11 Sep / ±14 Sep sesuai panduan |
-| `spike/` registrasi passkey ZeroDev | **Dihapus 2 Sep** (hanya uji coba, tidak dirawat). Temuan + cara memulihkan kode: `docs/kerja/catatan-spike-passkey.md`. Belum terbukti: smart account + UserOperation tersponsori (bahan K7) |
-| Toolchain | Foundry di `~/.foundry/bin` (tidak otomatis di PATH sesi non-interaktif); OpenZeppelin 5.7.0; **dua** foundry.toml (root yang dipakai — jaga identik dengan `contracts/foundry.toml`) |
-| Deploy Sepolia, akun Midtrans, akun Pinata, hosting | Belum. Akun Midtrans dan Pinata belum ada jejaknya; hosting = K11 (batas 10 Sep). Klaim "gas policy ZeroDev aktif" belum terbukti — buktinya 1 transaksi tersponsori (`TASKS.md` Fase D) |
+| Bagian                                              | Status                                                                                                                                                                                                              |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/` 00–09 + `docs/modules/`                     | **Ada** (dipulihkan 2 Sep setelah sempat terhapus). Bagian status 01 dan 05 sudah disinkronkan; isi 01/03/04/05/07/09 menunggu revisi hasil K10                                                                     |
+| `docs/kerja/`                                       | **Baru, 2 Sep**: keputusan.md, panduan-pengerjaan.md, catatan-konsultasi.md, alamat-kontrak.md, catatan-spike-passkey.md — berkas kerja, tidak masuk buku                                                           |
+| ERD                                                 | **Dua versi bertentangan (K10):** `docs/04` lama (hash + salt + pepper) vs `design/erd-nft.mwb` 25 Agu + `kamus-data-bab4.docx` (`full_name` + `ktp_photo` + `nik_hash` + kata sandi). Belum final sampai K10 putus |
+| `TicketContract.sol`                                | **Terisi sebagian** — lihat Bagian 6. **Belum ada test**                                                                                                                                                            |
+| `MarketplaceContract.sol`                           | Belum ada — menunggu K2 (target 7 Sep)                                                                                                                                                                              |
+| Test (`contracts/test/`)                            | **Kosong** — pekerjaan pertama berikutnya (mulai 3 Sep, tidak terblokir keputusan apa pun)                                                                                                                          |
+| Backend NestJS / Frontend Next.js                   | Belum ada — mulai ±11 Sep / ±14 Sep sesuai panduan                                                                                                                                                                  |
+| `spike/` registrasi passkey ZeroDev                 | **Dihapus 2 Sep** (hanya uji coba, tidak dirawat). **Terbukti:** registrasi passkey WebAuthn → `pubX`, `pubY`, `authenticatorId`, `authenticatorIdHash`. **Belum terbukti:** pembentukan alamat Kernel + UserOperation tersponsori Paymaster (bahan K7). Temuan + cara memulihkan kode: `docs/kerja/catatan-spike-passkey.md`                       |
+| Toolchain                                           | Foundry di `~/.foundry/bin` (tidak otomatis di PATH sesi non-interaktif); OpenZeppelin 5.7.0; **dua** foundry.toml (root yang dipakai — jaga identik dengan `contracts/foundry.toml`)                               |
+| Deploy Sepolia, akun Midtrans, akun Pinata, hosting | Belum. Akun Midtrans dan Pinata belum ada jejaknya; hosting = K11 (batas 10 Sep). Gas policy sudah **diaktifkan di dasbor ZeroDev** (2 Sep), tapi tetap tulis **belum terbukti** sampai ada 1 transaksi tersponsori yang berhasil (`TASKS.md` Fase D)                            |
 
-**Hambatan aktif:** sebelas keputusan terbuka (K1–K11), terutama **K10
+**Temuan spike 2 September** (rinci di `docs/kerja/catatan-spike-passkey.md`):
+
+- Pustaka ZeroDev memerlukan polyfill `Buffer` saat dijalankan di peramban
+- `rpId` mengikat passkey ke satu domain. Passkey yang dibuat di `localhost`
+  **TIDAK** berlaku di domain produksi — responden kuesioner harus mendaftar
+  langsung di domain produksi, tidak bisa memakai akun uji coba
+- API ZeroDev v3 memakai **SATU** URL untuk bundler sekaligus paymaster
+- `.gitignore` yang dibuat dengan `>>` di PowerShell menghasilkan UTF-16 dan
+  tidak terbaca Git. Pakai `Set-Content -Encoding utf8`
+
+**Hambatan aktif:** tiga belas keputusan terbuka (K1–K13; K6 digabung ke
+K12), terutama **K10
 (skema KYC)** yang memblokir kontrak, backend, dan narasi keamanan Bab 4 —
 target putus di konsultasi 7 September.
 
@@ -527,5 +598,9 @@ Oktober.
 7. **Jangan** mengarang sumber rujukan. Semua rujukan akademik harus sudah
    ditelaah sejawat, terbit 2021 ke atas, dan bisa diverifikasi (kecuali
    sumber primer seperti whitepaper resmi).
-   - Catatan: **Aldweesh (2023) bermasalah** — ada *Expression of Concern*
+   - Catatan: **Aldweesh (2023) bermasalah** — ada _Expression of Concern_
      aktif di PLoS ONE. Ganti dengan Feulner dkk. (2022).
+
+8. **Jangan** menjadikan `docs/arsip/` sebagai acuan — isinya rancangan
+   usang. (Per 2 September folder ini belum ada; buat saat mengarsipkan versi
+   dokumen yang sudah digantikan, misalnya `docs/04` lama setelah K10 putus.)
