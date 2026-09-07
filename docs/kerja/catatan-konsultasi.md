@@ -7,22 +7,25 @@
 Format tiap sesi:
 
 - **Dibahas:** …
-- **Keputusan:** … (rujuk nomor K bila ada)
+- **Keputusan:** … (sebut nama keputusannya, misalnya "skema KYC")
 - **Diminta pembimbing:** …
 - **Tindak lanjut sebelum Senin berikutnya:** …
 
 ---
 
 ## Senin 7 September 2026
-**Agenda yang direncanakan:** K1–K7 + K10 (bahan: `keputusan.md`), tunjukkan
-kemajuan test kontrak.
+**Agenda yang direncanakan:** skema KYC (paling penting); pencatatan listing
+jual ulang; batas tiket per dompet; siapa pengirim transaksi; verifikasi
+penyelenggara; nama tampilan unik; log audit; isi tabel passkey (bahan:
+`keputusan.md`). Tunjukkan kemajuan tes kontrak.
 
 _(belum berlangsung)_
 
 ## Senin 14 September 2026
-**Agenda yang direncanakan:** K8 + K9; laporan kemajuan backend + rencana
-kuesioner 19/9; minta kesepakatan jumlah responden minimum dan jumlah sampel
-pengukuran waktu konfirmasi.
+**Agenda yang direncanakan:** cara mendokumentasikan uji fungsional; prosedur
+bila kuota sponsor gas habis; laporan kemajuan backend + rencana kuesioner
+19/9; minta kesepakatan jumlah responden minimum dan jumlah sampel pengukuran
+waktu konfirmasi.
 
 _(belum berlangsung)_
 

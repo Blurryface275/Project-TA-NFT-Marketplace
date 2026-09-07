@@ -1,0 +1,397 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_TA_NFT"
+                  targetNamespace="http://ta-nft-marketplace/bpmn">
+
+  <bpmn:collaboration id="Collaboration_1">
+    <bpmn:participant id="Participant_Sistem" name="Sistem Tiket NFT Marketplace" processRef="Process_Overview"/>
+  </bpmn:collaboration>
+
+  <bpmn:process id="Process_Overview" name="Proses Bisnis Keseluruhan (Overview)" isExecutable="false">
+
+    <bpmn:laneSet id="LaneSet_1">
+      <bpmn:lane id="Lane_Pembeli" name="Pembeli">
+        <bpmn:flowNodeRef>StartEvent_Pembeli</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Registrasi</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_PilihEvent</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_BayarMidtrans</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_TerimaTiketNFT</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_JualLagi</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Disimpan</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_PilihBayarResale</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_TerimaTiketBaru</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Penjual" name="Penjual">
+        <bpmn:flowNodeRef>StartEvent_Penjual</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_BuatEvent</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_MenawarkanTiket</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_MenerimaDana</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Sistem" name="Sistem (Backend &amp; Blockchain)">
+        <bpmn:flowNodeRef>Task_CatatEventBlockchain</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_BuatWalletKYC</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Valid</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Ditolak</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_VerifikasiWebhook</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_MintNFT</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CatatPenawaran</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_VerifikasiPindah</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CairkanDana</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <!-- ===================== FLOW NODES ===================== -->
+
+    <bpmn:startEvent id="StartEvent_Pembeli" name="Mulai (Pembeli)">
+      <bpmn:outgoing>Flow01</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:task id="Task_Registrasi" name="Registrasi &amp; verifikasi identitas">
+      <bpmn:incoming>Flow01</bpmn:incoming>
+      <bpmn:outgoing>Flow04</bpmn:outgoing>
+    </bpmn:task>
+
+    <bpmn:startEvent id="StartEvent_Penjual" name="Mulai (Penjual)">
+      <bpmn:outgoing>Flow02</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:task id="Task_BuatEvent" name="Buat event &amp; tentukan kategori tiket">
+      <bpmn:incoming>Flow02</bpmn:incoming>
+      <bpmn:outgoing>Flow03</bpmn:outgoing>
+    </bpmn:task>
+
+    <bpmn:task id="Task_CatatEventBlockchain" name="Catat event &amp; kuota ke blockchain (TicketContract)">
+      <bpmn:incoming>Flow03</bpmn:incoming>
+      <bpmn:outgoing>Flow05</bpmn:outgoing>
+    </bpmn:task>
+
+    <bpmn:task id="Task_BuatWalletKYC" name="Buat wallet AA &amp; catat hash KYC on-chain">
+      <bpmn:incoming>Flow04</bpmn:incoming>
+    </bpmn:task>
+
+    <bpmn:task id="Task_PilihEvent" name="Pilih event &amp; kategori tiket">
+      <bpmn:incoming>Flow05</bpmn:incoming>
+      <bpmn:outgoing>Flow06</bpmn:outgoing>
+    </bpmn:task>
+
+    <bpmn:exclusiveGateway id="Gateway_Valid" name="Identitas, kuota, batas beli valid?">
+      <bpmn:incoming>Flow06</bpmn:incoming>
+      <bpmn:outgoing>Flow07</bpmn:outgoing>
+      <bpmn:outgoing>Flow08</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:endEvent id="EndEvent_Ditolak" name="Ditolak">
+      <bpmn:incoming>Flow07</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:task id="Task_BayarMidtrans" name="Bayar tiket via Midtrans">
+      <bpmn:incoming>Flow08</bpmn:incoming>
+      <bpmn:outgoing>Flow09</bpmn:outgoing>
+    </bpmn:task>
+
+    <bpmn:task id="Task_VerifikasiWebhook" name="Verifikasi notifikasi lunas (webhook Midtrans)">
+      <bpmn:incoming>Flow09</bpmn:incoming>
+      <bpmn:outgoing>Flow10</bpmn:outgoing>
+    </bpmn:task>
+
+    <bpmn:task id="Task_MintNFT" name="Mint tiket NFT (EIP-712 + IPFS)">
+      <bpmn:incoming>Flow10</bpmn:incoming>
+      <bpmn:outgoing>Flow11</bpmn:outgoing>
+    </bpmn:task>
+
+    <bpmn:task id="Task_TerimaTiketNFT" name="Terima tiket NFT">
+      <bpmn:incoming>Flow11</bpmn:incoming>
+      <bpmn:outgoing>Flow12</bpmn:outgoing>
+    </bpmn:task>
+
+    <bpmn:exclusiveGateway id="Gateway_JualLagi" name="Mau dijual lagi?">
+      <bpmn:incoming>Flow12</bpmn:incoming>
+      <bpmn:outgoing>Flow13</bpmn:outgoing>
+      <bpmn:outgoing>Flow14</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:endEvent id="EndEvent_Disimpan" name="Disimpan (selesai)">
+      <bpmn:incoming>Flow13</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:task id="Task_MenawarkanTiket" name="Menawarkan tiket (harga terkunci = originalPrice)">
+      <bpmn:incoming>Flow14</bpmn:incoming>
+      <bpmn:outgoing>Flow15</bpmn:outgoing>
+    </bpmn:task>
+
+    <bpmn:task id="Task_CatatPenawaran" name="Catat penawaran di MarketplaceContract">
+      <bpmn:incoming>Flow15</bpmn:incoming>
+      <bpmn:outgoing>Flow16</bpmn:outgoing>
+    </bpmn:task>
+
+    <bpmn:task id="Task_PilihBayarResale" name="Pilih &amp; bayar tiket resale (harga tetap)">
+      <bpmn:incoming>Flow16</bpmn:incoming>
+      <bpmn:outgoing>Flow17</bpmn:outgoing>
+    </bpmn:task>
+
+    <bpmn:task id="Task_VerifikasiPindah" name="Verifikasi lunas -&gt; pindahkan kepemilikan (allowlist)">
+      <bpmn:incoming>Flow17</bpmn:incoming>
+      <bpmn:outgoing>Flow18</bpmn:outgoing>
+    </bpmn:task>
+
+    <bpmn:task id="Task_CairkanDana" name="Cairkan dana ke penjual">
+      <bpmn:incoming>Flow18</bpmn:incoming>
+      <bpmn:outgoing>Flow19</bpmn:outgoing>
+      <bpmn:outgoing>Flow20</bpmn:outgoing>
+    </bpmn:task>
+
+    <bpmn:endEvent id="EndEvent_TerimaTiketBaru" name="Terima tiket (kepemilikan baru)">
+      <bpmn:incoming>Flow19</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:endEvent id="EndEvent_MenerimaDana" name="Menerima dana penjualan">
+      <bpmn:incoming>Flow20</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- ===================== TEXT ANNOTATIONS ===================== -->
+
+    <bpmn:textAnnotation id="TextAnnotation_GantiPeran">
+      <bpmn:text>Pembeli sebelumnya, berganti peran jadi penjual (aktor sama)</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_1" sourceRef="Task_MenawarkanTiket" targetRef="TextAnnotation_GantiPeran"/>
+
+    <bpmn:textAnnotation id="TextAnnotation_AktorBaru">
+      <bpmn:text>Aktor baru (pembeli lain)</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_2" sourceRef="Task_PilihBayarResale" targetRef="TextAnnotation_AktorBaru"/>
+
+    <!-- ===================== SEQUENCE FLOWS ===================== -->
+
+    <bpmn:sequenceFlow id="Flow01" sourceRef="StartEvent_Pembeli" targetRef="Task_Registrasi"/>
+    <bpmn:sequenceFlow id="Flow02" sourceRef="StartEvent_Penjual" targetRef="Task_BuatEvent"/>
+    <bpmn:sequenceFlow id="Flow03" sourceRef="Task_BuatEvent" targetRef="Task_CatatEventBlockchain"/>
+    <bpmn:sequenceFlow id="Flow04" sourceRef="Task_Registrasi" targetRef="Task_BuatWalletKYC"/>
+    <bpmn:sequenceFlow id="Flow05" sourceRef="Task_CatatEventBlockchain" targetRef="Task_PilihEvent"/>
+    <bpmn:sequenceFlow id="Flow06" sourceRef="Task_PilihEvent" targetRef="Gateway_Valid"/>
+    <bpmn:sequenceFlow id="Flow07" name="tidak" sourceRef="Gateway_Valid" targetRef="EndEvent_Ditolak"/>
+    <bpmn:sequenceFlow id="Flow08" name="ya" sourceRef="Gateway_Valid" targetRef="Task_BayarMidtrans"/>
+    <bpmn:sequenceFlow id="Flow09" sourceRef="Task_BayarMidtrans" targetRef="Task_VerifikasiWebhook"/>
+    <bpmn:sequenceFlow id="Flow10" sourceRef="Task_VerifikasiWebhook" targetRef="Task_MintNFT"/>
+    <bpmn:sequenceFlow id="Flow11" sourceRef="Task_MintNFT" targetRef="Task_TerimaTiketNFT"/>
+    <bpmn:sequenceFlow id="Flow12" sourceRef="Task_TerimaTiketNFT" targetRef="Gateway_JualLagi"/>
+    <bpmn:sequenceFlow id="Flow13" name="tidak" sourceRef="Gateway_JualLagi" targetRef="EndEvent_Disimpan"/>
+    <bpmn:sequenceFlow id="Flow14" name="ya" sourceRef="Gateway_JualLagi" targetRef="Task_MenawarkanTiket"/>
+    <bpmn:sequenceFlow id="Flow15" sourceRef="Task_MenawarkanTiket" targetRef="Task_CatatPenawaran"/>
+    <bpmn:sequenceFlow id="Flow16" sourceRef="Task_CatatPenawaran" targetRef="Task_PilihBayarResale"/>
+    <bpmn:sequenceFlow id="Flow17" sourceRef="Task_PilihBayarResale" targetRef="Task_VerifikasiPindah"/>
+    <bpmn:sequenceFlow id="Flow18" sourceRef="Task_VerifikasiPindah" targetRef="Task_CairkanDana"/>
+    <bpmn:sequenceFlow id="Flow19" sourceRef="Task_CairkanDana" targetRef="EndEvent_TerimaTiketBaru"/>
+    <bpmn:sequenceFlow id="Flow20" sourceRef="Task_CairkanDana" targetRef="EndEvent_MenerimaDana"/>
+
+  </bpmn:process>
+
+  <!-- ===================== DIAGRAM INTERCHANGE ===================== -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_1">
+
+      <bpmndi:BPMNShape id="Participant_Sistem_di" bpmnElement="Participant_Sistem" isHorizontal="true">
+        <dc:Bounds x="0" y="0" width="3450" height="860"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Lane_Pembeli_di" bpmnElement="Lane_Pembeli" isHorizontal="true">
+        <dc:Bounds x="150" y="0" width="3300" height="300"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Penjual_di" bpmnElement="Lane_Penjual" isHorizontal="true">
+        <dc:Bounds x="150" y="300" width="3300" height="220"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Sistem_di" bpmnElement="Lane_Sistem" isHorizontal="true">
+        <dc:Bounds x="150" y="520" width="3300" height="340"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="StartEvent_Pembeli_di" bpmnElement="StartEvent_Pembeli">
+        <dc:Bounds x="82" y="122" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Registrasi_di" bpmnElement="Task_Registrasi">
+        <dc:Bounds x="165" y="100" width="170" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_Penjual_di" bpmnElement="StartEvent_Penjual">
+        <dc:Bounds x="82" y="372" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_BuatEvent_di" bpmnElement="Task_BuatEvent">
+        <dc:Bounds x="165" y="350" width="170" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CatatEventBlockchain_di" bpmnElement="Task_CatatEventBlockchain">
+        <dc:Bounds x="415" y="610" width="170" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_BuatWalletKYC_di" bpmnElement="Task_BuatWalletKYC">
+        <dc:Bounds x="665" y="610" width="170" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_PilihEvent_di" bpmnElement="Task_PilihEvent">
+        <dc:Bounds x="915" y="100" width="170" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Valid_di" bpmnElement="Gateway_Valid" isMarkerVisible="true">
+        <dc:Bounds x="1225" y="625" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Ditolak_di" bpmnElement="EndEvent_Ditolak">
+        <dc:Bounds x="1232" y="762" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_BayarMidtrans_di" bpmnElement="Task_BayarMidtrans">
+        <dc:Bounds x="1415" y="100" width="170" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_VerifikasiWebhook_di" bpmnElement="Task_VerifikasiWebhook">
+        <dc:Bounds x="1665" y="610" width="170" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_MintNFT_di" bpmnElement="Task_MintNFT">
+        <dc:Bounds x="1915" y="610" width="170" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_TerimaTiketNFT_di" bpmnElement="Task_TerimaTiketNFT">
+        <dc:Bounds x="1915" y="100" width="170" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_JualLagi_di" bpmnElement="Gateway_JualLagi" isMarkerVisible="true">
+        <dc:Bounds x="2225" y="115" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Disimpan_di" bpmnElement="EndEvent_Disimpan">
+        <dc:Bounds x="2232" y="32" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_MenawarkanTiket_di" bpmnElement="Task_MenawarkanTiket">
+        <dc:Bounds x="2165" y="350" width="170" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CatatPenawaran_di" bpmnElement="Task_CatatPenawaran">
+        <dc:Bounds x="2415" y="610" width="170" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_PilihBayarResale_di" bpmnElement="Task_PilihBayarResale">
+        <dc:Bounds x="2665" y="100" width="170" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_VerifikasiPindah_di" bpmnElement="Task_VerifikasiPindah">
+        <dc:Bounds x="2915" y="610" width="170" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CairkanDana_di" bpmnElement="Task_CairkanDana">
+        <dc:Bounds x="3165" y="610" width="170" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_TerimaTiketBaru_di" bpmnElement="EndEvent_TerimaTiketBaru">
+        <dc:Bounds x="3232" y="122" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_MenerimaDana_di" bpmnElement="EndEvent_MenerimaDana">
+        <dc:Bounds x="3232" y="372" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="TextAnnotation_GantiPeran_di" bpmnElement="TextAnnotation_GantiPeran">
+        <dc:Bounds x="2150" y="460" width="220" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_AktorBaru_di" bpmnElement="TextAnnotation_AktorBaru">
+        <dc:Bounds x="2650" y="25" width="220" height="50"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Flow01_di" bpmnElement="Flow01">
+        <di:waypoint x="118" y="140"/>
+        <di:waypoint x="165" y="140"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow02_di" bpmnElement="Flow02">
+        <di:waypoint x="118" y="390"/>
+        <di:waypoint x="165" y="390"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow03_di" bpmnElement="Flow03">
+        <di:waypoint x="250" y="430"/>
+        <di:waypoint x="250" y="520"/>
+        <di:waypoint x="500" y="520"/>
+        <di:waypoint x="500" y="610"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow04_di" bpmnElement="Flow04">
+        <di:waypoint x="250" y="180"/>
+        <di:waypoint x="250" y="300"/>
+        <di:waypoint x="750" y="300"/>
+        <di:waypoint x="750" y="610"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow05_di" bpmnElement="Flow05">
+        <di:waypoint x="500" y="610"/>
+        <di:waypoint x="500" y="520"/>
+        <di:waypoint x="1000" y="520"/>
+        <di:waypoint x="1000" y="180"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow06_di" bpmnElement="Flow06">
+        <di:waypoint x="1000" y="180"/>
+        <di:waypoint x="1000" y="300"/>
+        <di:waypoint x="1250" y="300"/>
+        <di:waypoint x="1250" y="625"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow07_di" bpmnElement="Flow07">
+        <di:waypoint x="1250" y="675"/>
+        <di:waypoint x="1250" y="762"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow08_di" bpmnElement="Flow08">
+        <di:waypoint x="1275" y="650"/>
+        <di:waypoint x="1500" y="650"/>
+        <di:waypoint x="1500" y="180"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow09_di" bpmnElement="Flow09">
+        <di:waypoint x="1500" y="180"/>
+        <di:waypoint x="1500" y="300"/>
+        <di:waypoint x="1750" y="300"/>
+        <di:waypoint x="1750" y="610"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow10_di" bpmnElement="Flow10">
+        <di:waypoint x="1835" y="650"/>
+        <di:waypoint x="1915" y="650"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow11_di" bpmnElement="Flow11">
+        <di:waypoint x="2000" y="610"/>
+        <di:waypoint x="2000" y="180"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow12_di" bpmnElement="Flow12">
+        <di:waypoint x="2085" y="140"/>
+        <di:waypoint x="2225" y="140"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow13_di" bpmnElement="Flow13">
+        <di:waypoint x="2250" y="115"/>
+        <di:waypoint x="2250" y="68"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow14_di" bpmnElement="Flow14">
+        <di:waypoint x="2250" y="165"/>
+        <di:waypoint x="2250" y="350"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow15_di" bpmnElement="Flow15">
+        <di:waypoint x="2250" y="430"/>
+        <di:waypoint x="2250" y="520"/>
+        <di:waypoint x="2500" y="520"/>
+        <di:waypoint x="2500" y="610"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow16_di" bpmnElement="Flow16">
+        <di:waypoint x="2585" y="650"/>
+        <di:waypoint x="2750" y="650"/>
+        <di:waypoint x="2750" y="180"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow17_di" bpmnElement="Flow17">
+        <di:waypoint x="2750" y="180"/>
+        <di:waypoint x="2750" y="300"/>
+        <di:waypoint x="3000" y="300"/>
+        <di:waypoint x="3000" y="610"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow18_di" bpmnElement="Flow18">
+        <di:waypoint x="3085" y="650"/>
+        <di:waypoint x="3165" y="650"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow19_di" bpmnElement="Flow19">
+        <di:waypoint x="3230" y="610"/>
+        <di:waypoint x="3230" y="300"/>
+        <di:waypoint x="3250" y="300"/>
+        <di:waypoint x="3250" y="158"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow20_di" bpmnElement="Flow20">
+        <di:waypoint x="3270" y="610"/>
+        <di:waypoint x="3270" y="480"/>
+        <di:waypoint x="3250" y="480"/>
+        <di:waypoint x="3250" y="408"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Association_1_di" bpmnElement="Association_1">
+        <di:waypoint x="2260" y="430"/>
+        <di:waypoint x="2260" y="460"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_2_di" bpmnElement="Association_2">
+        <di:waypoint x="2750" y="100"/>
+        <di:waypoint x="2750" y="75"/>
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

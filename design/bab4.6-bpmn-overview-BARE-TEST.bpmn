@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_TA_NFT_bare" targetNamespace="http://ta-nft-marketplace/bpmn">
+<bpmn:collaboration id="Collaboration_1">
+<bpmn:participant id="Participant_Sistem" name="Sistem Tiket NFT Marketplace" processRef="Process_Overview"/>
+</bpmn:collaboration>
+<bpmn:process id="Process_Overview" name="Proses Bisnis Keseluruhan (versi polos, tanpa data store)" isExecutable="false">
+<bpmn:laneSet id="LaneSet_1">
+<bpmn:lane id="Lane_Pembeli" name="Pembeli">
+<bpmn:flowNodeRef>start_pembeli</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>task_registrasi</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>task_pilihevent</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>task_bayar</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>task_terimatiket</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>gw_juallagi</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>end_disimpan</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>task_pilihresale</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>end_pembeli</bpmn:flowNodeRef>
+</bpmn:lane>
+<bpmn:lane id="Lane_Sistem" name="Sistem (Backend and Blockchain)">
+<bpmn:flowNodeRef>g1_a</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>g1_b</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>g1_c</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>g2_a</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>g2_b</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>g2_c</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>gw_valid</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>end_ditolak</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>task_verifwebhook</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>g3_a</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>g3_b</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>g3_c</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>g5_a</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>g5_b</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>g4_a</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>g4_b</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>g4_c</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>task_cairkan</bpmn:flowNodeRef>
+</bpmn:lane>
+<bpmn:lane id="Lane_Penjual" name="Penjual">
+<bpmn:flowNodeRef>start_penjual</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>task_buatevent</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>task_menawarkan</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>end_penjual</bpmn:flowNodeRef>
+</bpmn:lane>
+</bpmn:laneSet>
+<bpmn:startEvent id="start_pembeli" name="Mulai (Pembeli)"><bpmn:outgoing>Flow_start_pembeli__task_registrasi</bpmn:outgoing></bpmn:startEvent>
+<bpmn:task id="task_registrasi" name="Registrasi &amp; verifikasi identitas"><bpmn:incoming>Flow_start_pembeli__task_registrasi</bpmn:incoming><bpmn:outgoing>Flow_task_registrasi__g2_a</bpmn:outgoing></bpmn:task>
+<bpmn:startEvent id="start_penjual" name="Mulai (Penjual)"><bpmn:outgoing>Flow_start_penjual__task_buatevent</bpmn:outgoing></bpmn:startEvent>
+<bpmn:task id="task_buatevent" name="Buat event &amp; tentukan kategori tiket"><bpmn:incoming>Flow_start_penjual__task_buatevent</bpmn:incoming><bpmn:outgoing>Flow_task_buatevent__g1_a</bpmn:outgoing></bpmn:task>
+<bpmn:task id="g1_a" name="Kirim transaksi: catat event &amp; kuota"><bpmn:incoming>Flow_task_buatevent__g1_a</bpmn:incoming><bpmn:outgoing>Flow_g1_a__g1_b</bpmn:outgoing></bpmn:task>
+<bpmn:task id="g1_b" name="Tunggu konfirmasi on-chain"><bpmn:incoming>Flow_g1_a__g1_b</bpmn:incoming><bpmn:outgoing>Flow_g1_b__g1_c</bpmn:outgoing></bpmn:task>
+<bpmn:task id="g1_c" name="Simpan cache event ke database"><bpmn:incoming>Flow_g1_b__g1_c</bpmn:incoming><bpmn:outgoing>Flow_g1_c__task_pilihevent</bpmn:outgoing></bpmn:task>
+<bpmn:task id="g2_a" name="Kirim transaksi: buat wallet &amp; hash KYC"><bpmn:incoming>Flow_task_registrasi__g2_a</bpmn:incoming><bpmn:outgoing>Flow_g2_a__g2_b</bpmn:outgoing></bpmn:task>
+<bpmn:task id="g2_b" name="Tunggu konfirmasi on-chain"><bpmn:incoming>Flow_g2_a__g2_b</bpmn:incoming><bpmn:outgoing>Flow_g2_b__g2_c</bpmn:outgoing></bpmn:task>
+<bpmn:task id="g2_c" name="Simpan wallet &amp; KYC ke database"><bpmn:incoming>Flow_g2_b__g2_c</bpmn:incoming></bpmn:task>
+<bpmn:task id="task_pilihevent" name="Pilih event &amp; kategori tiket"><bpmn:incoming>Flow_g1_c__task_pilihevent</bpmn:incoming><bpmn:outgoing>Flow_task_pilihevent__gw_valid</bpmn:outgoing></bpmn:task>
+<bpmn:exclusiveGateway id="gw_valid" name="Identitas, kuota, batas beli valid?"><bpmn:incoming>Flow_task_pilihevent__gw_valid</bpmn:incoming><bpmn:outgoing>Flow_gw_valid__end_ditolak</bpmn:outgoing><bpmn:outgoing>Flow_gw_valid__task_bayar</bpmn:outgoing></bpmn:exclusiveGateway>
+<bpmn:endEvent id="end_ditolak" name="Ditolak"><bpmn:incoming>Flow_gw_valid__end_ditolak</bpmn:incoming></bpmn:endEvent>
+<bpmn:task id="task_bayar" name="Bayar tiket via Midtrans"><bpmn:incoming>Flow_gw_valid__task_bayar</bpmn:incoming><bpmn:outgoing>Flow_task_bayar__task_verifwebhook</bpmn:outgoing></bpmn:task>
+<bpmn:task id="task_verifwebhook" name="Verifikasi notifikasi lunas (webhook)"><bpmn:incoming>Flow_task_bayar__task_verifwebhook</bpmn:incoming><bpmn:outgoing>Flow_task_verifwebhook__g3_a</bpmn:outgoing></bpmn:task>
+<bpmn:task id="g3_a" name="Kirim transaksi: mint tiket NFT"><bpmn:incoming>Flow_task_verifwebhook__g3_a</bpmn:incoming><bpmn:outgoing>Flow_g3_a__g3_b</bpmn:outgoing></bpmn:task>
+<bpmn:task id="g3_b" name="Tunggu konfirmasi on-chain"><bpmn:incoming>Flow_g3_a__g3_b</bpmn:incoming><bpmn:outgoing>Flow_g3_b__g3_c</bpmn:outgoing></bpmn:task>
+<bpmn:task id="g3_c" name="Simpan tiket ke database (ticket_cache)"><bpmn:incoming>Flow_g3_b__g3_c</bpmn:incoming><bpmn:outgoing>Flow_g3_c__task_terimatiket</bpmn:outgoing></bpmn:task>
+<bpmn:task id="task_terimatiket" name="Terima tiket NFT"><bpmn:incoming>Flow_g3_c__task_terimatiket</bpmn:incoming><bpmn:outgoing>Flow_task_terimatiket__gw_juallagi</bpmn:outgoing></bpmn:task>
+<bpmn:exclusiveGateway id="gw_juallagi" name="Mau dijual lagi?"><bpmn:incoming>Flow_task_terimatiket__gw_juallagi</bpmn:incoming><bpmn:outgoing>Flow_gw_juallagi__end_disimpan</bpmn:outgoing><bpmn:outgoing>Flow_gw_juallagi__task_menawarkan</bpmn:outgoing></bpmn:exclusiveGateway>
+<bpmn:endEvent id="end_disimpan" name="Disimpan (selesai)"><bpmn:incoming>Flow_gw_juallagi__end_disimpan</bpmn:incoming></bpmn:endEvent>
+<bpmn:task id="task_menawarkan" name="Menawarkan tiket (harga terkunci)"><bpmn:incoming>Flow_gw_juallagi__task_menawarkan</bpmn:incoming><bpmn:outgoing>Flow_task_menawarkan__g5_a</bpmn:outgoing></bpmn:task>
+<bpmn:task id="g5_a" name="Kirim transaksi: catat penawaran resale"><bpmn:incoming>Flow_task_menawarkan__g5_a</bpmn:incoming><bpmn:outgoing>Flow_g5_a__g5_b</bpmn:outgoing></bpmn:task>
+<bpmn:task id="g5_b" name="Tunggu konfirmasi on-chain"><bpmn:incoming>Flow_g5_a__g5_b</bpmn:incoming><bpmn:outgoing>Flow_g5_b__task_pilihresale</bpmn:outgoing></bpmn:task>
+<bpmn:task id="task_pilihresale" name="Pilih &amp; bayar tiket resale (harga tetap)"><bpmn:incoming>Flow_g5_b__task_pilihresale</bpmn:incoming><bpmn:outgoing>Flow_task_pilihresale__g4_a</bpmn:outgoing></bpmn:task>
+<bpmn:task id="g4_a" name="Kirim transaksi: pindahkan kepemilikan"><bpmn:incoming>Flow_task_pilihresale__g4_a</bpmn:incoming><bpmn:outgoing>Flow_g4_a__g4_b</bpmn:outgoing></bpmn:task>
+<bpmn:task id="g4_b" name="Tunggu konfirmasi on-chain"><bpmn:incoming>Flow_g4_a__g4_b</bpmn:incoming><bpmn:outgoing>Flow_g4_b__g4_c</bpmn:outgoing></bpmn:task>
+<bpmn:task id="g4_c" name="Update owner di database (ticket_cache)"><bpmn:incoming>Flow_g4_b__g4_c</bpmn:incoming><bpmn:outgoing>Flow_g4_c__task_cairkan</bpmn:outgoing></bpmn:task>
+<bpmn:task id="task_cairkan" name="Cairkan dana ke penjual"><bpmn:incoming>Flow_g4_c__task_cairkan</bpmn:incoming><bpmn:outgoing>Flow_task_cairkan__end_pembeli</bpmn:outgoing><bpmn:outgoing>Flow_task_cairkan__end_penjual</bpmn:outgoing></bpmn:task>
+<bpmn:endEvent id="end_pembeli" name="Terima tiket (kepemilikan baru)"><bpmn:incoming>Flow_task_cairkan__end_pembeli</bpmn:incoming></bpmn:endEvent>
+<bpmn:endEvent id="end_penjual" name="Menerima dana penjualan"><bpmn:incoming>Flow_task_cairkan__end_penjual</bpmn:incoming></bpmn:endEvent>
+<bpmn:sequenceFlow id="Flow_start_pembeli__task_registrasi" sourceRef="start_pembeli" targetRef="task_registrasi"/>
+<bpmn:sequenceFlow id="Flow_start_penjual__task_buatevent" sourceRef="start_penjual" targetRef="task_buatevent"/>
+<bpmn:sequenceFlow id="Flow_task_buatevent__g1_a" sourceRef="task_buatevent" targetRef="g1_a"/>
+<bpmn:sequenceFlow id="Flow_g1_a__g1_b" sourceRef="g1_a" targetRef="g1_b"/>
+<bpmn:sequenceFlow id="Flow_g1_b__g1_c" sourceRef="g1_b" targetRef="g1_c"/>
+<bpmn:sequenceFlow id="Flow_task_registrasi__g2_a" sourceRef="task_registrasi" targetRef="g2_a"/>
+<bpmn:sequenceFlow id="Flow_g2_a__g2_b" sourceRef="g2_a" targetRef="g2_b"/>
+<bpmn:sequenceFlow id="Flow_g2_b__g2_c" sourceRef="g2_b" targetRef="g2_c"/>
+<bpmn:sequenceFlow id="Flow_g1_c__task_pilihevent" sourceRef="g1_c" targetRef="task_pilihevent"/>
+<bpmn:sequenceFlow id="Flow_task_pilihevent__gw_valid" sourceRef="task_pilihevent" targetRef="gw_valid"/>
+<bpmn:sequenceFlow id="Flow_gw_valid__end_ditolak" name="tidak" sourceRef="gw_valid" targetRef="end_ditolak"/>
+<bpmn:sequenceFlow id="Flow_gw_valid__task_bayar" name="ya" sourceRef="gw_valid" targetRef="task_bayar"/>
+<bpmn:sequenceFlow id="Flow_task_bayar__task_verifwebhook" sourceRef="task_bayar" targetRef="task_verifwebhook"/>
+<bpmn:sequenceFlow id="Flow_task_verifwebhook__g3_a" sourceRef="task_verifwebhook" targetRef="g3_a"/>
+<bpmn:sequenceFlow id="Flow_g3_a__g3_b" sourceRef="g3_a" targetRef="g3_b"/>
+<bpmn:sequenceFlow id="Flow_g3_b__g3_c" sourceRef="g3_b" targetRef="g3_c"/>
+<bpmn:sequenceFlow id="Flow_g3_c__task_terimatiket" sourceRef="g3_c" targetRef="task_terimatiket"/>
+<bpmn:sequenceFlow id="Flow_task_terimatiket__gw_juallagi" sourceRef="task_terimatiket" targetRef="gw_juallagi"/>
+<bpmn:sequenceFlow id="Flow_gw_juallagi__end_disimpan" name="tidak" sourceRef="gw_juallagi" targetRef="end_disimpan"/>
+<bpmn:sequenceFlow id="Flow_gw_juallagi__task_menawarkan" name="ya" sourceRef="gw_juallagi" targetRef="task_menawarkan"/>
+<bpmn:sequenceFlow id="Flow_task_menawarkan__g5_a" sourceRef="task_menawarkan" targetRef="g5_a"/>
+<bpmn:sequenceFlow id="Flow_g5_a__g5_b" sourceRef="g5_a" targetRef="g5_b"/>
+<bpmn:sequenceFlow id="Flow_g5_b__task_pilihresale" sourceRef="g5_b" targetRef="task_pilihresale"/>
+<bpmn:sequenceFlow id="Flow_task_pilihresale__g4_a" sourceRef="task_pilihresale" targetRef="g4_a"/>
+<bpmn:sequenceFlow id="Flow_g4_a__g4_b" sourceRef="g4_a" targetRef="g4_b"/>
+<bpmn:sequenceFlow id="Flow_g4_b__g4_c" sourceRef="g4_b" targetRef="g4_c"/>
+<bpmn:sequenceFlow id="Flow_g4_c__task_cairkan" sourceRef="g4_c" targetRef="task_cairkan"/>
+<bpmn:sequenceFlow id="Flow_task_cairkan__end_pembeli" sourceRef="task_cairkan" targetRef="end_pembeli"/>
+<bpmn:sequenceFlow id="Flow_task_cairkan__end_penjual" sourceRef="task_cairkan" targetRef="end_penjual"/>
+</bpmn:process>
+<bpmndi:BPMNDiagram id="BPMNDiagram_1"><bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_1">
+<bpmndi:BPMNShape id="Participant_Sistem_di" bpmnElement="Participant_Sistem" isHorizontal="true"><dc:Bounds x="0" y="0" width="6185" height="1055"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Lane_Pembeli_di" bpmnElement="Lane_Pembeli" isHorizontal="true"><dc:Bounds x="150" y="170" width="6035" height="285"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Lane_Sistem_di" bpmnElement="Lane_Sistem" isHorizontal="true"><dc:Bounds x="150" y="455" width="6035" height="380"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Lane_Penjual_di" bpmnElement="Lane_Penjual" isHorizontal="true"><dc:Bounds x="150" y="835" width="6035" height="220"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="start_pembeli_di" bpmnElement="start_pembeli"><dc:Bounds x="140" y="294" width="36" height="36"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="task_registrasi_di" bpmnElement="task_registrasi"><dc:Bounds x="205" y="272" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="start_penjual_di" bpmnElement="start_penjual"><dc:Bounds x="140" y="927" width="36" height="36"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="task_buatevent_di" bpmnElement="task_buatevent"><dc:Bounds x="205" y="905" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="g1_a_di" bpmnElement="g1_a"><dc:Bounds x="465" y="605" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="g1_b_di" bpmnElement="g1_b"><dc:Bounds x="670" y="605" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="g1_c_di" bpmnElement="g1_c"><dc:Bounds x="875" y="605" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="g2_a_di" bpmnElement="g2_a"><dc:Bounds x="1135" y="605" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="g2_b_di" bpmnElement="g2_b"><dc:Bounds x="1340" y="605" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="g2_c_di" bpmnElement="g2_c"><dc:Bounds x="1545" y="605" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="task_pilihevent_di" bpmnElement="task_pilihevent"><dc:Bounds x="1805" y="272" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="gw_valid_di" bpmnElement="gw_valid"><dc:Bounds x="2075" y="580" width="170" height="130"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="end_ditolak_di" bpmnElement="end_ditolak"><dc:Bounds x="2140" y="745" width="40" height="40"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="task_bayar_di" bpmnElement="task_bayar"><dc:Bounds x="2325" y="272" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="task_verifwebhook_di" bpmnElement="task_verifwebhook"><dc:Bounds x="2585" y="605" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="g3_a_di" bpmnElement="g3_a"><dc:Bounds x="2845" y="605" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="g3_b_di" bpmnElement="g3_b"><dc:Bounds x="3050" y="605" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="g3_c_di" bpmnElement="g3_c"><dc:Bounds x="3255" y="605" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="task_terimatiket_di" bpmnElement="task_terimatiket"><dc:Bounds x="3515" y="272" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="gw_juallagi_di" bpmnElement="gw_juallagi"><dc:Bounds x="3785" y="247" width="170" height="130"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="end_disimpan_di" bpmnElement="end_disimpan"><dc:Bounds x="3852" y="189" width="36" height="36"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="task_menawarkan_di" bpmnElement="task_menawarkan"><dc:Bounds x="3775" y="905" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="g5_a_di" bpmnElement="g5_a"><dc:Bounds x="4035" y="605" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="g5_b_di" bpmnElement="g5_b"><dc:Bounds x="4240" y="605" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="task_pilihresale_di" bpmnElement="task_pilihresale"><dc:Bounds x="4500" y="272" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="g4_a_di" bpmnElement="g4_a"><dc:Bounds x="4760" y="605" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="g4_b_di" bpmnElement="g4_b"><dc:Bounds x="4965" y="605" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="g4_c_di" bpmnElement="g4_c"><dc:Bounds x="5170" y="605" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="task_cairkan_di" bpmnElement="task_cairkan"><dc:Bounds x="5430" y="605" width="190" height="80"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="end_pembeli_di" bpmnElement="end_pembeli"><dc:Bounds x="5763" y="290" width="44" height="44"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="end_penjual_di" bpmnElement="end_penjual"><dc:Bounds x="5763" y="923" width="44" height="44"/></bpmndi:BPMNShape>
+<bpmndi:BPMNEdge id="Flow_start_pembeli__task_registrasi_di" bpmnElement="Flow_start_pembeli__task_registrasi"><di:waypoint x="176" y="312"/><di:waypoint x="205" y="312"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_start_penjual__task_buatevent_di" bpmnElement="Flow_start_penjual__task_buatevent"><di:waypoint x="176" y="945"/><di:waypoint x="205" y="945"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_task_buatevent__g1_a_di" bpmnElement="Flow_task_buatevent__g1_a"><di:waypoint x="300" y="905"/><di:waypoint x="300" y="835"/><di:waypoint x="560" y="835"/><di:waypoint x="560" y="685"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_g1_a__g1_b_di" bpmnElement="Flow_g1_a__g1_b"><di:waypoint x="655" y="645"/><di:waypoint x="670" y="645"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_g1_b__g1_c_di" bpmnElement="Flow_g1_b__g1_c"><di:waypoint x="860" y="645"/><di:waypoint x="875" y="645"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_task_registrasi__g2_a_di" bpmnElement="Flow_task_registrasi__g2_a"><di:waypoint x="300" y="352"/><di:waypoint x="300" y="455"/><di:waypoint x="1230" y="455"/><di:waypoint x="1230" y="605"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_g2_a__g2_b_di" bpmnElement="Flow_g2_a__g2_b"><di:waypoint x="1325" y="645"/><di:waypoint x="1340" y="645"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_g2_b__g2_c_di" bpmnElement="Flow_g2_b__g2_c"><di:waypoint x="1530" y="645"/><di:waypoint x="1545" y="645"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_g1_c__task_pilihevent_di" bpmnElement="Flow_g1_c__task_pilihevent"><di:waypoint x="970" y="605"/><di:waypoint x="970" y="455"/><di:waypoint x="1900" y="455"/><di:waypoint x="1900" y="352"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_task_pilihevent__gw_valid_di" bpmnElement="Flow_task_pilihevent__gw_valid"><di:waypoint x="1900" y="352"/><di:waypoint x="1900" y="455"/><di:waypoint x="2160" y="455"/><di:waypoint x="2160" y="580"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_gw_valid__end_ditolak_di" bpmnElement="Flow_gw_valid__end_ditolak"><di:waypoint x="2245" y="645"/><di:waypoint x="2138" y="765"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_gw_valid__task_bayar_di" bpmnElement="Flow_gw_valid__task_bayar"><di:waypoint x="2160" y="580"/><di:waypoint x="2160" y="455"/><di:waypoint x="2420" y="455"/><di:waypoint x="2420" y="352"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_task_bayar__task_verifwebhook_di" bpmnElement="Flow_task_bayar__task_verifwebhook"><di:waypoint x="2420" y="352"/><di:waypoint x="2420" y="455"/><di:waypoint x="2680" y="455"/><di:waypoint x="2680" y="605"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_task_verifwebhook__g3_a_di" bpmnElement="Flow_task_verifwebhook__g3_a"><di:waypoint x="2775" y="645"/><di:waypoint x="2845" y="645"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_g3_a__g3_b_di" bpmnElement="Flow_g3_a__g3_b"><di:waypoint x="3035" y="645"/><di:waypoint x="3050" y="645"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_g3_b__g3_c_di" bpmnElement="Flow_g3_b__g3_c"><di:waypoint x="3240" y="645"/><di:waypoint x="3255" y="645"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_g3_c__task_terimatiket_di" bpmnElement="Flow_g3_c__task_terimatiket"><di:waypoint x="3350" y="605"/><di:waypoint x="3350" y="455"/><di:waypoint x="3610" y="455"/><di:waypoint x="3610" y="352"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_task_terimatiket__gw_juallagi_di" bpmnElement="Flow_task_terimatiket__gw_juallagi"><di:waypoint x="3705" y="312"/><di:waypoint x="3785" y="312"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_gw_juallagi__end_disimpan_di" bpmnElement="Flow_gw_juallagi__end_disimpan"><di:waypoint x="3955" y="312"/><di:waypoint x="3848" y="207"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_gw_juallagi__task_menawarkan_di" bpmnElement="Flow_gw_juallagi__task_menawarkan"><di:waypoint x="3870" y="377"/><di:waypoint x="3870" y="905"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_task_menawarkan__g5_a_di" bpmnElement="Flow_task_menawarkan__g5_a"><di:waypoint x="3870" y="905"/><di:waypoint x="3870" y="835"/><di:waypoint x="4130" y="835"/><di:waypoint x="4130" y="685"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_g5_a__g5_b_di" bpmnElement="Flow_g5_a__g5_b"><di:waypoint x="4225" y="645"/><di:waypoint x="4240" y="645"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_g5_b__task_pilihresale_di" bpmnElement="Flow_g5_b__task_pilihresale"><di:waypoint x="4335" y="605"/><di:waypoint x="4335" y="455"/><di:waypoint x="4595" y="455"/><di:waypoint x="4595" y="352"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_task_pilihresale__g4_a_di" bpmnElement="Flow_task_pilihresale__g4_a"><di:waypoint x="4595" y="352"/><di:waypoint x="4595" y="455"/><di:waypoint x="4855" y="455"/><di:waypoint x="4855" y="605"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_g4_a__g4_b_di" bpmnElement="Flow_g4_a__g4_b"><di:waypoint x="4950" y="645"/><di:waypoint x="4965" y="645"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_g4_b__g4_c_di" bpmnElement="Flow_g4_b__g4_c"><di:waypoint x="5155" y="645"/><di:waypoint x="5170" y="645"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_g4_c__task_cairkan_di" bpmnElement="Flow_g4_c__task_cairkan"><di:waypoint x="5360" y="645"/><di:waypoint x="5430" y="645"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_task_cairkan__end_pembeli_di" bpmnElement="Flow_task_cairkan__end_pembeli"><di:waypoint x="5525" y="605"/><di:waypoint x="5525" y="455"/><di:waypoint x="5785" y="455"/><di:waypoint x="5785" y="334"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_task_cairkan__end_penjual_di" bpmnElement="Flow_task_cairkan__end_penjual"><di:waypoint x="5525" y="685"/><di:waypoint x="5525" y="835"/><di:waypoint x="5785" y="835"/><di:waypoint x="5785" y="923"/></bpmndi:BPMNEdge>
+</bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+</bpmn:definitions>

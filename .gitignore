@@ -15,6 +15,6 @@ dist/
 # Percobaan sekali pakai — sudah dihapus 2 Sep 2026; baris ini penjaga
 # kalau folder yang sama dibuat lagi. Temuannya: docs/kerja/catatan-spike-passkey.md
 spike/
-
+spike-next/
 # Catatan: design/ SENGAJA tidak diabaikan — isinya (erd-nft.mwb, diagram yEd)
 # adalah sumber gambar Bab 3-4 yang harus ikut riwayat git.

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_Overview" targetNamespace="http://ta-nft-marketplace/bpmn/Definitions_Overview">
+<bpmn:collaboration id="Collaboration_1">
+<bpmn:participant id="Participant_1" name="BPMN Overview - Relasi Antar Subproses" processRef="Process_1"/>
+</bpmn:collaboration>
+<bpmn:process id="Process_1" name="BPMN Overview - Relasi Antar Subproses" isExecutable="false">
+<bpmn:laneSet id="LaneSet_1">
+<bpmn:lane id="Lane_Pembeli" name="Pembeli">
+<bpmn:flowNodeRef>start_pembeli</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>sp_daftar</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>sp_beli</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>gw_juallagi</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>sp_penukaran</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>end_selesai</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>end_pembeli_baru</bpmn:flowNodeRef>
+</bpmn:lane>
+<bpmn:lane id="Lane_Penjual" name="Penjual">
+<bpmn:flowNodeRef>start_penjual</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>sp_event</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>sp_resale</bpmn:flowNodeRef>
+<bpmn:flowNodeRef>end_penjual</bpmn:flowNodeRef>
+</bpmn:lane>
+</bpmn:laneSet>
+<bpmn:startEvent id="start_penjual" name="Mulai"><bpmn:outgoing>Flow_start_penjual__sp_event</bpmn:outgoing></bpmn:startEvent>
+<bpmn:task id="sp_event" name="Pembuatan Event (lihat Gambar 4.6.4)"><bpmn:incoming>Flow_start_penjual__sp_event</bpmn:incoming><bpmn:outgoing>Flow_sp_event__sp_beli</bpmn:outgoing></bpmn:task>
+<bpmn:startEvent id="start_pembeli" name="Mulai"><bpmn:outgoing>Flow_start_pembeli__sp_daftar</bpmn:outgoing></bpmn:startEvent>
+<bpmn:task id="sp_daftar" name="Pendaftaran &amp; Verifikasi Identitas (lihat Gambar 4.6.1)"><bpmn:incoming>Flow_start_pembeli__sp_daftar</bpmn:incoming><bpmn:outgoing>Flow_sp_daftar__sp_beli</bpmn:outgoing></bpmn:task>
+<bpmn:task id="sp_beli" name="Pembelian Tiket (lihat Gambar 4.6.2)"><bpmn:incoming>Flow_sp_event__sp_beli</bpmn:incoming><bpmn:incoming>Flow_sp_daftar__sp_beli</bpmn:incoming><bpmn:outgoing>Flow_sp_beli__gw_juallagi</bpmn:outgoing></bpmn:task>
+<bpmn:exclusiveGateway id="gw_juallagi" name="Mau dijual lagi?"><bpmn:incoming>Flow_sp_beli__gw_juallagi</bpmn:incoming><bpmn:outgoing>Flow_gw_juallagi__sp_penukaran</bpmn:outgoing><bpmn:outgoing>Flow_gw_juallagi__sp_resale</bpmn:outgoing></bpmn:exclusiveGateway>
+<bpmn:task id="sp_penukaran" name="Penukaran Tiket di Venue (lihat Gambar 4.6.5)"><bpmn:incoming>Flow_gw_juallagi__sp_penukaran</bpmn:incoming><bpmn:outgoing>Flow_sp_penukaran__end_selesai</bpmn:outgoing></bpmn:task>
+<bpmn:endEvent id="end_selesai" name="Selesai"><bpmn:incoming>Flow_sp_penukaran__end_selesai</bpmn:incoming></bpmn:endEvent>
+<bpmn:task id="sp_resale" name="Penjualan Kembali (Resale) (lihat Gambar 4.6.3)"><bpmn:incoming>Flow_gw_juallagi__sp_resale</bpmn:incoming><bpmn:outgoing>Flow_sp_resale__end_pembeli_baru</bpmn:outgoing><bpmn:outgoing>Flow_sp_resale__end_penjual</bpmn:outgoing></bpmn:task>
+<bpmn:endEvent id="end_pembeli_baru" name="Pembeli baru terima tiket"><bpmn:incoming>Flow_sp_resale__end_pembeli_baru</bpmn:incoming></bpmn:endEvent>
+<bpmn:endEvent id="end_penjual" name="Penjual terima dana"><bpmn:incoming>Flow_sp_resale__end_penjual</bpmn:incoming></bpmn:endEvent>
+<bpmn:sequenceFlow id="Flow_start_penjual__sp_event" sourceRef="start_penjual" targetRef="sp_event"/>
+<bpmn:sequenceFlow id="Flow_start_pembeli__sp_daftar" sourceRef="start_pembeli" targetRef="sp_daftar"/>
+<bpmn:sequenceFlow id="Flow_sp_event__sp_beli" sourceRef="sp_event" targetRef="sp_beli"/>
+<bpmn:sequenceFlow id="Flow_sp_daftar__sp_beli" sourceRef="sp_daftar" targetRef="sp_beli"/>
+<bpmn:sequenceFlow id="Flow_sp_beli__gw_juallagi" sourceRef="sp_beli" targetRef="gw_juallagi"/>
+<bpmn:sequenceFlow id="Flow_gw_juallagi__sp_penukaran" name="tidak" sourceRef="gw_juallagi" targetRef="sp_penukaran"/>
+<bpmn:sequenceFlow id="Flow_sp_penukaran__end_selesai" sourceRef="sp_penukaran" targetRef="end_selesai"/>
+<bpmn:sequenceFlow id="Flow_gw_juallagi__sp_resale" name="ya" sourceRef="gw_juallagi" targetRef="sp_resale"/>
+<bpmn:sequenceFlow id="Flow_sp_resale__end_pembeli_baru" sourceRef="sp_resale" targetRef="end_pembeli_baru"/>
+<bpmn:sequenceFlow id="Flow_sp_resale__end_penjual" sourceRef="sp_resale" targetRef="end_penjual"/>
+</bpmn:process>
+<bpmndi:BPMNDiagram id="D1"><bpmndi:BPMNPlane id="P1" bpmnElement="Collaboration_1">
+<bpmndi:BPMNShape id="Participant_1_di" bpmnElement="Participant_1" isHorizontal="true"><dc:Bounds x="0" y="0" width="1980" height="700"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Lane_Pembeli_di" bpmnElement="Lane_Pembeli" isHorizontal="true"><dc:Bounds x="150" y="140" width="1830" height="280"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Lane_Penjual_di" bpmnElement="Lane_Penjual" isHorizontal="true"><dc:Bounds x="150" y="420" width="1830" height="280"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="start_penjual_di" bpmnElement="start_penjual"><dc:Bounds x="147" y="542" width="36" height="36"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sp_event_di" bpmnElement="sp_event"><dc:Bounds x="205" y="521" width="190" height="78"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="start_pembeli_di" bpmnElement="start_pembeli"><dc:Bounds x="147" y="262" width="36" height="36"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sp_daftar_di" bpmnElement="sp_daftar"><dc:Bounds x="205" y="241" width="190" height="78"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sp_beli_di" bpmnElement="sp_beli"><dc:Bounds x="505" y="241" width="190" height="78"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="gw_juallagi_di" bpmnElement="gw_juallagi"><dc:Bounds x="820" y="218" width="160" height="124"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sp_penukaran_di" bpmnElement="sp_penukaran"><dc:Bounds x="1105" y="241" width="190" height="78"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="end_selesai_di" bpmnElement="end_selesai"><dc:Bounds x="1478" y="258" width="44" height="44"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sp_resale_di" bpmnElement="sp_resale"><dc:Bounds x="1105" y="521" width="190" height="78"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="end_pembeli_baru_di" bpmnElement="end_pembeli_baru"><dc:Bounds x="1608" y="258" width="44" height="44"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="end_penjual_di" bpmnElement="end_penjual"><dc:Bounds x="1478" y="538" width="44" height="44"/></bpmndi:BPMNShape>
+<bpmndi:BPMNEdge id="Flow_start_penjual__sp_event_di" bpmnElement="Flow_start_penjual__sp_event"><di:waypoint x="183" y="560"/><di:waypoint x="205" y="560"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_start_pembeli__sp_daftar_di" bpmnElement="Flow_start_pembeli__sp_daftar"><di:waypoint x="183" y="280"/><di:waypoint x="205" y="280"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_sp_event__sp_beli_di" bpmnElement="Flow_sp_event__sp_beli"><di:waypoint x="300" y="521"/><di:waypoint x="300" y="420"/><di:waypoint x="600" y="420"/><di:waypoint x="600" y="319"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_sp_daftar__sp_beli_di" bpmnElement="Flow_sp_daftar__sp_beli"><di:waypoint x="395" y="280"/><di:waypoint x="505" y="280"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_sp_beli__gw_juallagi_di" bpmnElement="Flow_sp_beli__gw_juallagi"><di:waypoint x="695" y="280"/><di:waypoint x="820" y="280"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_gw_juallagi__sp_penukaran_di" bpmnElement="Flow_gw_juallagi__sp_penukaran"><di:waypoint x="980" y="280"/><di:waypoint x="1105" y="280"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_sp_penukaran__end_selesai_di" bpmnElement="Flow_sp_penukaran__end_selesai"><di:waypoint x="1295" y="280"/><di:waypoint x="1478" y="280"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_gw_juallagi__sp_resale_di" bpmnElement="Flow_gw_juallagi__sp_resale"><di:waypoint x="900" y="342"/><di:waypoint x="900" y="420"/><di:waypoint x="1200" y="420"/><di:waypoint x="1200" y="521"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_sp_resale__end_pembeli_baru_di" bpmnElement="Flow_sp_resale__end_pembeli_baru"><di:waypoint x="1200" y="521"/><di:waypoint x="1200" y="420"/><di:waypoint x="1630" y="420"/><di:waypoint x="1630" y="302"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_sp_resale__end_penjual_di" bpmnElement="Flow_sp_resale__end_penjual"><di:waypoint x="1295" y="560"/><di:waypoint x="1478" y="560"/></bpmndi:BPMNEdge>
+</bpmndi:BPMNPlane></bpmndi:BPMNDiagram></bpmn:definitions>

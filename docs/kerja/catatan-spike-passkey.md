@@ -1,55 +1,80 @@
-# Catatan Percobaan (Spike) — Registrasi Passkey ZeroDev
+# Catatan Percobaan (Spike) — Passkey dan Dompet ZeroDev
 
-> **Berkas kerja — tidak masuk buku.** Folder `spike/` sudah **dihapus 2
-> September 2026** (keputusan Edward: hanya uji coba, tidak dirawat). Kode
-> lamanya masih bisa dilihat lewat riwayat git:
-> `git show 630bf25^:spike/src/main.ts`
+> **Berkas kerja — tidak masuk buku.** Kode percobaan **tidak di-commit** —
+> hanya uji coba, tidak dirawat. Yang dicatat di sini adalah temuannya,
+> supaya tidak hilang saat kodenya dibuang.
 
-## Apa yang dicoba
+## Percobaan 1 — registrasi passkey (Vite + TypeScript, 2 Sep pagi)
 
-Proyek kecil Vite + TypeScript yang memanggil `toWebAuthnKey` dari
-`@zerodev/passkey-validator` dengan `WebAuthnMode.Register`, menunjuk ke
-passkey server ZeroDev untuk project Sepolia (URL project ada di `.env`
-root — jangan disalin ke berkas ini karena berkas ini ikut git).
+Folder `spike/` sudah dihapus; kodenya masih di riwayat git
+(`git show 630bf25^:spike/src/main.ts`). Memanggil `toWebAuthnKey` dari
+`@zerodev/passkey-validator` dengan `WebAuthnMode.Register` ke passkey server
+ZeroDev project Sepolia.
 
-Versi yang dipakai saat percobaan (2 Sep 2026):
-`@zerodev/passkey-validator` ^5.6.0, `@zerodev/sdk` ^5.5.10, `viem` ^2.56.2,
-Vite ^8.2.2, TypeScript ~6.0.
+**Terbukti:**
+- Registrasi lewat prompt biometrik peramban berhasil; hasilnya `pubX`,
+  `pubY`, `authenticatorId`, `authenticatorIdHash` (nilai bigint harus diubah
+  ke string sebelum di-JSON-kan).
+- Perlu penjaga anti klik ganda — dua panggilan bersamaan membuat prompt
+  bentrok.
+- Perlu polyfill `Buffer` di peramban sebelum impor pustaka ZeroDev.
 
-## Apa yang TERBUKTI
+## Percobaan 2 — smart account + transaksi tersponsori (Next.js, `spike-next/`, 2 Sep siang)
 
-- Registrasi passkey lewat prompt biometrik browser berhasil dan
-  mengembalikan objek berisi `pubX`, `pubY`, `authenticatorId`, dan
-  `authenticatorIdHash` (nilai bigint perlu diubah ke string sebelum
-  di-JSON-kan).
-- Perlu penjaga anti klik ganda — pemanggilan `toWebAuthnKey` dua kali
-  bersamaan membuat prompt bentrok.
-- Perlu polyfill `Buffer` di browser (`globalThis.Buffer = Buffer` dari paket
-  `buffer`) sebelum impor pustaka ZeroDev — tanpa ini gagal di runtime.
-  Dependensi `buffer` waktu itu terpasang di `package.json` **root** (masih
-  ada di sana).
-- `rpId` mengikat passkey ke **satu domain**. Passkey yang dibuat di
-  `localhost` tidak berlaku di domain produksi. Akibat operasionalnya:
-  responden kuesioner mendaftar langsung di domain produksi, dan akun uji
-  coba `localhost` tidak bisa dibawa ke sana.
-- API ZeroDev v3 memakai **satu** URL untuk bundler sekaligus paymaster.
-- Gas policy sudah diaktifkan di dasbor ZeroDev (2 September) — tetap
-  dianggap belum terbukti sampai satu UserOperation tersponsori berhasil.
-- Pelajaran alat: berkas yang dibuat dengan `>`/`>>` di Windows PowerShell
-  5.1 tersimpan UTF-16 dan tidak terbaca git (kejadian nyata pada
-  `.gitignore` pagi ini). Pakai `Set-Content -Encoding utf8`.
+Folder `spike-next/` ada di komputer lokal, **di-gitignore, tidak akan
+di-commit**. Alur kodenya (`src/app/page.tsx`):
 
-## Apa yang BELUM terbukti (bahan keputusan K7)
+1. `toWebAuthnKey` mode Register (seperti percobaan 1).
+2. `toPasskeyValidator(publicClient, { webAuthnKey, entryPoint 0.7,
+   kernelVersion: KERNEL_V3_3, validatorContractVersion: V0_0_3_PATCHED })`.
+3. `createKernelAccount(publicClient, { plugins: { sudo: passkeyValidator },
+   entryPoint, kernelVersion })` → alamat dompet.
+4. `createZeroDevPaymasterClient` + `createKernelAccountClient` dengan
+   `paymaster.getPaymasterData` → `sponsorUserOperation`. Bundler dan
+   paymaster memakai **satu URL** yang sama (`NEXT_PUBLIC_ZERODEV_RPC`).
+5. `kernelClient.sendTransaction({ to: alamat sendiri, value: 0 })` → hash.
 
-- Membuat smart account (kernel) dari hasil `toWebAuthnKey`.
-- Mengirim UserOperation yang **disponsori Paymaster** di Sepolia — klaim
-  "gas policy aktif" belum pernah dibuktikan dengan transaksi nyata.
-- Mode `WebAuthnMode.Login` (masuk kembali dengan passkey yang sudah ada).
+Variabel lingkungan: `NEXT_PUBLIC_ZERODEV_RPC`, `NEXT_PUBLIC_PASSKEY_SERVER_URL`
+(nilainya di `.env`, jangan disalin ke sini).
 
-## Langkah percobaan berikutnya (target ≤ 10 Sep, lihat panduan-pengerjaan.md)
+**Hasil eksekusi: BELUM TERCATAT.** Isi tabel ini begitu dijalankan:
 
-1. Dari passkey terdaftar → buat kernel smart account (perhatikan CLAUDE.md
-   9.2: EntryPoint v0.7, `KERNEL_V3_1`).
-2. Kirim satu UserOperation sederhana yang disponsori → catat hash-nya di
-   `alamat-kontrak.md` sebagai bukti sponsorship.
-3. Coba `WebAuthnMode.Login` di peramban yang sama.
+| Hal | Nilai |
+|---|---|
+| Alamat smart account yang dihasilkan | `[BELUM]` |
+| Hash transaksi tersponsori pertama | `[BELUM]` |
+| Gas terpakai (dari Etherscan) | `[BELUM]` |
+| Waktu konfirmasi | `[BELUM]` |
+| Versi kernel yang terbukti jalan | `[BELUM]` — kode memakai `KERNEL_V3_3`; catatan lama menyebut `KERNEL_V3_1` |
+| Tanggal | `[BELUM]` |
+
+Begitu ada hash: salin ke `alamat-kontrak.md` (baris "bukti sponsor gas") dan
+kunci versi kernel di `CLAUDE.md` Bagian 9.2.
+
+## Temuan umum
+
+- `rpId` mengikat passkey ke **satu domain**. Passkey `localhost` tidak
+  berlaku di domain produksi → responden kuesioner mendaftar langsung di
+  domain produksi; akun uji coba lokal tidak bisa dibawa.
+- Gas policy sudah diaktifkan di dasbor ZeroDev (2 Sep) — tetap dianggap
+  **belum terbukti** sampai satu transaksi tersponsori berhasil.
+- Pelajaran alat: berkas yang dibuat dengan `>`/`>>` di Windows PowerShell 5.1
+  tersimpan UTF-16 dan tidak terbaca git (kejadian nyata pada `.gitignore`).
+  Pakai `Set-Content -Encoding utf8`.
+- Dependensi `buffer` terpasang di `package.json` root.
+
+## Belum terbukti
+
+- Hasil eksekusi percobaan 2 (lihat tabel).
+- Mode `WebAuthnMode.Login` — masuk kembali dengan passkey yang sudah ada.
+
+## Langkah berikutnya (target ≤ 10 Sep)
+
+1. Jalankan percobaan 2 sampai dapat hash, isi tabel di atas.
+2. Coba `WebAuthnMode.Login` di peramban yang sama.
+3. Bawa hasilnya ke keputusan **"siapa pengirim transaksi"** (lihat
+   `keputusan.md`): kalau jalur UserOperation terbukti, itu pilihan utama;
+   kalau macet lebih dari sehari, jatuh ke dompet server untuk kuesioner.
+
+Keputusan terkait di `keputusan.md`: siapa pengirim transaksi; isi tabel
+`passkey_credentials`; bentuk kolom kunci publik.
