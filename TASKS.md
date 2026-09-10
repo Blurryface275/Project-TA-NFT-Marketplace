@@ -43,11 +43,11 @@
 ### 4A. Smart Contract: `TicketContract.sol` Selesai dan Teruji
 *Status saat ini:* Struktur awal sudah dikompilasi (`forge build` sukses), belum ada unit test.
 
-- [ ] **Suite Pengujian Unit Foundry:** Buat `contracts/test/TicketContract.t.sol` untuk menguji fungsi dasar yang sudah ada:
+- [x] **Suite Pengujian Unit Foundry:** Buat `contracts/test/TicketContract.t.sol` untuk menguji fungsi dasar yang sudah ada:
   - Uji sukses dan revert `createEvent` (ID nol, alamat nol, timestamp lampau, event duplikat).
   - Uji sukses dan revert `addCategory` (event tidak ada, harga/kuota nol, kategori duplikat).
   - Uji `setSalesOpen`, `setMarketplace`, dan `setSystemSigner` (hak akses owner/organizer).
-  - **Bukti Selesai:** `forge test` berjalan hijau 100%.
+  - **Bukti Selesai:** `forge test` berjalan hijau 100% (25 tests passed).
 - [ ] **Pencatatan Identitas KYC (`registerIdentity`):**
   - Fungsi untuk mencatat mapping `userIdentities[userWallet] = nikHash`.
   - Hanya dapat dipanggil oleh sistem tepercaya / owner.
@@ -67,7 +67,7 @@
   - Fungsi untuk menandai tiket telah digunakan di lokasi acara (`used = true`).
   - Tolak jika tiket sudah pernah dipakai sebelumnya atau event belum tiba saatnya.
   - **Bukti Selesai:** Test Foundry untuk skenario pemakaian sah dan penolakan tiket ganda.
-- [ ] **Snapshot Gas Smart Contract:** Jalankan `forge snapshot` untuk mencatat konsumsi gas setiap fungsi (bahan Bab 6).
+- [x] **Snapshot Gas Smart Contract:** Jalankan `forge snapshot` untuk mencatat konsumsi gas setiap fungsi (bahan Bab 6). Berkas `.gas-snapshot` telah dihasilkan.
 
 ---
 
