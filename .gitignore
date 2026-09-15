@@ -18,3 +18,6 @@ spike/
 spike-next/
 # Catatan: design/ SENGAJA tidak diabaikan — isinya (erd-nft.mwb, diagram yEd)
 # adalah sumber gambar Bab 3-4 yang harus ikut riwayat git.
+
+# Docs Kerja
+docs/
