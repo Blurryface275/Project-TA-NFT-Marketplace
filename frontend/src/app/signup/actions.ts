@@ -21,7 +21,21 @@ export async function signup(state: FormState, formData: FormData) {
   }
 
   const { name, email, password } = validatedFields.data;
-  console.log("✅ [Signup] Data lolos validasi:", { name, email });
+
+  // Ambil data kriptografi dari passkey.ts (Passkey & Smart Account yang dikirim browser)
+  const pubX = formData.get("pubX") as string; // diubah ke string biar tidak terjadi error type "undefined"
+  const pubY = formData.get("pubY") as string;
+  const credentialId = formData.get("credentialId") as string;
+  const walletAddress = formData.get("walletAddress") as string;
+
+  console.log("============================================");
+  console.log("Nama:", name);
+  console.log("Email:", email);
+  console.log("Public Key (X):", pubX);
+  console.log("Public Key (Y):", pubY);
+  console.log("Credential ID:", credentialId);
+  console.log("Wallet Address:", walletAddress);
+  console.log("============================================");
 
   // Buat user session
   // (Nanti di tahap berikutnya, di sini tempat menyimpan ke MySQL dan mendaftarkan Passkey)
