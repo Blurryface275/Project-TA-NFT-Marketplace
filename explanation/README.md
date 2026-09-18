@@ -49,6 +49,14 @@ Semua penjelasan disusun secara sistematis dan dilengkapi referensi standar resm
   * Analisis bug teknis Next.js: Kenapa `redirect()` di dalam `try...catch` memicu `catch` (`NEXT_REDIRECT` error exception).
   * Penjelasan aturan JavaScript Block Scope (`let response` vs `const response`).
 
+### 📄 [06. Fondasi Smart Contract Solidity & Alur Eksekusi Minting Tiket](./06-smart-contract-fundamentals-and-mint-flow.md)
+* **Topik Utama:**
+  * Bentuk objek tiket di smart contract via kombinasi `struct TicketInfo` dan `mapping`.
+  * Peran dan fungsi kata kunci: `error`, `revert`, `event`, `emit`.
+  * Aturan visibilitas (`external`, `public`, `internal`, `private`) dan mutabilitas (`view`, `pure`).
+  * Optimasi Gas: Alasan variasi tipe data `uint` (Teknik *Struct / Storage Packing* menghemat 20.000 gas).
+  * Simulasi alur eksekusi baris demi baris saat pengguna membeli tiket (`mintTicket`).
+
 ---
 
 ## Panduan Penggunaan untuk Tugas Akhir (TA)
