@@ -1,0 +1,59 @@
+# Index Penjelasan & Dokumentasi Teknis Tugas Akhir (TA)
+
+Folder ini berisi rangkuman teknis, kajian teori, dan pemecahan masalah (*troubleshooting*) dari perdebatan serta diskusi pengembangan sistem **NFT Marketplace Berbasis ERC-4337 Account Abstraction & Passkey Biometrik**.
+
+Semua penjelasan disusun secara sistematis dan dilengkapi referensi standar resmi (Ethereum EIPs, W3C WebAuthn, FIDO Alliance, NestJS, Next.js).
+
+---
+
+## Daftar Dokumen Penjelasan
+
+### 📄 [01. Struktur initCode ERC-4337, Hubungan dengan ERC-1967, & ZeroDev Kernel](./01-erc4337-initcode-and-erc1967.md)
+* **Topik Utama:**
+  * Penjelasan 3 kontrak: `KernelFactory`, `Kernel Implementation`, dan `ERC-1967 Proxy`.
+  * Mitos vs Fakta struktur byte `initCode` (Bukan bytecode akun, melainkan `[factory address] + [calldata]`).
+  * Alasan ERC-4337 tidak menyebut ERC-1967, serta alasan penghematan gas 95% via minimal proxy.
+  * Formula slot memori implementasi ERC-1967 (`0x3608...`).
+
+### 📄 [02. Kriptografi Passkey (WebAuthn) & Perhitungan Alamat Smart Account (Data Riil)](./02-passkey-cryptography-and-address-derivation.md)
+* **Topik Utama:**
+  * Karakteristik kurva eliptik P-256 / secp256r1.
+  * Struktur 96 bytes `enableData` (`pubX` 32B + `pubY` 32B + `authenticatorIdHash` 32B).
+  * Perhitungan bertahap menggunakan data riil akun pengujian (Andi):
+    * Konversi nilai koordinat ke hexadecimal.
+    * Hashing `keccak256` pada byte `authenticatorId`.
+    * Penggabungan 96 bytes data.
+    * Penurunan alamat counterfactual wallet: `0x811aed8154d90B9454AFbe246f167106eF4361Eb`.
+
+### 📄 [03. Panduan Lengkap EVM Opcodes (Operation Codes)](./03-evm-opcodes-guide.md)
+* **Topik Utama:**
+  * Penjelasan fundamental arsitektur EVM sebagai *Stack-based Virtual Machine*.
+  * Apa itu Opcode (instruksi 1 byte `0x00` - `0xFF`) dan bagaimana gas dihitung.
+  * Analisis mendalam opcode penting dalam ERC-4337:
+    * `CREATE2` (`0xF5`) untuk deployment alamat deterministik.
+    * `DELEGATECALL` (`0xF4`) untuk eksekusi logika proxy dan modular validator.
+    * `STATICCALL` (`0xFA`) untuk simulasi validasi UserOperation tanpa modifikasi state.
+    * `SSTORE` / `SLOAD` untuk penyimpanan permanen.
+
+### 📄 [04. Siklus Hidup WebAuthn Passkey (Registrasi vs Login & Perubahan Credential ID)](./04-webauthn-lifecycle-register-vs-login.md)
+* **Topik Utama:**
+  * Menjawab pertanyaan: *"Kenapa credentialId selalu berbeda setiap kali registrasi meskipun emailnya sama?"*.
+  * Perbedaan upacara Registrasi (`navigator.credentials.create`) vs Autentikasi (`navigator.credentials.get`).
+  * Peran chip keamanan hardware (TPM / Secure Enclave) dalam menghasilkan entropi acak baru (*anti-tracking* & *privacy* standar FIDO2).
+  * Penelusuran alur eksekusi baris kode (*call stack trace*) dari UI form Next.js hingga pemanggilan native Web API.
+
+### 📄 [05. Arsitektur Autentikasi Fullstack & Troubleshooting Server Actions](./05-fullstack-auth-architecture-and-troubleshooting.md)
+* **Topik Utama:**
+  * Arsitektur integrasi Next.js 15+ Server Action + NestJS 11 + TypeORM + MySQL.
+  * Alur perjalanan pesan error (Error 409 Conflict & Error 401 Unauthorized) dari backend ke UI via `useActionState`.
+  * Analisis bug teknis Next.js: Kenapa `redirect()` di dalam `try...catch` memicu `catch` (`NEXT_REDIRECT` error exception).
+  * Penjelasan aturan JavaScript Block Scope (`let response` vs `const response`).
+
+---
+
+## Panduan Penggunaan untuk Tugas Akhir (TA)
+
+Dokumen-dokumen ini dapat langsung kamu gunakan sebagai bahan rujukan dan argumentasi untuk:
+1. **Bab 2 (Landasan Teori):** Penjelasan ERC-4337, ERC-1967, EVM Opcodes, dan kurva secp256r1 WebAuthn.
+2. **Bab 3 / 4 (Perancangan & Implementasi Sistem):** Skema 96 bytes `enableData`, penurunan counterfactual address, dan arsitektur autentikasi ganda (Passkey + Session Cookie).
+3. **Persiapan Sidang / Tanya Jawab Dosen Penguji:** Jawaban ilmiah atas pertanyaan kritis mengenai alasan pemilihan arsitektur proxy, cara kerja chip TPM hardware, dan alur eksekusi transaksi.
