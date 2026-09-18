@@ -4,20 +4,6 @@ import { z } from "zod";
 import { createSession, deleteSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 
-// Dummy database
-const testUsers = [
-  {
-    id: "1",
-    email: "steve@gmail.com",
-    password: "12345678",
-  },
-  {
-    id: "2",
-    email: "budi@mail.com",
-    password: "12345678",
-  },
-];
-
 // Zod Schema for Login Form
 const loginSchema = z.object({
   email: z.string().email({ message: "Format email tidak valid" }).trim(),
@@ -38,6 +24,7 @@ export type FormState =
     }
   | undefined;
 
+let resData;
 // Login Action Handler
 export async function login(
   prevState: FormState,
@@ -46,7 +33,10 @@ export async function login(
   const result = loginSchema.safeParse(Object.fromEntries(formData));
 
   if (!result.success) {
-    console.log("⚠️ [Action] Validasi Zod gagal:", result.error.flatten().fieldErrors);
+    console.log(
+      "⚠️ [Action] Validasi Zod gagal:",
+      result.error.flatten().fieldErrors,
+    );
     return {
       errors: result.error.flatten().fieldErrors,
       message: "Input gagal!",
@@ -56,19 +46,41 @@ export async function login(
   const { email, password } = result.data; // result ditampilkan ketika valid
   console.log("📩 [Action] Memproses login untuk email:", email);
 
-  const testUser = testUsers.find((user) => user.email === email);
-  if (!testUser || password !== testUser.password) {
-    console.log("❌ [Action] Kredensial tidak cocok untuk email:", email);
-    return {
-      errors: {
-        email: ["Email atau password salah"],
+  let response;
+  // ambil data (fetch ke backend api login)
+  try {
+    response = await fetch(`${process.env.BACKEND_URL}/api/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        email,
+        password,
+      }),
+    });
+  } catch (error) {
+    console.error("❌ [Action] Terjadi kesalahan network saat login:", error);
+    return {
+      message: "Terjadi kesalahan jaringan, coba lagi",
     };
   }
 
-  console.log("✅ [Action] Kredensial valid, membuat session untuk userId:", testUser.id);
+  // ambil response JSON
+  resData = await response.json();
+  console.log(
+    "✅ [Action] Kredensial valid, membuat session untuk userId:",
+    resData.id,
+  );
+
+  if (!response.ok) {
+    return {
+      message: resData.message || "Gagal login!",
+    };
+  }
+
   // Buat session cookie via helper session yang tadi kamu buat
-  await createSession(testUser.id);
+  await createSession(resData.id.toString());
   // Redirect pengguna ke halaman dashboard
   redirect("/dashboard");
 }

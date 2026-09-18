@@ -2,10 +2,12 @@
 
 import { SignUpFormSchema, FormState } from "@/lib/definitions";
 import { createSession } from "@/lib/session";
+import { register } from "module";
 import { redirect } from "next/navigation";
 
 export async function signup(state: FormState, formData: FormData) {
   // Validasi field form menggunakan skema dari definitions.ts
+  // safeParse fugnsinya untuk mengecek data apakah sudah valid atau belum
   const validatedFields = SignUpFormSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
@@ -20,7 +22,7 @@ export async function signup(state: FormState, formData: FormData) {
     };
   }
 
-  const { name, email, password } = validatedFields.data;
+  const { name, email, password } = validatedFields.data; // validatedFields.data =  ini berisi data yang sudah valid
 
   // Ambil data kriptografi dari passkey.ts (Passkey & Smart Account yang dikirim browser)
   const pubX = formData.get("pubX") as string; // diubah ke string biar tidak terjadi error type "undefined"
@@ -37,10 +39,34 @@ export async function signup(state: FormState, formData: FormData) {
   console.log("Wallet Address:", walletAddress);
   console.log("============================================");
 
-  // Buat user session
-  // (Nanti di tahap berikutnya, di sini tempat menyimpan ke MySQL dan mendaftarkan Passkey)
-  const userId = "user-" + Date.now();
-  await createSession(userId);
+  // Kirim data lengkap ke Backend NestJS
+  const response = await fetch(`${process.env.BACKEND_URL}/api/auth/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name,
+      email,
+      password,
+      pubX,
+      pubY,
+      credentialId,
+      walletAddress,
+    }),
+  });
+
+  const resData = await response.json();
+
+  // Jika Backend menolak (misal: Email udh terdaftar / HTTP 409 conflict)
+  if (!response.ok) {
+    return {
+      message: resData.message || "Registrasi gagal",
+    };
+  }
+
+  // Jika berhasil, simpan ID user asli dari database MySQL ke Cookie Session
+  await createSession(resData.id.toString());
 
   // Redirect pengguna ke dashboard
   redirect("/dashboard");

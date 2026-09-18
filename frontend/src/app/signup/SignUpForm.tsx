@@ -17,10 +17,9 @@ export default function SignUpForm() {
     const form = e.currentTarget;
     const formData = new FormData(form); // buat object formData baru (kosongan)
     const email = formData.get("email") as string;
+    const name = formData.get("name") as string;
+    const password = formData.get("password") as string;
 
-    startTransition(() => {
-      action(formData);
-    });
     if (!email || !name || !password) {
       alert("Harap masukkan email, nama dan/atau password terlebih dahulu!");
       return;
