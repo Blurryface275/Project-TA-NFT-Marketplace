@@ -29,7 +29,7 @@ export class TicketsController {
   }
 
   // Endpoint untuk mengecek status dan kepemilikan tiket on-chain (Gratis Gas)
-  // GET http://localhost:3001/api/tickets/:tokenId
+  // GET http://localhost:3001/api/tickets/1
   @Get(':tokenId') // pakai get karena cuma mau baca data
   async getTicket(@Param('tokenId', ParseIntPipe) tokenId: number) {
     return this.ticketsService.getTicket(tokenId);

@@ -13,8 +13,8 @@ import { TicketsModule } from './tickets/tickets.module';
 
     // konek ke database MySQL
     TypeOrmModule.forRootAsync({
-      imports: [ConfigModule, AuthModule, TicketsModule],
-      inject: [ConfigService],
+      imports: [ConfigModule], // Cukup ConfigModule karena useFactory hanya butuh ConfigService untuk membaca konfigurasi DB dari .env
+      inject: [ConfigService], // ConfigService digunakan sebagai dependensi untuk mengambil nilai dari .env
       useFactory: (configService: ConfigService) => ({
         type: 'mysql',
         host: configService.get<string>('DB_HOST', '127.0.0.1'),

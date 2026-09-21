@@ -89,6 +89,15 @@ Semua penjelasan disusun secara sistematis dan dilengkapi referensi standar resm
   * Mekanisme on-chain penolakan tiket ganda (*Anti-Double-Spend*) dan pembacaan gratis `ownerOf`.
   * Kumpulan tanya-jawab (FAQ) kritis seputar Relayer untuk persiapan sidang Tugas Akhir.
 
+### 📄 [11. Arsitektur HTTP Controller, Modul NestJS, dan Dependency Injection Wiring](./11-tickets-controller-module-and-app-wiring.md)
+* **Topik Utama:**
+  * Analogi restoran: Peran `TicketsController` sebagai pelayan penerima pesanan dan `TicketsModule` sebagai pembatas departemen.
+  * Diagram alur perjalanan HTTP Request dari tombol web Next.js ke method smart contract Sepolia.
+  * Bedah anatomi baris demi baris `tickets.controller.ts` (38 baris) & peran satpam `ParseIntPipe`.
+  * Bedah anatomi baris demi baris `tickets.module.ts` (11 baris): Peran `controllers`, `providers`, dan `exports`.
+  * Bedah anatomi `app.module.ts` (39 baris) & analisa teknis mendalam: Mengapa `TypeOrmModule.forRootAsync` hanya mengimpor `ConfigModule` & `ConfigService` (mencegah bencana *Circular Dependency*).
+  * Tanya-jawab (FAQ) ujian sidang TA seputar alasan pemilihan framework modular NestJS vs Express.js.
+
 ---
 
 ## Panduan Penggunaan untuk Tugas Akhir (TA)
