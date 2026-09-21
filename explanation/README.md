@@ -80,6 +80,15 @@ Semua penjelasan disusun secara sistematis dan dilengkapi referensi standar resm
   * Mengapa Viem mewajibkan `as const` (TypeScript Const Assertion & ABIType Static Type Inference).
   * Perbedaan peran `PublicClient` (Read-Only) vs `WalletClient` (Signing & Transacting).
 
+### 📄 [10. Panduan Lengkap & Mudah Memahami TicketsService (Relayer Transaksi Blockchain)](./10-tickets-service-relayer-deep-dive.md)
+* **Topik Utama:**
+  * Analogi loket konser: Bagaimana pengguna awam (Asep) mendapatkan tiket NFT tanpa perlu membeli koin kripto/gas fee (*Gasless User Experience*).
+  * Konsep "Dua Tangan" Viem: Pemisahan peran `publicClient` (Mata Pengawas, read-only gratis) dan `walletClient` (Tangan Eksekutor, bayar gas admin).
+  * Bedah anatomi baris demi baris: Constructor, `mintTicket`, `redeemTicket`, dan `getTicket`.
+  * Penjelasan teknis: Kenapa wajib `BigInt()`, beda `txHash` vs `receipt`, dan manfaat `error?.shortMessage`.
+  * Mekanisme on-chain penolakan tiket ganda (*Anti-Double-Spend*) dan pembacaan gratis `ownerOf`.
+  * Kumpulan tanya-jawab (FAQ) kritis seputar Relayer untuk persiapan sidang Tugas Akhir.
+
 ---
 
 ## Panduan Penggunaan untuk Tugas Akhir (TA)

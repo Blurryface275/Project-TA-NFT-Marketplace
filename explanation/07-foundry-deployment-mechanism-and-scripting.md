@@ -26,7 +26,7 @@ Secara default, Foundry mengeksekusi kode Solidity hanya di memori komputer loka
 ---
 
 ### B. Inti Deployment: Kata Kunci `new TicketContract()`
-Baris kode inilah yang melahirkan kontrak baru di blockchain:
+Baris kode inilah yang melahirkan kontrak baru di blockchain ([`contracts/script/Deploy.s.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/script/Deploy.s.sol) Baris 17):
 ```solidity
 TicketContract ticket = new TicketContract();
 ```
@@ -71,6 +71,7 @@ Semua data yang diisi dalam script deployment berasal dari aturan yang telah dir
 * **`deployerAddress = vm.addr(deployerPrivateKey)`**: Menghitung alamat publik dari private key tersebut via kurva secp256k1 (menghasilkan `0x8C2CF82F2856...`).
 
 ### B. Parameter Inisialisasi Event (`createEvent`)
+Diambil dari [`contracts/script/Deploy.s.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/script/Deploy.s.sol) (Baris 20–25) yang memanggil [`contracts/src/TicketContract.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/src/TicketContract.sol) (Baris 74–107):
 ```solidity
 uint256 eventId = 1;
 uint64 eventTimestamp = uint64(block.timestamp + 30 days);
@@ -80,19 +81,20 @@ ticket.createEvent(eventId, deployerAddress, eventTimestamp, maxPerWallet);
 1. **`eventId = 1`**: ID unik event perdana (karena `TicketContract.sol` melarang ID nol: `if(eventId == 0) revert ForbiddenZero()`).
 2. **`organizer = deployerAddress`**: Menetapkan dompet deployer sebagai pihak penyelenggara (*organizer*) agar memiliki hak akses membuka atau menutup penjualan tiket (`setSalesOpen`).
 3. **`eventTimestamp = block.timestamp + 30 days`**:
-   Di `TicketContract.sol` terdapat guard clause:
+   Di `TicketContract.sol` (Baris 84–86) terdapat guard clause:
    ```solidity
    if (eventTimestamp <= block.timestamp) revert EventAlreadyPassed();
    ```
    Tanggal konser **wajib berada di masa depan**. Nilai diatur 30 hari ke depan agar status event valid dan aktif.
 4. **`maxPerWallet = 4`**:
-   Diambil dari konstanta unit test di `contracts/test/TicketContract.t.sol` baris 21:
+   Diambil dari konstanta unit test di [`contracts/test/TicketContract.t.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/test/TicketContract.t.sol) Baris 21:
    ```solidity
    uint32 public constant MAX_PER_WALLET = 4;
    ```
    Batas maksimal 4 tiket per dompet untuk mencegah aksi borong calo.
 
 ### C. Parameter Inisialisasi Kategori Tiket (`addCategory`)
+Diambil dari [`contracts/script/Deploy.s.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/script/Deploy.s.sol) (Baris 27–32) yang memanggil [`contracts/src/TicketContract.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/src/TicketContract.sol) (Baris 109–134):
 ```solidity
 uint256 categoryId = 1;
 uint96 price = 150_000;

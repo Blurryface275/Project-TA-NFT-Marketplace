@@ -9,7 +9,7 @@ Dokumen ini mendokumentasikan secara rinci arsitektur objek tiket di smart contr
 Smart Contract Solidity tidak memiliki sistem kelas (*class*) seperti bahasa berorientasi objek (OOP) murni. Untuk merepresentasikan sebuah objek tiket, sistem menggabungkan dua konsep utama: **`struct`** dan **`mapping`**.
 
 ### A. Cetak Biru Tiket (`struct TicketInfo`)
-Didefinisikan di `TicketContract.sol`:
+Didefinisikan di [`contracts/src/TicketContract.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/src/TicketContract.sol) (Baris 43–48):
 ```solidity
 struct TicketInfo {
     uint256 eventId;       // Pengenal event tempat tiket ini berlaku
@@ -20,6 +20,7 @@ struct TicketInfo {
 ```
 
 ### B. Lemari Penyimpanan Tiket (`mapping`)
+Didefinisikan di [`contracts/src/TicketContract.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/src/TicketContract.sol) (Baris 53):
 ```solidity
 mapping(uint256 => TicketInfo) private _tickets;
 ```
@@ -119,9 +120,10 @@ struct TicketInfo {
 
 Misalkan seorang pengguna (Andi) dengan Smart Account `0x811a...` membeli tiket untuk **Event ID 1** dengan **Kategori ID 1 (VIP)**.
 
-Frontend memanggil fungsi:
+Frontend / Backend memanggil fungsi pada [`contracts/src/TicketContract.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/src/TicketContract.sol) (Baris 163–209):
 ```solidity
-TicketContract.mintTicket(to: 0x811a..., eventId: 1, categoryId: 1)
+function mintTicket(address to, uint256 eventId, uint256 categoryId) external returns (uint256)
+// Parameter riil pemanggilan: (to: 0x811a..., eventId: 1, categoryId: 1)
 ```
 
 Berikut alur eksekusi internal di smart contract:

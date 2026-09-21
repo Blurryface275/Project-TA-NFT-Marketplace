@@ -95,7 +95,22 @@ Dalam Tugas Akhir tentang Account Abstraction ini, terdapat beberapa opcode krus
 
 ---
 
-## 5. Sumber & Referensi Resmi
+## 5. Pemetaan Implementasi Opcode Nyata pada Repositori Skripsi
+
+Setiap instruksi opcode di atas diimplementasikan secara nyata pada baris kode proyek ini:
+
+| Opcode | Contoh Baris Kode Nyata | File Sumber & Nomor Baris | Keterangan Eksekusi |
+| :--- | :--- | :--- | :--- |
+| **`CREATE` (`0xF0`)** | `TicketContract ticket = new TicketContract();` | [`contracts/script/Deploy.s.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/script/Deploy.s.sol) (Baris 17) | Foundry men-deploy bytecode kontrak ke Sepolia via transaksi `to: null`. |
+| **`CREATE2` (`0xF5`)** | `KernelFactory.createAccount(...)` | `ZeroDev KernelFactory.sol` | Menghitung alamat dompet Smart Account pengguna secara deterministik (*counterfactual*). |
+| **`SSTORE` (`0x55`)** | `_tickets[tokenId] = TicketInfo(...)`<br>`_tickets[tokenId].used = true;` | [`contracts/src/TicketContract.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/src/TicketContract.sol) (Baris 195–200 & 225) | Menulis data struct tiket NFT baru dan mengubah status check-in ke penyimpanan permanen blockchain. |
+| **`SLOAD` (`0x54`)** | `if (_tickets[tokenId].used)` | [`contracts/src/TicketContract.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/src/TicketContract.sol) (Baris 216) | Membaca status penggunaan tiket dari storage node sebelum mengizinkan penukaran. |
+| **`STATICCALL` (`0xFA`)** | `this.publicClient.readContract({ ... })` | [`backend/src/tickets/tickets.service.ts`](file:///d:/STEVE/Project%20NFT%20Marketplace/backend/src/tickets/tickets.service.ts) (Baris 128 & 136) | Panggilan membaca `getTicket` dan `ownerOf` tanpa bayar gas (read-only). |
+| **`REVERT` (`0xFD`)** | `revert TicketAlreadyUsed(tokenId);` | [`contracts/src/TicketContract.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/src/TicketContract.sol) (Baris 217) | Membatalkan eksekusi secara instan jika tiket sudah pernah dipakai masuk. |
+
+---
+
+## 6. Sumber & Referensi Resmi
 
 1. **Ethereum Yellow Paper (Gavin Wood):**
    * Link: https://ethereum.github.io/yellowpaper/paper.pdf

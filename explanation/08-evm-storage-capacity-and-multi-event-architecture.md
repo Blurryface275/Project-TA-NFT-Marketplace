@@ -38,15 +38,14 @@ Dalam sistem **NFTix**, timbul pertanyaan:
 
 ### Keunggulan Arsitektur Ini untuk Tugas Akhir:
 1. **Keamanan Tertutup Anti-Calo (*Tightly Coupled Allowlist*):**
-   * Di dalam `TicketContract.sol`, fungsi transfer membatasi:
-     ```solidity
-     if (msg.sender != marketplaceAddress) revert NotAuthorized();
-     ```
+   * Di dalam [`contracts/src/TicketContract.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/src/TicketContract.sol) (Baris 50 & 147–153), alamat marketplace didaftarkan secara resmi via `setMarketplace(address _marketplace)`.
+   * Fungsi transfer ERC-721 dibatasi agar hanya kontrak marketplace resmi yang berhak mengeksekusi pemindahan kepemilikan.
    * Akibatnya, tiket NFT ini **mustahil diperjualbelikan di platform pihak ketiga (seperti OpenSea atau Rarible)**. Calo tidak bisa memindahkan atau melelang tiket di luar kendali sistem.
 2. **Kunci Harga Mutlak (*Resale Price-Lock*):**
-   * Saat tiket dijual kembali di pasar sekunder, `MarketplaceContract` membaca langsung parameter `originalPrice` dari `TicketContract`. Calo sama sekali tidak memiliki kolom input untuk menaikkan harga tiket.
+   * Saat tiket dicetak, harga asli disimpan permanen pada `struct TicketInfo` ([`contracts/src/TicketContract.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/src/TicketContract.sol) Baris 46 & 198: `originalPrice = price`).
+   * Saat tiket dijual kembali di pasar sekunder, `MarketplaceContract` membaca langsung parameter `originalPrice` via fungsi `getTicket(tokenId)` (Baris 230–233). Calo sama sekali tidak memiliki kolom input untuk menaikkan harga tiket.
 3. **Efisiensi Deployment:**
-   * Penyelenggara acara (EO) baru tidak perlu mengeluarkan biaya gas besar (~0.05 ETH) untuk mendeploy smart contract baru setiap kali membuat konser. Cukup memanggil fungsi `createEvent` (~0.00005 ETH) pada kontrak master yang sudah ada.
+   * Penyelenggara acara (EO) baru tidak perlu mengeluarkan biaya gas besar (~0.05 ETH) untuk mendeploy smart contract baru setiap kali membuat konser. Cukup memanggil fungsi `createEvent` ([`contracts/src/TicketContract.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/src/TicketContract.sol) Baris 74–107) pada kontrak master yang sudah ada (~0.00005 ETH).
 
 ---
 
