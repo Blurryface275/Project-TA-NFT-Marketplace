@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { TicketsModule } from './tickets/tickets.module';
 
 @Module({
   imports: [
@@ -12,7 +13,7 @@ import { AuthModule } from './auth/auth.module';
 
     // konek ke database MySQL
     TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
+      imports: [ConfigModule, AuthModule, TicketsModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'mysql',
@@ -28,6 +29,8 @@ import { AuthModule } from './auth/auth.module';
 
     // Authmoudle digunakan untuk registrasi dan login
     AuthModule,
+
+    TicketsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
