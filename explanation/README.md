@@ -57,6 +57,29 @@ Semua penjelasan disusun secara sistematis dan dilengkapi referensi standar resm
   * Optimasi Gas: Alasan variasi tipe data `uint` (Teknik *Struct / Storage Packing* menghemat 20.000 gas).
   * Simulasi alur eksekusi baris demi baris saat pengguna membeli tiket (`mintTicket`).
 
+### 📄 [07. Mekanisme Deployment Smart Contract via Foundry & Analisis Script Deploy](./07-foundry-deployment-mechanism-and-scripting.md)
+* **Topik Utama:**
+  * Cara kerja deployment di balik layar: peran `vm.startBroadcast`, kata kunci `new TicketContract()`, dan transaksi `to: null`.
+  * Bagaimana EVM mengeksekusi opcode `CREATE` dan menghitung alamat kontrak via `keccak256(rlp.encode([sender, nonce]))`.
+  * Perbedaan simulasi lokal (*dry-run*) vs transmisi publik (`--broadcast`).
+  * Asal-usul data dan parameter di `Deploy.s.sol` (`eventId`, `eventTimestamp`, `maxPerWallet`, `price`, `quota`).
+
+### 📄 [08. Arsitektur Multi-Event dalam 1 Kontrak & Kapasitas Penyimpanan Storage EVM](./08-evm-storage-capacity-and-multi-event-architecture.md)
+* **Topik Utama:**
+  * Arsitektur pasangan 1 `MarketplaceContract` resmi dengan 1 `TicketContract` master multi-event.
+  * Mekanisme penguncian transfer allowlist dan pembacaan `originalPrice` on-chain (Anti-Scalping).
+  * Analisis kapasitas matematis ruang alamat 256-bit EVM (`2^256 ≈ 1,15 x 10^77` slot storage unik).
+  * Batasan fisik dunia nyata: biaya gas `SSTORE` (20.000 gas), batasan gas per blok, dan kapasitas tipe data struct.
+  * Tabel perbandingan komprehensif antara Database Relasional (MySQL) vs Storage Smart Contract EVM.
+
+### 📄 [09. Integrasi Viem di NestJS, Validasi DTO, dan Standar ABI Smart Contract](./09-viem-integration-dto-validation-and-contract-abi.md)
+* **Topik Utama:**
+  * Arsitektur Relayer: Menghubungkan HTTP API NestJS dengan node blockchain Sepolia.
+  * Peran validasi DTO (`class-validator`) dalam mencegah transaksi gagal dan pemborosan gas fee.
+  * Konsep ABI (Application Binary Interface) sebagai kamus JSON antara runtime JS dan EVM Bytecode.
+  * Mengapa Viem mewajibkan `as const` (TypeScript Const Assertion & ABIType Static Type Inference).
+  * Perbedaan peran `PublicClient` (Read-Only) vs `WalletClient` (Signing & Transacting).
+
 ---
 
 ## Panduan Penggunaan untuk Tugas Akhir (TA)
