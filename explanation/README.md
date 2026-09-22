@@ -106,6 +106,40 @@ Semua penjelasan disusun secara sistematis dan dilengkapi referensi standar resm
   * Analisis troubleshooting: Mengapa Navbar belum muncul di layar (tag flexbox kosong vs penempatan di dalam container centered).
   * Tanya-jawab (FAQ) ujian sidang TA terkait UX Web3 truncation alamat dompet dan progressive enhancement Server Action.
 
+### 📄 [13. Alur Lengkap End-to-End Transaksi Pembelian Tiket NFT](./13-end-to-end-ticket-purchase-flow.md)
+* **Topik Utama:**
+  * Studi kasus konkret menggunakan data riil akun Andi (`name: "Andi Setiawan"`, `walletAddress: "0x811a...61Eb"`).
+  * Diagram alur sekuensial (Sequence Diagram) dari klik tombol "Beli Tiket" di UI hingga penambangan blok Sepolia.
+  * Penelusuran baris kode aktif di setiap file (`BuyTicketCard.tsx` $\rightarrow$ `buy/actions.ts` $\rightarrow$ `session.ts` $\rightarrow$ `mint-ticket.dto.ts` $\rightarrow$ `tickets.controller.ts` $\rightarrow$ `tickets.service.ts` $\rightarrow$ `TicketContract.sol`).
+  * Tabel komprehensif isi nilai nyata di setiap variabel sepanjang perjalanan transaksi.
+  * Jawaban ilmiah ujian sidang TA seputar pencegahan spam klik ganda dan peran penguncian harga `originalPrice` untuk Anti-Scalping.
+
+### 📄 [14. Pola Komunikasi API, Arsitektur RESTful, dan Pola BFF (Backend-for-Frontend)](./14-api-communication-patterns-and-bff-architecture.md)
+* **Topik Utama:**
+  * Arsitektur komunikasi 3 lapis: Server Actions (RPC/BFF) $\rightarrow$ REST API (NestJS) $\rightarrow$ Ethereum JSON-RPC (Sepolia).
+  * Karakteristik REST API murni pada rute `/api/tickets/mint` (Stateless, Resource-based URI, HTTP verbs, JSON representation).
+  * Mengapa browser dilarang langsung memanggil REST API backend: Analisis ancaman *Wallet Spoofing Attack*, kebocoran secret `BACKEND_URL`, dan perlindungan XSS HttpOnly Cookie.
+  * Perbedaan mendasar arsitektur REST API vs Ethereum JSON-RPC 2.0 (`eth_sendRawTransaction`).
+  * Tabel komparasi 3 pola komunikasi dan tanya-jawab kritis (FAQ) ujian sidang skripsi.
+
+### 📄 [15. Verifikasi Smart Contract di Etherscan dan Mekanisme Kerja Block Explorer](./15-smart-contract-verification-and-block-explorer-internals.md)
+* **Topik Utama:**
+  * Misteri Etherscan: Mengapa hanya terbaca "1 NFTIX" dan mengapa tab Read/Write Contract awalnya tidak ada.
+  * Mengapa Backend NestJS (`/api/tickets/1`) bisa langsung membaca data tiket sebelum verifikasi (peran `ticket-abi.ts`).
+  * Bedah mendalam setiap kolom form verifikasi Etherscan: Single file vs multi-part, versi compiler commit hash, license SPDX, optimization runs 200, EVM cancun, dan constructor arguments.
+  * Cara kerja algoritma pencocokan bytecode (*Bytecode Matching*) dan pemisahan metadata CBOR IPFS hash.
+  * Standar `tokenURI` (JSON metadata) untuk visualisasi poster gambar tiket di OpenSea dan MetaMask.
+  * Tanya-jawab kritis (FAQ) sidang skripsi seputar prinsip *Trustless Environment* di Web3.
+
+### 📄 [16. Integritas Data, Single Source of Truth, dan Mekanisme Anti-Fraud pada Arsitektur Hybrid Web2.5](./16-data-integrity-single-source-of-truth-and-anti-fraud.md)
+* **Topik Utama:**
+  * Pemisahan kasta data: Kasta Kritis On-Chain (`ownerOf`, `eventId`, `categoryId`, `originalPrice`, `used`) vs Kasta Visual Off-Chain (MySQL/IPFS).
+  * Simulasi penyerangan nyata 1: Manipulasi database kepemilikan oleh admin nakal dan mengapa selalu gagal di hadapan smart contract.
+  * Simulasi penyerangan nyata 2: *Visual Event Spoofing* (mengubah nama tiket murah menjadi konser VIP mahal) dan mekanisme pertahanan ganda scanner gerbang + `markUsed` on-chain revert.
+  * Diagram sekuensial verifikasi gerbang masuk (Gate Access Control Sequence Diagram).
+  * Strategi penguncian metadata lanjutan via IPFS CID Hashing (`ipfs://Qm...`).
+  * Tabel ketahanan sistem terhadap 5 vektor serangan dunia nyata & FAQ sidang skripsi.
+
 ---
 
 ## Panduan Penggunaan untuk Tugas Akhir (TA)
