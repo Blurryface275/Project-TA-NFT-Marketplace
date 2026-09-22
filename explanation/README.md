@@ -98,6 +98,14 @@ Semua penjelasan disusun secara sistematis dan dilengkapi referensi standar resm
   * Bedah anatomi `app.module.ts` (39 baris) & analisa teknis mendalam: Mengapa `TypeOrmModule.forRootAsync` hanya mengimpor `ConfigModule` & `ConfigService` (mencegah bencana *Circular Dependency*).
   * Tanya-jawab (FAQ) ujian sidang TA seputar alasan pemilihan framework modular NestJS vs Express.js.
 
+### 📄 [12. Arsitektur Frontend Navbar, Server Component Session, dan Layouting Next.js](./12-frontend-navbar-layout-and-session.md)
+* **Topik Utama:**
+  * Alasan teknis Navbar dirancang sebagai Server Component (Zero Bundle Size & No Layout Shift).
+  * Bedah baris demi baris `session.ts`: Penyimpanan `name` & `walletAddress` di cookie JWT untuk menghindari waterfall fetch.
+  * Bedah baris demi baris `Navbar.tsx`: Helper pemotong dompet `formatAddress`, Optional Chaining `?.`, dan styling Tailwind CSS (sticky, glassmorphism).
+  * Analisis troubleshooting: Mengapa Navbar belum muncul di layar (tag flexbox kosong vs penempatan di dalam container centered).
+  * Tanya-jawab (FAQ) ujian sidang TA terkait UX Web3 truncation alamat dompet dan progressive enhancement Server Action.
+
 ---
 
 ## Panduan Penggunaan untuk Tugas Akhir (TA)

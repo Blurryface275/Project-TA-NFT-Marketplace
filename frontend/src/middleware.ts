@@ -7,7 +7,7 @@ const publicRoutes = ["/login", "/signup"]; // biar bisa dimasuki tanpa autentik
 
 export default async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
-  const isProtectedRoute = protectedRoutes.includes(path);
+  const isProtectedRoute = path.startsWith('/dashboard');
   const isPublicRoute = publicRoutes.includes(path);
 
   // 2. Baca cookie session langsung dari request

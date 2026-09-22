@@ -10,6 +10,8 @@ const encodedKey = new TextEncoder().encode(secretKey);
 type SessionPayload = {
   userId: string;
   expiresAt: Date;
+  name?: string; // we need name for display on Navbar
+  walletAddress?: string; // we need walletAddress for display on Profile
 };
 
 // encryption funciton to create JWT from Payload
@@ -20,7 +22,10 @@ export async function encrypt(payload: SessionPayload) {
     .setIssuedAt()
     .setExpirationTime(payload.expiresAt)
     .sign(encodedKey);
-  console.log("🔑 [Session] JWT Token berhasil dibuat:", token.slice(0, 25) + "...");
+  console.log(
+    "🔑 [Session] JWT Token berhasil dibuat:",
+    token.slice(0, 25) + "...",
+  );
   return token;
 }
 
@@ -45,7 +50,11 @@ export async function decrypt(session: string | undefined) {
 }
 
 // creating session and store it into HttpOnly Cookie
-export async function createSession(userId: string) {
+export async function createSession(
+  userId: string,
+  name?: string,
+  walletAddress?: string,
+) {
   console.log("🚀 [Session] Memulai createSession untuk userId:", userId);
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
   const session = await encrypt({ userId, expiresAt });
@@ -57,7 +66,9 @@ export async function createSession(userId: string) {
     maxAge: 60 * 60 * 24 * 7, // 7 days
     path: "/",
   });
-  console.log("🍪 [Session] Cookie 'session' berhasil disimpan ke HttpOnly cookie!");
+  console.log(
+    "🍪 [Session] Cookie 'session' berhasil disimpan ke HttpOnly cookie!",
+  );
 }
 
 // function to delete cookie session when logout
@@ -67,3 +78,12 @@ export async function deleteSession() {
   cookieStore.delete("session");
   console.log("👋 [Session] Cookie session telah dihapus (User logged out)");
 }
+
+// function to read session payload in Server Components
+// cookie vs session : cookie = penyimpanan sementara, session = penyimpanan permanen
+export async function getSession() {
+  const cookieStore = await cookies();
+  const cookie = cookieStore.get("session")?.value;
+  return await decrypt(cookie);
+}
+

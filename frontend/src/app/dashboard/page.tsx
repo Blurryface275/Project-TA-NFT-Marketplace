@@ -2,7 +2,7 @@ import { logout } from "../login/actions";
 
 export default function DashboardPage() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
+    <div className="flex flex-col items-center justify-center p-6 min-h-[calc(100vh-4rem)]">
       <div className="w-full max-w-md p-6 bg-card border rounded-xl shadow-sm text-center flex flex-col gap-4">
         <div className="text-4xl">🎉</div>
         <h1 className="text-2xl font-bold text-foreground">
@@ -17,12 +17,12 @@ export default function DashboardPage() {
         <form action={logout} className="mt-2">
           <button
             type="submit"
-            className="w-full bg-red-600 text-white font-medium py-2 px-4 rounded-md hover:bg-red-700 transition"
+            className="w-full bg-red-600 text-white font-medium py-2 px-4 rounded-md hover:bg-red-700 transition cursor-pointer"
           >
             Logout
           </button>
         </form>
       </div>
-    </main>
+    </div>
   );
 }

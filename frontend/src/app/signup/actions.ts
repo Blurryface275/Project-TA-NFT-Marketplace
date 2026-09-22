@@ -66,7 +66,7 @@ export async function signup(state: FormState, formData: FormData) {
   }
 
   // Jika berhasil, simpan ID user asli dari database MySQL ke Cookie Session
-  await createSession(resData.id.toString());
+  await createSession(resData.id.toString(), resData.name, resData.walletAddress);
 
   // Redirect pengguna ke dashboard
   redirect("/dashboard");
