@@ -66,10 +66,10 @@ export default function BuyTicketCard({ walletAddress }: BuyTicketCardProps) {
           </span>
         </div>
 
-        <h2 className="text-2xl font-bold text-white mt-3">UBAYA Music Fest 2026</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Konser Musik UBAYA
-        </p>
+        <h2 className="text-2xl font-bold text-white mt-3">
+          UBAYA Music Fest 2026
+        </h2>
+        <p className="text-sm text-muted-foreground mt-1">Konser Musik UBAYA</p>
 
         {/* Informasi Jadwal & Lokasi */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6 pt-4 border-t border-border/40 text-sm">
@@ -89,17 +89,28 @@ export default function BuyTicketCard({ walletAddress }: BuyTicketCardProps) {
         {/* Detail Harga & Kuota */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-muted/40 border border-border/60">
           <div>
-            <span className="text-xs text-muted-foreground block">Harga Tiket</span>
-            <span className="text-lg font-bold text-foreground">Rp 150.000</span>
+            <span className="text-xs text-muted-foreground block">
+              Harga Tiket
+            </span>
+            <span className="text-lg font-bold text-foreground">
+              Rp 150.000
+            </span>
           </div>
           <div>
-            <span className="text-xs text-muted-foreground block">Gas Fee (Jaringan)</span>
+            <span className="text-xs text-muted-foreground block">
+              Gas Fee (Jaringan)
+            </span>
             <span className="text-lg font-bold text-emerald-500 flex items-center gap-1">
-              Rp 0 <span className="text-xs font-normal text-muted-foreground">(Gasless)</span>
+              Rp 0{" "}
+              <span className="text-xs font-normal text-muted-foreground">
+                (Gasless)
+              </span>
             </span>
           </div>
           <div className="col-span-2 sm:col-span-1">
-            <span className="text-xs text-muted-foreground block">Maksimal per Dompet</span>
+            <span className="text-xs text-muted-foreground block">
+              Maksimal per Dompet
+            </span>
             <span className="text-lg font-bold text-foreground">4 Tiket</span>
           </div>
         </div>
@@ -110,7 +121,10 @@ export default function BuyTicketCard({ walletAddress }: BuyTicketCardProps) {
             <Wallet className="h-4 w-4 text-primary shrink-0" />
             <span>Penerima NFT:</span>
           </div>
-          <span className="font-mono text-foreground font-medium truncate max-w-[240px] sm:max-w-none" title={walletAddress}>
+          <span
+            className="font-mono text-foreground font-medium truncate max-w-[240px] sm:max-w-none"
+            title={walletAddress}
+          >
             {walletAddress}
           </span>
         </div>
@@ -119,7 +133,9 @@ export default function BuyTicketCard({ walletAddress }: BuyTicketCardProps) {
         <div className="flex items-start gap-2.5 text-xs text-muted-foreground bg-primary/5 p-3 rounded-lg border border-primary/10">
           <ShieldCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
           <span>
-            Tiket ini dicetak langsung ke blockchain Ethereum (Sepolia). Tiket dilindungi oleh aturan anti-tengkulak, menjamin keaslian dan mencegah pemalsuan kode QR.
+            Tiket ini dicetak langsung ke blockchain Ethereum (Sepolia). Tiket
+            dilindungi oleh aturan anti-tengkulak, menjamin keaslian dan
+            mencegah pemalsuan kode QR.
           </span>
         </div>
 
@@ -128,7 +144,10 @@ export default function BuyTicketCard({ walletAddress }: BuyTicketCardProps) {
           <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 space-y-3 animate-in fade-in">
             <div className="flex items-center gap-2 font-semibold text-sm">
               <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-              <span>{result.message || "Tiket berhasil dicetak di jaringan Sepolia!"}</span>
+              <span>
+                {result.message ||
+                  "Tiket berhasil dicetak di jaringan Sepolia!"}
+              </span>
             </div>
             <div className="text-xs space-y-1 font-mono text-muted-foreground pl-7">
               {result.blockNumber && (
@@ -180,12 +199,14 @@ export default function BuyTicketCard({ walletAddress }: BuyTicketCardProps) {
           {isLoading ? (
             <>
               <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Menambang di Sepolia... (tunggu ~10-15 dtk)</span>
+              <span>Loading...</span>
             </>
           ) : (
             <>
               <Ticket className="h-5 w-5" />
-              <span>{result?.success ? "Beli Tiket Lagi" : "Beli Tiket Sekarang"}</span>
+              <span>
+                {result?.success ? "Beli Tiket Lagi" : "Beli Tiket Sekarang"}
+              </span>
             </>
           )}
         </button>

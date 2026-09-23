@@ -140,6 +140,17 @@ Semua penjelasan disusun secara sistematis dan dilengkapi referensi standar resm
   * Strategi penguncian metadata lanjutan via IPFS CID Hashing (`ipfs://Qm...`).
   * Tabel ketahanan sistem terhadap 5 vektor serangan dunia nyata & FAQ sidang skripsi.
 
+### 📄 [17. Dynamic QR Code Berbasis Tanda Tangan WebAuthn Passkey, Timer Kedaluwarsa, dan Protokol Verifikasi Gerbang Masuk](./17-dynamic-qr-webauthn-signature-and-gate-redemption.md)
+* **Topik Utama:**
+  * Bahaya tiket statis: Analisis kerentanan *Screenshot Fraud*, *Replay Attack*, dan manipulasi HTML di browser.
+  * Arsitektur Dynamic QR Code: Kombinasi Token ID, wallet address, Nonce CSPRNG, Timestamp ISO, dan Hardware Passkey Signature.
+  * Diagram alur Swimlane (BPMN) Gate Access Control dari penekanan tombol, chip TPM/Secure Enclave, scanner gerbang, hingga Sepolia.
+  * Penelusuran variabel baris demi baris (Traceability Matrix) pada `TicketCard.tsx` dengan contoh data konkret Tiket #1.
+  * Alasan teknis konversi string ke `ArrayBuffer` biner untuk WebAuthn dan konversi signature biner ke string Hexadecimal `0x...`.
+  * Siklus hidup countdown timer 60 detik (*Anti-Screenshot Defense*) dan pembersihan memori (*cleanup function*).
+  * Alur eksekusi on-chain `markUsed` via Relayer dan pembuktian matematis *Anti-Double-Spend*.
+  * Kumpulan tanya-jawab kritis (FAQ) sidang Tugas Akhir seputar batas waktu 60 detik dan multi-modal Passkey.
+
 ---
 
 ## Panduan Penggunaan untuk Tugas Akhir (TA)
