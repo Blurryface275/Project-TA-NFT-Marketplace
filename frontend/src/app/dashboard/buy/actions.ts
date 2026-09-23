@@ -6,12 +6,14 @@ export type BuyTicketState = { // ini adalah data yang akan dikirimkan nanti
     success?: boolean;
     message?: string;
     txHash?: string;
+    txHashes?: string[];
     blockNumber?: number;
 };
 
 export async function buyTicketAction(
     eventId: number,
-    categoryId: number
+    categoryId: number,
+    quantity: number = 1
 ): Promise<BuyTicketState>{
     // ambil data session pengguna yang sedang login
     const session = await getSession();
@@ -27,9 +29,10 @@ export async function buyTicketAction(
     const userWalletAddress = session.walletAddress;
     const eventIdNumber = Number(eventId);
     const categoryIdNumber = Number(categoryId);
+    const qtyNumber = Number(quantity) || 1;
 
    try{
-    console.log(`[BUY ACTION] User ${userId} (wallet: ${userWalletAddress}) is buying ticket for event ${eventIdNumber} and category ${categoryIdNumber}`);
+    console.log(`[BUY ACTION] User ${userId} (wallet: ${userWalletAddress}) is buying ${qtyNumber} ticket(s) for event ${eventIdNumber} and category ${categoryIdNumber}`);
 
     // Panggil API Backend Relayer
     const response = await fetch(`${process.env.BACKEND_URL}/api/tickets/mint`,{
@@ -41,6 +44,7 @@ export async function buyTicketAction(
             walletAddress: session.walletAddress,
             eventId: eventId,
             categoryId: categoryId,
+            quantity: qtyNumber,
         }),
     });
 
@@ -58,6 +62,7 @@ export async function buyTicketAction(
         success: true, 
         message: resData.message,
         txHash: resData.txHash,
+        txHashes: resData.txHashes,
         blockNumber: resData.blockNumber,
     };
    }

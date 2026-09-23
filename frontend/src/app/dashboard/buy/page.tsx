@@ -11,6 +11,23 @@ export default async function BuyTicketPage() {
     redirect("/login");
   }
 
+  // Ambil data tiket yang sudah dimiliki user dari backend relayer
+  let ownedCount = 0;
+  try {
+    const res = await fetch(
+      `${process.env.BACKEND_URL}/api/tickets/my-tickets/${session.walletAddress}`,
+      { cache: "no-store" }
+    );
+    if (res.ok) {
+      const tickets = await res.json();
+      if (Array.isArray(tickets)) {
+        ownedCount = tickets.length;
+      }
+    }
+  } catch (err) {
+    console.error("Gagal mengambil data tiket user:", err);
+  }
+
   return (
     <div className="container max-w-4xl mx-auto px-4 py-8 sm:py-12 space-y-6">
       {/* Heading Halaman */}
@@ -24,7 +41,10 @@ export default async function BuyTicketPage() {
       </div>
 
       {/* Kartu Pembelian Tiket Interaktif */}
-      <BuyTicketCard walletAddress={session.walletAddress} />
+      <BuyTicketCard
+        walletAddress={session.walletAddress as string}
+        initialOwnedCount={ownedCount}
+      />
     </div>
   );
 }

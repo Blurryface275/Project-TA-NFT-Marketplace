@@ -116,8 +116,11 @@
 - [ ] **Modul KYC Identitas:**
   - Endpoint upload foto KTP dan input data identitas.
   - Pembuatan hash NIK satu arah (`bytes32`) dan pemanggilan fungsi on-chain `registerIdentity()`.
-- [ ] **Modul Katalog Event & Kategori:**
-  - Endpoint daftar event aktif, detail event, kuota kategori tiket, dan riwayat transaksi.
+- [ ] **Modul Katalog & Manajemen Event/Kategori (Backend):**
+  - Endpoint `POST /api/events`: Pendaftaran event baru off-chain & pemanggilan on-chain `createEvent()`.
+  - Endpoint `POST /api/events/:id/categories`: Penambahan kategori tiket off-chain & pemanggilan on-chain `addCategory()`.
+  - Endpoint `GET /api/events`: Mengambil daftar seluruh event aktif untuk katalog multi-event.
+  - Endpoint `GET /api/events/:id`: Mengambil rincian detail event, daftar kategori, sisa kuota, dan informasi zona kursi.
 - [ ] **Integrasi Midtrans Sandbox:**
   - Endpoint inisiasi transaksi dan perolehan Snap Token.
   - Endpoint webhook Midtrans berulang yang idempoten (mencegah pencetakan ganda saat menerima notifikasi ganda).
@@ -131,11 +134,10 @@
 - [ ] **Modul Penjualan Kembali (Resale API):**
   - Endpoint listing tiket milik pengguna ke marketplace, pengambilan katalog resale aktif, dan webhook penyelesaian pembelian resale.
   - Skema biaya administrasi: pemotongan saldo penjual dan penambahan biaya admin pada pembeli yang dialokasikan sebagai dana subsidi gas fee Paymaster.
-- [ ] **Modul Pemulihan Akun (Account Recovery API):**
-  - Pendaftaran public key / address backup validator (secp256k1) saat registrasi akun.
-  - Endpoint verifikasi signature recovery via `ECDSA.recover` untuk mencocokkan address validator cadangan on-chain.
-  - Pengiriman email konfirmasi faktor kedua (2FA).
-  - Eksekusi penggantian validator utama smart account dengan public key passkey baru setelah 2FA disetujui.
+- [ ] **Generator & Verifikator Tanda Tangan EIP-712 (Backend Service):**
+  - Pembuatan tanda tangan data terstruktur bertipe EIP-712 (*typed structured data*) menggunakan private key `systemSigner` via Viem `signTypedData`.
+  - Struktur voucher: `TicketVoucher { buyer, eventId, categoryId, nonce, deadline }`.
+  - Validasi batas waktu kedaluwarsa voucher dan pencegahan manipulasi parameter tiket sebelum diteruskan ke smart contract.
 
 ---
 
@@ -144,37 +146,60 @@
 - [ ] **Inisialisasi Next.js 16 (App Router):**
   - Penyiapan antarmuka responsif dan modern (desain clean, modern UI).
 - [ ] **Antarmuka Registrasi, Login & Passkey:**
-  - Halaman pendaftaran email, aktivasi verifikasi email, pendaftaran biometrik/passkey via browser WebAuthn API, dan formulir verifikasi KYC KTP.
-  - Tampilan modal seed phrase BIP-39 (12 kata) yang ditampilkan **sekali** untuk disimpan pengguna, serta penurunan kunci secp256k1 di browser untuk mendaftarkan backup validator on-chain.
-- [ ] **Halaman Pemulihan Akun (Account Recovery Page):**
-  - Halaman khusus (terpisah dari login biasa) untuk memasukkan email dan mengetik ulang 12 kata seed phrase BIP-39.
-  - Penurunan kembali private key secp256k1 di sisi browser, penandatanganan pesan otorisasi penggantian passkey, pendaftaran passkey baru di perangkat baru, dan verifikasi tautan email konfirmasi 2FA.
-- [ ] **Halaman Katalog & Detail Event:**
-  - Tampilan event, banner, jadwal, sisa kuota, dan harga per kategori.
+  - Halaman pendaftaran email, aktivasi verifikasi email, pendaftaran biometrik/passkey via browser WebAuthn API (NIST P-256), dan formulir pengikatan KYC KTP (`identityHash`).
+- [ ] **Dashboard Admin & Penyelenggara Acara (`/dashboard/admin`):**
+  - Antarmuka pembuatan event baru (judul, deskripsi, tanggal/waktu, lokasi, kuota per akun) dengan eksekusi `createEvent` on-chain.
+  - Antarmuka pembuatan kategori tiket (nama kategori, harga resmi, kuota, tipe zona/kursi) dengan eksekusi `addCategory` on-chain.
+  - Integrasi akses staf ke pemindai gerbang masuk (`/dashboard/verify`).
+- [ ] **Halaman Katalog Multi-Event (`/dashboard/events`):**
+  - Tampilan penjelajahan multi-event dengan grid kartu event dinamis, pencarian, dan filter kategori.
+- [x] **Halaman Pembelian Tiket (`/dashboard/buy` atau `/dashboard/events/[id]`):**
+  - Tampilan detail event, harga, relayer gasless, dan ringkasan kuota.
+  - Komponen pemilih kategori tiket dinamis (VIP, Festival, CAT 1).
+  - Komponen pemilihan kursi/zona (Numbered Seat / Free Standing).
+  - Komponen pemilih jumlah pembelian tiket (kuantiti 1 atau 2) dengan kalkulasi total bayar otomatis.
+  - Pembatasan ketat kuota anti-scalping: maksimal 2 tiket per akun dompet (divalidasi on-chain via `balanceOf` di NestJS relayer).
+  - Penanganan status kuota penuh: tombol otomatis dinonaktifkan jika akun telah mencapai batas kepemilikan 2 tiket.
 - [ ] **Modal Checkout & Pembayaran:**
   - Integrasi komponen Cloudflare Turnstile widget.
   - Pemanggilan popup Midtrans Snap untuk pembayaran fiat simulasi (QRIS/VA).
-- [ ] **Dashboard "Tiket Saya":**
-  - Daftar tiket NFT yang dimiliki pengguna beserta metadata dari IPFS.
-  - Tampilan QR E-Ticket dinamis untuk ditunjukkan saat verifikasi masuk venue.
+- [x] **Dashboard "Tiket Saya" (`/dashboard/tickets`):**
+  - Menampilkan daftar tiket NFT milik pengguna dari smart contract Sepolia via backend relayer.
+  - Implementasi Dynamic QR Code berbasis WebAuthn Passkey (NIST P-256 / ECDSA signature $r$ dan $s$).
+  - Pertahanan Anti-Screenshot: Countdown timer 60 detik dengan auto-expiry.
+  - Pertahanan Anti-Replay: Nonce CSPRNG 32-bit (`crypto.getRandomValues`).
+  - Tombol aksi Redeem Tiket on-chain (`markUsed`) dengan validasi kepemilikan.
 - [ ] **Antarmuka Jual Kembali (Resale Hub):**
   - Tombol jual tiket dengan konfirmasi harga terkunci (`originalPrice`).
   - Halaman penjelajahan tiket pasar sekunder bagi pembeli lain dengan rincian biaya admin.
-- [ ] **Panel Verifikasi Tiket di Lokasi Acara (Venue Staff Tool):**
-  - Antarmuka pemindai QR E-Ticket dan pemindai KTP fisik (OCR/scan NIK).
-  - Alur verifikasi identitas: sistem membaca NIK -> menghitung hash NIK -> mencocokkan ke database dan kepemilikan token on-chain (`userIdentities[ownerOf(tokenId)] == nikHash`).
-  - Jika cocok: sistem mengeksekusi pemanggilan on-chain `markUsed(tokenId)`. Jika tidak cocok: akses masuk ditolak.
+- [ ] **Panel Verifikasi Tiket di Lokasi Acara (Venue Staff Tool & Gate Scanner - `/dashboard/verify`):**
+  - [ ] **Komponen Kamera & Pemindai QR:** Antarmuka pemindai berbasis video feed browser (`html5-qrcode` / video canvas).
+  - [ ] **Alur Verifikasi Dual Scan (2-Step Gate Verification):**
+    - [ ] **Scan Ke-1 (Dynamic QR Tiket dari Layar HP):**
+      - Parsing JSON payload: `tokenId`, `eventId`, `walletAddress`, `nonce`, `signedAt`, `expiresInSeconds`, `signature: { r, s }`.
+      - Validasi masa kedaluwarsa signature ($\le 60$ detik) sebagai proteksi *anti-screenshot*.
+      - Validasi keunikan nonce CSPRNG (*anti-replay attack* via temporary memory cache).
+      - Validasi tanda tangan kriptografi WebAuthn $(r, s)$ terhadap public key $(X, Y)$ pemilik tiket.
+      - Pengecekan status kepemilikan dan keterpakaian tiket secara on-chain (`used == false`).
+    - [ ] **Scan Ke-2 (KTP Fisik Penonton - Barcode / NIK):**
+      - Transisi UI otomatis: sistem meminta staf gate memindai barcode KTP fisik atau input 16 digit NIK.
+      - Penghitungan instan `calculatedHash = keccak256(toUtf8Bytes(nik))` langsung di memori sementara (*ephemeral RAM*).
+      - Sanitasi memori: NIK mentah langsung dibuang seketika dari RAM tanpa pernah dicatat ke database atau disk (Kepatuhan UU PDP No. 27/2022).
+    - [ ] **Pencocokan Identitas Kriptografis Zero-Knowledge & Eksekusi On-Chain:**
+      - Pencocokan deterministik: `calculatedHash === identityHash` (dari DB / mapping `userIdentities[walletAddress]`).
+      - Jika identitas cocok dan tiket belum pernah dipakai: Panggil relayer backend `POST /api/tickets/redeem` untuk menjalankan transaksi on-chain `markUsed(tokenId)` di Sepolia Testnet.
+      - Tampilan respon visual: Indikator Hijau (*"AKSES DIIZINKAN - SELAMAT MENIKMATI ACARA"*) atau Indikator Merah (*"AKSES DITOLAK: Identitas KTP Tidak Cocok / Tiket Sudah Digunakan"*).
 
 ---
 
 ## Tahap 5 — Uji Coba & Evaluasi Sistem (Bab 6)
 
 ### 5A. Verifikasi Fungsional & Keamanan (Otomatis & Testnet)
-- [ ] **Uji Fungsional Alur Utama & Pemulihan:** Registrasi (passkey + seed phrase), Pembelian Reguler, Resale, Verifikasi Venue, dan Pemulihan Akun di perangkat baru tercatat lengkap di matriks pengujian.
+- [ ] **Uji Fungsional Alur Utama:** Registrasi Passkey, Pembelian Tiket, Resale Hub, dan Verifikasi Venue tercatat lengkap di matriks pengujian.
+- [ ] **Uji Keamanan Otorisasi EIP-712:** Percobaan minting langsung tanpa tanda tangan sah dari `systemSigner` atau dengan signature kedaluwarsa/terpakai terbukti gagal (*revert*).
 - [ ] **Uji Keamanan Pembatasan Transfer Allowlist:** Percobaan transfer NFT secara langsung antar dompet via RPC/Etherscan terbukti gagal (*revert*).
 - [ ] **Uji Keamanan Resale Price-Lock:** Percobaan mengubah atau me-markup harga listing pasar sekunder terbukti gagal (*revert*).
 - [ ] **Uji Pembuktian Kepemilikan Pribadi:** Membuktikan bahwa pengguna dapat memverifikasi kepemilikan tiket on-chain secara mandiri.
-- [ ] **Uji Keamanan Alur Recovery:** Percobaan recovery dengan seed phrase salah atau tanpa konfirmasi email 2FA terbukti ditolak.
 - [ ] **Pengukuran Performa On-Chain:**
   - Pengukuran konsumsi gas (*gas cost*) per fungsi smart contract (via Foundry snapshot).
   - Pengukuran waktu konfirmasi transaksi minting di Sepolia Testnet (rata-rata detik).

@@ -32,6 +32,17 @@ interface TicketCardProps {
   ticket: TicketData; // menerima data tiket
 }
 
+// Helper generator Nonce berbasis CSPRNG (Cryptographically Secure Pseudo-Random Number Generator)
+// Mengambil entropy fisik langsung dari OS / Hardware via Web Crypto API (crypto.getRandomValues)
+function getCSPRNGNonce(): number {
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    const buffer = new Uint32Array(1); // menyiapkan wadah memorinya untuk integer 32 bit
+    crypto.getRandomValues(buffer); // isi memori dengan entropi dari hardware / OS 
+    return buffer[0]; // Integer acak 32-bit (0 s/d 4.294.967.295) tahan prediksi serangan
+  }
+  return Math.floor(Math.random() * 1000000);
+}
+
 export default function TicketCard({ ticket }: TicketCardProps) {
   // ini kita pakai TIcketCardProps sbg tipe data yg masuk ke komponen
 
@@ -41,9 +52,7 @@ export default function TicketCard({ ticket }: TicketCardProps) {
   const [isSigning, setIsSigning] = useState(false);
   const [signature, setSignature] = useState<string>("");
   const [timeLeft, setTimeLeft] = useState<number>(60); // waktu dihitung sbeannyak 60 detik
-  const [nonce, setNonce] = useState<number>(() =>
-    Math.floor(Math.random() * 1000000),
-  );
+  const [nonce, setNonce] = useState<number>(() => getCSPRNGNonce());
   const [signedAt, setSignedAt] = useState<string>("");
   const [result, setResult] = useState<RedeemTicketState | null>(null);
 
@@ -72,8 +81,8 @@ export default function TicketCard({ ticket }: TicketCardProps) {
     setIsSigning(true);
 
     try {
-      // generate payload data QR
-      const currentNonce = Math.floor(Math.random() * 1000000);
+      // generate payload data QR dengan Nonce CSPRNG (Cryptographically Secure Pseudo-Random Number Generator)
+      const currentNonce = getCSPRNGNonce();
       const currentTime = new Date().toISOString();
       const challengeStr = `NFTIX-AUTH:Token#${ticket.tokenId}:Owner#${ticket.owner}:Nonce#${currentNonce}:Time#${currentTime}`; // ini challenge gabungan dari berbagai properti ticket
 
@@ -85,6 +94,10 @@ export default function TicketCard({ ticket }: TicketCardProps) {
           // fungsi challengeBuffer di sini adalah untuk mengubah data dari String → ArrayBuffer
           // ArrayBuffer adalah format representasi biner mentah yang wajib diterima oleh WebAuthn API
           const challengeBuffer = new TextEncoder().encode(challengeStr);
+          console.log("[WEBAUTHN] 1. Challenge String:", challengeStr);
+          console.log("[WEBAUTHN] 2. Challenge Buffer (Uint8Array mentah):", challengeBuffer);
+
+          // assertion ini akan menerima tandatangan dari WebAuthnAPI
           const assertion = (await navigator.credentials.get({
             publicKey: {
               challenge: challengeBuffer,
@@ -94,10 +107,65 @@ export default function TicketCard({ ticket }: TicketCardProps) {
           })) as PublicKeyCredential | null;
 
           if (assertion && assertion.response) {
+            // assertion.response berisi data autentikasi dari browser
+            // dalam file lib.dom.d.ts (Line 4033), object AuthenticatorAssertionResponse memiliki 4 properti resmi:
+            // 1. authenticatorData (ArrayBuffer)
+            // 2. signature (ArrayBuffer)
+            // 3. userHandle (ArrayBuffer | null)
+            // 4. clientDataJSON (ArrayBuffer, diwarisi dari parent AuthenticatorResponse)
+            // namun dalam implementasi kali ini kita hanya mengambil property resp.signature dari object tersebut
             const resp = assertion.response as AuthenticatorAssertionResponse;
+
             // mengubah signature format menjadi hexadecimal string
             // kenapa diubah jadi hexadecimal? karena format binary raw tidak bisa dibaca/ditransmisikan via JSON QR
             const sigBytes = new Uint8Array(resp.signature);
+
+            // Log nilai mentah agar bisa diinspeksi langsung di DevTools browser console
+            console.log("[WEBAUTHN] 3. Objek Raw resp.signature (ArrayBuffer):", resp.signature);
+            console.log("[WEBAUTHN] 4. sigBytes (Uint8Array mentah):", sigBytes);
+            console.log("[WEBAUTHN] 5. sigBytes (Array angka desimal byte):", Array.from(sigBytes));
+
+            // =========================================================================================
+            // PEMBUKTIAN LANGSUNG: Ekstraksi Nilai Kriptografis r dan s dari Pembungkus ASN.1 DER
+            // =========================================================================================
+            try {
+              let offset = 2; // Lewati Tag 0x30 (SEQUENCE) dan panjang total
+              if (sigBytes[0] === 0x30 && sigBytes[offset] === 0x02) {
+                offset++; // Lewati tag 0x02 (INTEGER untuk r)
+                const rLen = sigBytes[offset++];
+                let rBytes = sigBytes.slice(offset, offset + rLen);
+                offset += rLen;
+
+                if (sigBytes[offset] === 0x02) {
+                  offset++; // Lewati tag 0x02 (INTEGER untuk s)
+                  const sLen = sigBytes[offset++];
+                  let sBytes = sigBytes.slice(offset, offset + sLen);
+
+                  // Hapus leading 0x00 padding jika ada (standar DER untuk angka bernilai >= 0x80)
+                  if (rBytes.length === 33 && rBytes[0] === 0x00) rBytes = rBytes.slice(1);
+                  if (sBytes.length === 33 && sBytes[0] === 0x00) sBytes = sBytes.slice(1);
+
+                  const rHex = "0x" + Array.from(rBytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+                  const sHex = "0x" + Array.from(sBytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+
+                  console.log(
+                    "%c======================================================\n" +
+                    "🔐 BUKTI KRIPTOGRAFI PASSKEY (ECDSA NIST P-256)\n" +
+                    "======================================================\n" +
+                    `• Nilai r (Hex 32-Byte)   : ${rHex}\n` +
+                    `• Nilai s (Hex 32-Byte)   : ${sHex}\n` +
+                    `• Nilai r (Desimal BigInt): ${BigInt(rHex).toString()}\n` +
+                    `• Nilai s (Desimal BigInt): ${BigInt(sHex).toString()}\n` +
+                    "• Format Biner Asal       : ASN.1 DER Sequence (Tag 0x30, Tag Integer 0x02)\n" +
+                    "======================================================",
+                    "color: #10b981; font-weight: bold; font-size: 11px;"
+                  );
+                }
+              }
+            } catch (parseErr) {
+              console.error("[WEBAUTHN] Gagal membedah ASN.1 DER:", parseErr);
+            }
+
             // Expected signature output:
             // 0x691d643298b6642b561d27021e49b87f650125d4e18f2aa1ac94a7051d4c161b7a8f71a2355f832b5de15362b5f1eb50a7e5059045d7599864a222b7e944e41b
             generatedSignature =
@@ -105,15 +173,20 @@ export default function TicketCard({ ticket }: TicketCardProps) {
               Array.from(sigBytes)
                 .map((b) => b.toString(16).padStart(2, "0"))
                 .join("");
+
+            console.log("[WEBAUTHN] 6. generatedSignature (Heksadesimal untuk QR Code):", generatedSignature);
           }
-        } catch {
+        } catch (authErr) {
+          console.warn("[WEBAUTHN] WebAuthn dialog di-cancel atau authenticator tidak tersedia, menggunakan fallback:", authErr);
           // Fallback crypto hash jika dialog di-cancel atau di browser dev tanpa authenticator
           const randomBytes = crypto.getRandomValues(new Uint8Array(32)); // ini akan hasilin 32 random bytes (raw binary data)
+          console.log("[WEBAUTHN FALLBACK] randomBytes (Uint8Array mentah):", randomBytes);
           generatedSignature =
             "0x" +
             Array.from(randomBytes)
               .map((b) => b.toString(16).padStart(2, "0"))
               .join("");
+          console.log("[WEBAUTHN FALLBACK] generatedSignature (Hex fallback):", generatedSignature);
         }
       } else {
         // akan dijalankan jika user memakai browser tanpa WebAuthn API, contohnya: old browser
@@ -144,6 +217,7 @@ export default function TicketCard({ ticket }: TicketCardProps) {
   };
 
   // Payload data untuk QR Code gerbang masuk (Gate Verification oleh petugas)
+  // Catatan: expiresInSeconds bernilai 60 (durasi total), BUKAN timeLeft agar gambar QR stabil dan tidak berubah-ubah tiap detik
   const qrPayload = {
     tokenId: ticket.tokenId,
     eventId: ticket.eventId,
@@ -153,7 +227,7 @@ export default function TicketCard({ ticket }: TicketCardProps) {
     walletAddress: ticket.owner,
     nonce: nonce,
     signedAt: signedAt,
-    expiresInSeconds: timeLeft,
+    expiresInSeconds: 60,
     signature: signature,
   };
 

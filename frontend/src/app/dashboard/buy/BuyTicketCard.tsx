@@ -19,12 +19,28 @@ import {
 
 interface BuyTicketCardProps {
   walletAddress: string;
+  initialOwnedCount?: number;
 }
 
-export default function BuyTicketCard({ walletAddress }: BuyTicketCardProps) {
+export default function BuyTicketCard({
+  walletAddress,
+  initialOwnedCount = 0,
+}: BuyTicketCardProps) {
   // State untuk melacak status transaksi dan loading
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<BuyTicketState | null>(null);
+
+  // Status kepemilikan dan batas kuota anti-scalping (maksimal 2 tiket per akun)
+  const MAX_PER_WALLET = 2;
+  const PRICE_PER_TICKET = 150_000;
+  const [ownedCount, setOwnedCount] = useState(initialOwnedCount);
+
+  const remainingQuota = Math.max(0, MAX_PER_WALLET - ownedCount);
+  const isQuotaFull = remainingQuota === 0;
+
+  // State jumlah tiket yang ingin dibeli (1 atau 2)
+  const [quantity, setQuantity] = useState(remainingQuota > 0 ? 1 : 1);
+  const totalPrice = quantity * PRICE_PER_TICKET;
 
   // Event ID dan Kategori ID yang sudah diinitialize di smart contract
   const EVENT_ID = 1; // masih hardocde karena belum terintegrasi langsung dengan API relayer (Admin Backend)
@@ -37,8 +53,16 @@ export default function BuyTicketCard({ walletAddress }: BuyTicketCardProps) {
 
     try {
       // Panggil Server Action yang berkomunikasi dengan Backend Relayer
-      const res = await buyTicketAction(EVENT_ID, CATEGORY_ID);
+      const res = await buyTicketAction(EVENT_ID, CATEGORY_ID, quantity);
       setResult(res);
+
+      // Jika berhasil, perbarui jumlah tiket yang dimiliki secara reaktif di antarmuka
+      if (res.success) {
+        setOwnedCount((prev) => {
+          const nextCount = prev + quantity;
+          return nextCount;
+        });
+      }
     } catch (err) {
       setResult({
         success: false,
@@ -61,24 +85,21 @@ export default function BuyTicketCard({ walletAddress }: BuyTicketCardProps) {
             <Sparkles className="w-3 h-3" />
             Official Event
           </span>
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-            VIP PASS
-          </span>
         </div>
 
         <h2 className="text-2xl font-bold text-white mt-3">
           UBAYA Music Fest 2026
         </h2>
-        <p className="text-sm text-muted-foreground mt-1">Konser Musik UBAYA</p>
+        <p className="text-sm text-purple-200 font-medium mt-1">Konser Musik UBAYA</p>
 
         {/* Informasi Jadwal & Lokasi */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6 pt-4 border-t border-border/40 text-sm">
-          <div className="flex items-center gap-2.5 text-muted-foreground">
-            <Calendar className="w-4 h-4 text-purple-400" />
+          <div className="flex items-center gap-2.5 text-zinc-200 font-medium">
+            <Calendar className="w-4 h-4 text-purple-300 shrink-0" />
             <span>15 November 2026, 18:00</span>
           </div>
-          <div className="flex items-center gap-2.5 text-muted-foreground">
-            <MapPin className="w-4 h-4 text-purple-400" />
+          <div className="flex items-center gap-2.5 text-zinc-200 font-medium">
+            <MapPin className="w-4 h-4 text-purple-300 shrink-0" />
             <span>Stadion Gelora 10 November</span>
           </div>
         </div>
@@ -87,55 +108,90 @@ export default function BuyTicketCard({ walletAddress }: BuyTicketCardProps) {
       {/* Card Detail & Pembelian */}
       <div className="p-6 sm:p-8 space-y-6">
         {/* Detail Harga & Kuota */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-muted/40 border border-border/60">
+        <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-muted/40 border border-border/60">
           <div>
-            <span className="text-xs text-muted-foreground block">
-              Harga Tiket
+            <span className="text-xs text-foreground/75 font-medium block">
+              Harga per Tiket
             </span>
             <span className="text-lg font-bold text-foreground">
-              Rp 150.000
+              Rp {PRICE_PER_TICKET.toLocaleString("id-ID")}
             </span>
           </div>
           <div>
-            <span className="text-xs text-muted-foreground block">
-              Gas Fee (Jaringan)
+            <span className="text-xs text-foreground/75 font-medium block">
+              Maksimal per Akun
             </span>
-            <span className="text-lg font-bold text-emerald-500 flex items-center gap-1">
-              Rp 0{" "}
-              <span className="text-xs font-normal text-muted-foreground">
-                (Gasless)
-              </span>
+            <span className="text-lg font-bold text-foreground">2 Tiket</span>
+          </div>
+        </div>
+
+        {/* Pilihan Jumlah Tiket (Maksimal 2 Tiket per Akun) */}
+        <div className="p-4 rounded-xl bg-muted/40 border border-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <span className="text-sm font-semibold text-foreground block">
+              Jumlah Tiket
+            </span>
+            <span className="text-xs text-foreground/75 font-medium">
+              {isQuotaFull
+                ? "Batas maksimal 2 tiket per akun telah tercapai."
+                : `Sisa kuota akun Anda: ${remainingQuota} tiket (Maks. 2 tiket/akun)`}
             </span>
           </div>
-          <div className="col-span-2 sm:col-span-1">
-            <span className="text-xs text-muted-foreground block">
-              Maksimal per Dompet
+
+          {!isQuotaFull ? (
+            <div className="flex items-center gap-3">
+              <div className="flex items-center border border-border rounded-lg bg-card overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  disabled={quantity <= 1 || isLoading}
+                  className="px-3 py-1.5 text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition font-bold text-base cursor-pointer"
+                  title="Kurangi jumlah tiket"
+                >
+                  -
+                </button>
+                <span className="px-4 py-1.5 text-sm font-bold text-foreground min-w-[2.5rem] text-center font-mono">
+                  {quantity}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setQuantity((q) => Math.min(remainingQuota, q + 1))
+                  }
+                  disabled={quantity >= remainingQuota || isLoading}
+                  className="px-3 py-1.5 text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition font-bold text-base cursor-pointer"
+                  title="Tambah jumlah tiket"
+                >
+                  +
+                </button>
+              </div>
+              <div className="text-right">
+                <span className="text-xs text-foreground/75 font-medium block">
+                  Total Bayar
+                </span>
+                <span className="text-sm font-bold text-foreground">
+                  Rp {totalPrice.toLocaleString("id-ID")}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-muted text-foreground/80 border border-border">
+              Kuota Penuh (2/2 Tiket)
             </span>
-            <span className="text-lg font-bold text-foreground">4 Tiket</span>
-          </div>
+          )}
         </div>
 
         {/* Alamat Penerima (Smart Account Pembeli) */}
         <div className="p-3.5 rounded-lg bg-card border border-border flex items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-muted-foreground">
+          <div className="flex items-center gap-2 text-foreground/80 font-medium">
             <Wallet className="h-4 w-4 text-primary shrink-0" />
             <span>Penerima NFT:</span>
           </div>
           <span
-            className="font-mono text-foreground font-medium truncate max-w-[240px] sm:max-w-none"
+            className="font-mono text-foreground font-semibold truncate max-w-[240px] sm:max-w-none"
             title={walletAddress}
           >
             {walletAddress}
-          </span>
-        </div>
-
-        {/* Fitur Keamanan Anti-Scalping */}
-        <div className="flex items-start gap-2.5 text-xs text-muted-foreground bg-primary/5 p-3 rounded-lg border border-primary/10">
-          <ShieldCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-          <span>
-            Tiket ini dicetak langsung ke blockchain Ethereum (Sepolia). Tiket
-            dilindungi oleh aturan anti-tengkulak, menjamin keaslian dan
-            mencegah pemalsuan kode QR.
           </span>
         </div>
 
@@ -153,7 +209,24 @@ export default function BuyTicketCard({ walletAddress }: BuyTicketCardProps) {
               {result.blockNumber && (
                 <p>Block Terkonfirmasi: #{result.blockNumber}</p>
               )}
-              {result.txHash && (
+              {result.txHashes && result.txHashes.length > 1 ? (
+                <div className="space-y-1">
+                  <p>Hash Transaksi ({result.txHashes.length} Tiket):</p>
+                  {result.txHashes.map((h, idx) => (
+                    <p key={h}>
+                      Tiket #{idx + 1}:{" "}
+                      <a
+                        href={`https://sepolia.etherscan.io/tx/${h}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-primary transition-colors hover:underline"
+                      >
+                        {h.slice(0, 16)}...{h.slice(-10)}
+                      </a>
+                    </p>
+                  ))}
+                </div>
+              ) : result.txHash ? (
                 <p>
                   Hash Transaksi:{" "}
                   <a
@@ -165,7 +238,7 @@ export default function BuyTicketCard({ walletAddress }: BuyTicketCardProps) {
                     {result.txHash}
                   </a>
                 </p>
-              )}
+              ) : null}
               <Link
                 href="/dashboard/tickets"
                 className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
@@ -193,19 +266,25 @@ export default function BuyTicketCard({ walletAddress }: BuyTicketCardProps) {
         <button
           type="button"
           onClick={handleBuyTicket}
-          disabled={isLoading}
+          disabled={isLoading || isQuotaFull}
           className="w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl font-semibold text-white bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-primary/25 transition cursor-pointer"
         >
           {isLoading ? (
             <>
               <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Loading...</span>
+              <span>Memproses Minting ({quantity} Tiket)...</span>
+            </>
+          ) : isQuotaFull ? (
+            <>
+              <CheckCircle2 className="h-5 w-5" />
+              <span>Batas Kuota 2 Tiket Telah Tercapai</span>
             </>
           ) : (
             <>
               <Ticket className="h-5 w-5" />
               <span>
-                {result?.success ? "Beli Tiket Lagi" : "Beli Tiket Sekarang"}
+                Beli {quantity} Tiket Sekarang (Rp{" "}
+                {totalPrice.toLocaleString("id-ID")})
               </span>
             </>
           )}

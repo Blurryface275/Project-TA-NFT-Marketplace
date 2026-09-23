@@ -47,35 +47,75 @@ export class TicketsService {
   }
 
   async mintTicket(dto: MintTicketDto) {
+    const MAX_PER_WALLET = 2; // Batasan anti-scalping: maksimal 2 tiket per akun
+    const qty = dto.quantity && dto.quantity > 0 ? dto.quantity : 1;
+
     try {
-      console.log(' [TicketsService] Minting tiket untuk ' + dto.walletAddress);
-
-      // panggil fungsi 'mintTicket(to, eventId, categoryId)' di smart contract Sepolia untuk memicu produksi tiket NFT
-      const hash = await this.walletClient.writeContract({
-        address: this.contractAddress,
-        abi: TICKET_CONTRACT_ABI,
-        functionName: 'mintTicket',
-        // BigInt digunakan karena di Solidity tipenya adalah uint256
-        args: [
-          dto.walletAddress as `0x${string}`,
-          BigInt(dto.eventId),
-          BigInt(dto.categoryId),
-        ],
-      });
-
       console.log(
-        `Transaksi dikirim ke Sepolia dengan txHash: ${hash}. Menunggu konfirmasi blok ...`,
+        ` [TicketsService] Permintaan minting ${qty} tiket untuk alamat dompet: ${dto.walletAddress}`,
       );
 
-      // Menunggu sampai transaksi resmi masuk ke blok
-      const receipt = await this.publicClient.waitForTransactionReceipt({
-        hash: hash,
+      // 1. Cek jumlah tiket yang sudah dimiliki dompet ini di smart contract Sepolia
+      const currentBalance = await this.publicClient.readContract({
+        address: this.contractAddress,
+        abi: TICKET_CONTRACT_ABI,
+        functionName: 'balanceOf',
+        args: [dto.walletAddress as `0x${string}`],
       });
+
+      const currentCount = Number(currentBalance);
+      console.log(
+        ` [TicketsService] Status kepemilikan saat ini: ${currentCount}/${MAX_PER_WALLET} tiket. Permintaan baru: ${qty} tiket.`,
+      );
+
+      // Validasi batas maksimal: jika tiket yang sudah ada + jumlah baru melebihi batas
+      if (currentCount + qty > MAX_PER_WALLET) {
+        throw new BadRequestException(
+          `Batas maksimal pembelian adalah ${MAX_PER_WALLET} tiket per akun. Anda saat ini telah memiliki ${currentCount} tiket.`,
+        );
+      }
+
+      const txHashes: string[] = [];
+      let lastReceipt: any = null;
+
+      // 2. Loop minting sebanyak kuantiti tiket yang diminta (1 atau 2)
+      for (let i = 0; i < qty; i++) {
+        console.log(
+          ` [TicketsService] Mengirim transaksi #${i + 1} dari ${qty} ke Sepolia...`,
+        );
+
+        // panggil fungsi 'mintTicket(to, eventId, categoryId)' di smart contract Sepolia
+        const hash = await this.walletClient.writeContract({
+          address: this.contractAddress,
+          abi: TICKET_CONTRACT_ABI,
+          functionName: 'mintTicket',
+          // BigInt digunakan karena di Solidity tipenya adalah uint256
+          args: [
+            dto.walletAddress as `0x${string}`,
+            BigInt(dto.eventId),
+            BigInt(dto.categoryId),
+          ],
+        });
+
+        console.log(
+          `Transaksi #${i + 1} dikirim ke Sepolia dengan txHash: ${hash}. Menunggu konfirmasi blok ...`,
+        );
+
+        // Menunggu sampai transaksi resmi masuk ke blok sebelum mengirim transaksi berikutnya (mencegah nonce collision)
+        const receipt = await this.publicClient.waitForTransactionReceipt({
+          hash: hash,
+        });
+
+        txHashes.push(hash);
+        lastReceipt = receipt;
+      }
+
       return {
         success: true,
-        message: 'Tiket berhasil dicetak pada jaringan Sepolia Testnet',
-        txHash: hash,
-        blockNumber: Number(receipt.blockNumber),
+        message: `${qty} tiket berhasil dicetak pada jaringan Sepolia Testnet`,
+        txHash: txHashes[0],
+        txHashes: txHashes,
+        blockNumber: Number(lastReceipt?.blockNumber),
       };
     } catch (error: any) {
       console.error('Error minting ticket:', error);
