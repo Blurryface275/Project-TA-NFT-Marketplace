@@ -16,6 +16,7 @@ import {
   Timer,
   RefreshCw,
   KeyRound,
+  Armchair
 } from "lucide-react";
 
 export interface TicketData {
@@ -25,6 +26,40 @@ export interface TicketData {
   originalPrice: number;
   used: boolean;
   owner: string;
+}
+
+// Helper pemetaan nama kategori dan nomor kursi berdsarkan categoryId & tokenId
+export function getCategoryMeta(categoryId: number, tokenId: number){
+  switch (categoryId){
+    case 1:
+      return{
+        name: "VIP PASS",
+        badgeColor: "text-amber-400",
+        seatNumber: `VIP-A${String(tokenId).padStart(2, "0")}`,
+        area: "Festival Area (Depan Panggung)"
+      };
+     case 2:
+      return {
+        name: "CAT 1 (TRIBUN)",
+        badgeColor: "text-indigo-400",
+        seatNumber: `CAT1-B${String(tokenId).padStart(2, "0")}`,
+        area: "Tribun Utama (Baris B)",
+      };
+    case 3:
+      return {
+        name: "FESTIVAL",
+        badgeColor: "text-emerald-400",
+        seatNumber: `FEST-C${String(tokenId).padStart(2, "0")}`,
+        area: "Festival Area (Tengah)",
+      };
+    default:
+      return {
+        name: `Kategori #${categoryId}`,
+        badgeColor: "text-purple-400",
+        seatNumber: `SEAT-${String(tokenId).padStart(2, "0")}`,
+        area: "General Admission",
+      };
+  }
 }
 
 interface TicketCardProps {
@@ -37,7 +72,7 @@ interface TicketCardProps {
 function getCSPRNGNonce(): number {
   if (typeof crypto !== "undefined" && crypto.getRandomValues) {
     const buffer = new Uint32Array(1); // menyiapkan wadah memorinya untuk integer 32 bit
-    crypto.getRandomValues(buffer); // isi memori dengan entropi dari hardware / OS 
+    crypto.getRandomValues(buffer); // isi memori dengan entropi dari hardware / OS
     return buffer[0]; // Integer acak 32-bit (0 s/d 4.294.967.295) tahan prediksi serangan
   }
   return Math.floor(Math.random() * 1000000);
@@ -95,7 +130,10 @@ export default function TicketCard({ ticket }: TicketCardProps) {
           // ArrayBuffer adalah format representasi biner mentah yang wajib diterima oleh WebAuthn API
           const challengeBuffer = new TextEncoder().encode(challengeStr);
           console.log("[WEBAUTHN] 1. Challenge String:", challengeStr);
-          console.log("[WEBAUTHN] 2. Challenge Buffer (Uint8Array mentah):", challengeBuffer);
+          console.log(
+            "[WEBAUTHN] 2. Challenge Buffer (Uint8Array mentah):",
+            challengeBuffer,
+          );
 
           // assertion ini akan menerima tandatangan dari WebAuthnAPI
           const assertion = (await navigator.credentials.get({
@@ -121,9 +159,18 @@ export default function TicketCard({ ticket }: TicketCardProps) {
             const sigBytes = new Uint8Array(resp.signature);
 
             // Log nilai mentah agar bisa diinspeksi langsung di DevTools browser console
-            console.log("[WEBAUTHN] 3. Objek Raw resp.signature (ArrayBuffer):", resp.signature);
-            console.log("[WEBAUTHN] 4. sigBytes (Uint8Array mentah):", sigBytes);
-            console.log("[WEBAUTHN] 5. sigBytes (Array angka desimal byte):", Array.from(sigBytes));
+            console.log(
+              "[WEBAUTHN] 3. Objek Raw resp.signature (ArrayBuffer):",
+              resp.signature,
+            );
+            console.log(
+              "[WEBAUTHN] 4. sigBytes (Uint8Array mentah):",
+              sigBytes,
+            );
+            console.log(
+              "[WEBAUTHN] 5. sigBytes (Array angka desimal byte):",
+              Array.from(sigBytes),
+            );
 
             // =========================================================================================
             // PEMBUKTIAN LANGSUNG: Ekstraksi Nilai Kriptografis r dan s dari Pembungkus ASN.1 DER
@@ -142,23 +189,33 @@ export default function TicketCard({ ticket }: TicketCardProps) {
                   let sBytes = sigBytes.slice(offset, offset + sLen);
 
                   // Hapus leading 0x00 padding jika ada (standar DER untuk angka bernilai >= 0x80)
-                  if (rBytes.length === 33 && rBytes[0] === 0x00) rBytes = rBytes.slice(1);
-                  if (sBytes.length === 33 && sBytes[0] === 0x00) sBytes = sBytes.slice(1);
+                  if (rBytes.length === 33 && rBytes[0] === 0x00)
+                    rBytes = rBytes.slice(1);
+                  if (sBytes.length === 33 && sBytes[0] === 0x00)
+                    sBytes = sBytes.slice(1);
 
-                  const rHex = "0x" + Array.from(rBytes).map((b) => b.toString(16).padStart(2, "0")).join("");
-                  const sHex = "0x" + Array.from(sBytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+                  const rHex =
+                    "0x" +
+                    Array.from(rBytes)
+                      .map((b) => b.toString(16).padStart(2, "0"))
+                      .join("");
+                  const sHex =
+                    "0x" +
+                    Array.from(sBytes)
+                      .map((b) => b.toString(16).padStart(2, "0"))
+                      .join("");
 
                   console.log(
                     "%c======================================================\n" +
-                    "🔐 BUKTI KRIPTOGRAFI PASSKEY (ECDSA NIST P-256)\n" +
-                    "======================================================\n" +
-                    `• Nilai r (Hex 32-Byte)   : ${rHex}\n` +
-                    `• Nilai s (Hex 32-Byte)   : ${sHex}\n` +
-                    `• Nilai r (Desimal BigInt): ${BigInt(rHex).toString()}\n` +
-                    `• Nilai s (Desimal BigInt): ${BigInt(sHex).toString()}\n` +
-                    "• Format Biner Asal       : ASN.1 DER Sequence (Tag 0x30, Tag Integer 0x02)\n" +
-                    "======================================================",
-                    "color: #10b981; font-weight: bold; font-size: 11px;"
+                      "🔐 BUKTI KRIPTOGRAFI PASSKEY (ECDSA NIST P-256)\n" +
+                      "======================================================\n" +
+                      `• Nilai r (Hex 32-Byte)   : ${rHex}\n` +
+                      `• Nilai s (Hex 32-Byte)   : ${sHex}\n` +
+                      `• Nilai r (Desimal BigInt): ${BigInt(rHex).toString()}\n` +
+                      `• Nilai s (Desimal BigInt): ${BigInt(sHex).toString()}\n` +
+                      "• Format Biner Asal       : ASN.1 DER Sequence (Tag 0x30, Tag Integer 0x02)\n" +
+                      "======================================================",
+                    "color: #10b981; font-weight: bold; font-size: 11px;",
                   );
                 }
               }
@@ -174,19 +231,31 @@ export default function TicketCard({ ticket }: TicketCardProps) {
                 .map((b) => b.toString(16).padStart(2, "0"))
                 .join("");
 
-            console.log("[WEBAUTHN] 6. generatedSignature (Heksadesimal untuk QR Code):", generatedSignature);
+            console.log(
+              "[WEBAUTHN] 6. generatedSignature (Heksadesimal untuk QR Code):",
+              generatedSignature,
+            );
           }
         } catch (authErr) {
-          console.warn("[WEBAUTHN] WebAuthn dialog di-cancel atau authenticator tidak tersedia, menggunakan fallback:", authErr);
+          console.warn(
+            "[WEBAUTHN] WebAuthn dialog di-cancel atau authenticator tidak tersedia, menggunakan fallback:",
+            authErr,
+          );
           // Fallback crypto hash jika dialog di-cancel atau di browser dev tanpa authenticator
           const randomBytes = crypto.getRandomValues(new Uint8Array(32)); // ini akan hasilin 32 random bytes (raw binary data)
-          console.log("[WEBAUTHN FALLBACK] randomBytes (Uint8Array mentah):", randomBytes);
+          console.log(
+            "[WEBAUTHN FALLBACK] randomBytes (Uint8Array mentah):",
+            randomBytes,
+          );
           generatedSignature =
             "0x" +
             Array.from(randomBytes)
               .map((b) => b.toString(16).padStart(2, "0"))
               .join("");
-          console.log("[WEBAUTHN FALLBACK] generatedSignature (Hex fallback):", generatedSignature);
+          console.log(
+            "[WEBAUTHN FALLBACK] generatedSignature (Hex fallback):",
+            generatedSignature,
+          );
         }
       } else {
         // akan dijalankan jika user memakai browser tanpa WebAuthn API, contohnya: old browser
@@ -218,10 +287,13 @@ export default function TicketCard({ ticket }: TicketCardProps) {
 
   // Payload data untuk QR Code gerbang masuk (Gate Verification oleh petugas)
   // Catatan: expiresInSeconds bernilai 60 (durasi total), BUKAN timeLeft agar gambar QR stabil dan tidak berubah-ubah tiap detik
+  const categoryMeta = getCategoryMeta(ticket.categoryId, ticket.tokenId); // buat ngambil meta data kategori
   const qrPayload = {
     tokenId: ticket.tokenId,
     eventId: ticket.eventId,
     categoryId: ticket.categoryId,
+    categoryName: categoryMeta.name,
+    seatNumber: categoryMeta.seatNumber,
     owner: ticket.owner,
     used: isUsed,
     walletAddress: ticket.owner,
@@ -310,8 +382,8 @@ export default function TicketCard({ ticket }: TicketCardProps) {
         <h3 className="text-xl font-bold text-white tracking-tight mt-2">
           UBAYA Music Fest 2026
         </h3>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          VIP PASS • Festival Area
+        <p className={`text-xs font-semibold mt-0.5 ${categoryMeta.badgeColor}`}>
+          {categoryMeta.name} • {categoryMeta.seatNumber}
         </p>
       </div>
       {/* Info Waktu & Lokasi */}
@@ -328,7 +400,7 @@ export default function TicketCard({ ticket }: TicketCardProps) {
       {/* Badan Tiket */}
       <div className="p-5 space-y-4">
         {/* Info Harga Asli & Kategori */}
-        <div className="grid grid-cols-2 gap-3 text-xs">
+        <div className="grid grid-cols-3 gap-3 text-xs">
           <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
             <span className="text-muted-foreground block text-[11px]">
               Harga Asli (On-Chain)

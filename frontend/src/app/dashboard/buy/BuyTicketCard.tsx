@@ -15,8 +15,46 @@ import {
   AlertCircle,
   Wallet,
   ArrowRight,
+  Armchair,
 } from "lucide-react";
+import { NumberField } from "@base-ui/react";
 
+export interface TIcketCategoryOption {
+  id: number;
+  name: string;
+  badge: string;
+  price: number;
+  rowPrefix: string;
+  description: string;
+}
+
+export const EVENT_CATEGORIES: TIcketCategoryOption[] = [
+  {
+    id: 1,
+    name: "Presale",
+    badge: "Early Access",
+    price: 250_000,
+    rowPrefix: "A-F",
+    description: "Akses lebih awal untuk presale dengan pilihan kursi terbatas",
+  },
+  {
+    id: 2,
+    name: "CAT 1 (TRIBUN)",
+    badge: "Duduk Nyaman",
+    price: 100_000,
+    rowPrefix: "CAT1-B",
+    description:
+      "Kursi bernomor di tribun utama dengan pemandangan panggung luas",
+  },
+  {
+    id: 3,
+    name: "FESTIVAL",
+    badge: "Paling Seru",
+    price: 75_000,
+    rowPrefix: "FEST-C",
+    description: "Area berdiri bebas di tengah arena konser",
+  },
+];
 interface BuyTicketCardProps {
   walletAddress: string;
   initialOwnedCount?: number;
@@ -32,7 +70,11 @@ export default function BuyTicketCard({
 
   // Status kepemilikan dan batas kuota anti-scalping (maksimal 2 tiket per akun)
   const MAX_PER_WALLET = 2;
-  const PRICE_PER_TICKET = 150_000;
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number>(1); // angka 1 merujuk ke tiket kategori first presale
+  const selectedCategory =
+    EVENT_CATEGORIES.find((c) => c.id === selectedCategoryId) ||
+    EVENT_CATEGORIES[0];
+  const pricePerTicket = selectedCategory.price;
   const [ownedCount, setOwnedCount] = useState(initialOwnedCount);
 
   const remainingQuota = Math.max(0, MAX_PER_WALLET - ownedCount);
@@ -40,11 +82,10 @@ export default function BuyTicketCard({
 
   // State jumlah tiket yang ingin dibeli (1 atau 2)
   const [quantity, setQuantity] = useState(remainingQuota > 0 ? 1 : 1);
-  const totalPrice = quantity * PRICE_PER_TICKET;
+  const totalPrice = quantity * pricePerTicket;
 
   // Event ID dan Kategori ID yang sudah diinitialize di smart contract
   const EVENT_ID = 1; // masih hardocde karena belum terintegrasi langsung dengan API relayer (Admin Backend)
-  const CATEGORY_ID = 1;
 
   // function yang akan dipanggil ketika user menekan tombol buy
   const handleBuyTicket = async () => {
@@ -53,7 +94,7 @@ export default function BuyTicketCard({
 
     try {
       // Panggil Server Action yang berkomunikasi dengan Backend Relayer
-      const res = await buyTicketAction(EVENT_ID, CATEGORY_ID, quantity);
+      const res = await buyTicketAction(EVENT_ID, selectedCategoryId, quantity);
       setResult(res);
 
       // Jika berhasil, perbarui jumlah tiket yang dimiliki secara reaktif di antarmuka
@@ -90,7 +131,9 @@ export default function BuyTicketCard({
         <h2 className="text-2xl font-bold text-white mt-3">
           UBAYA Music Fest 2026
         </h2>
-        <p className="text-sm text-purple-200 font-medium mt-1">Konser Musik UBAYA</p>
+        <p className="text-sm text-purple-200 font-medium mt-1">
+          Konser Musik UBAYA
+        </p>
 
         {/* Informasi Jadwal & Lokasi */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6 pt-4 border-t border-border/40 text-sm">
@@ -107,21 +150,101 @@ export default function BuyTicketCard({
 
       {/* Card Detail & Pembelian */}
       <div className="p-6 sm:p-8 space-y-6">
-        {/* Detail Harga & Kuota */}
+        {/* 1. KARTU PILIHAN KATEGORI TIKET */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-foreground">
+              Pilih Kategori Tiket
+            </span>
+            <span className="text-xs text-foreground/75 font-medium">
+              3 Kategori Tersedia
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {EVENT_CATEGORIES.map((cat) => {
+              const isSelected = selectedCategoryId === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setSelectedCategoryId(cat.id)}
+                  disabled={isLoading || isQuotaFull}
+                  className={`p-4 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between ${
+                    isSelected
+                      ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary"
+                      : "border-border/70 bg-card hover:border-border hover:bg-muted/30"
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-bold text-foreground">
+                        {cat.name}
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-muted text-foreground/80 shrink-0">
+                        {cat.badge}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      {cat.description}
+                    </p>
+                  </div>
+                  <div className="mt-3 pt-2.5 border-t border-border/40 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Harga</span>
+                    <span className="text-sm font-bold text-foreground">
+                      Rp {cat.price.toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 2. ESTIMASI ALOKASI NOMOR KURSI (SEQUENTIAL AUTO-ASSIGNMENT) */}
+        <div className="p-3.5 rounded-xl bg-muted/40 border border-border/60 flex items-start gap-3 text-xs">
+          <Armchair className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-foreground">
+                Alokasi Nomor Kursi:
+              </span>
+              <span className="font-mono font-bold text-primary px-2 py-0.5 rounded bg-primary/15">
+                {quantity === 1
+                  ? `${selectedCategory.rowPrefix}-0${ownedCount + 1}`
+                  : `${selectedCategory.rowPrefix}-0${ownedCount + 1}, ${selectedCategory.rowPrefix}-0${ownedCount + 2}`}
+              </span>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Nomor kursi ditentukan otomatis berurutan sesuai urutan konfirmasi
+              blok di blockchain (*Sequential Auto-Assignment*).
+            </p>
+          </div>
+        </div>
+
+        {/* 3. RINGKASAN HARGA & BATAS KUOTA */}
         <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-muted/40 border border-border/60">
           <div>
             <span className="text-xs text-foreground/75 font-medium block">
-              Harga per Tiket
+              Kategori Terpilih
             </span>
-            <span className="text-lg font-bold text-foreground">
-              Rp {PRICE_PER_TICKET.toLocaleString("id-ID")}
+            <span className="text-base font-bold text-foreground">
+              {selectedCategory.name}
+            </span>
+            <span className="text-xs text-muted-foreground block">
+              Rp {pricePerTicket.toLocaleString("id-ID")} / tiket
             </span>
           </div>
           <div>
             <span className="text-xs text-foreground/75 font-medium block">
-              Maksimal per Akun
+              Batas Maksimal Akun
             </span>
-            <span className="text-lg font-bold text-foreground">2 Tiket</span>
+            <span className="text-base font-bold text-foreground">
+              {ownedCount} / {MAX_PER_WALLET} Tiket
+            </span>
+            <span className="text-xs text-muted-foreground block">
+              Anti-Scalping Rule
+            </span>
           </div>
         </div>
 

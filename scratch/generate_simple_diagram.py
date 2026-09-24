@@ -1,0 +1,308 @@
+import os
+
+svg_content = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1620 980" width="1620" height="980" style="background:#ffffff; font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;">
+  <defs>
+    <!-- Card Drop Shadow -->
+    <filter id="shadow" x="-5%" y="-5%" width="112%" height="115%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.08"/>
+    </filter>
+
+    <!-- Arrow Markers -->
+    <marker id="arr-blue" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#2563eb"/>
+    </marker>
+    <marker id="arr-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#059669"/>
+    </marker>
+    <marker id="arr-amber" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#d97706"/>
+    </marker>
+    <marker id="arr-indigo" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#4f46e5"/>
+    </marker>
+    <marker id="arr-cyan" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#0891b2"/>
+    </marker>
+    <marker id="arr-emerald" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10b981"/>
+    </marker>
+  </defs>
+
+  <!-- TITLE HEADER -->
+  <rect x="50" y="25" width="1520" height="60" rx="8" fill="#0f172a"/>
+  <text x="80" y="55" fill="#ffffff" font-size="18" font-weight="700" letter-spacing="0.5">DIAGRAM ARSITEKTUR &amp; ALIRAN DATA SISTEM (GAMBARAN BESAR)</text>
+  <text x="80" y="73" fill="#94a3b8" font-size="12" font-weight="500">Sistem Tiket Event Berbasis NFT (Hybrid Web2.5) — Aliran Data Input (Kirim) &amp; Output (Balikan)</text>
+  <rect x="1390" y="41" width="150" height="28" rx="14" fill="#1e293b"/>
+  <text x="1465" y="59" fill="#38bdf8" font-size="11" font-weight="600" text-anchor="middle">Data Flow Overview</text>
+
+  <!-- ======================================================== -->
+  <!-- 1. PENGGUNA (ACTOR) -->
+  <!-- ======================================================== -->
+  <g filter="url(#shadow)">
+    <rect x="50" y="380" width="190" height="180" rx="12" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+    <rect x="50" y="380" width="190" height="38" rx="12" fill="#f1f5f9"/>
+    <text x="145" y="404" fill="#334155" font-size="13" font-weight="700" text-anchor="middle">Pengguna (Aktor)</text>
+    
+    <!-- User Icon -->
+    <circle cx="145" cy="455" r="22" fill="#e2e8f0" stroke="#64748b" stroke-width="1.5"/>
+    <text x="145" y="462" fill="#334155" font-size="18" text-anchor="middle">👤</text>
+
+    <text x="145" y="500" fill="#1e293b" font-size="11" font-weight="600" text-anchor="middle">• Pembeli Tiket (Buyer)</text>
+    <text x="145" y="518" fill="#1e293b" font-size="11" font-weight="600" text-anchor="middle">• Penyelenggara Event</text>
+    <text x="145" y="536" fill="#64748b" font-size="10.5" text-anchor="middle">• Petugas Verifikasi Venue</text>
+  </g>
+
+  <!-- ======================================================== -->
+  <!-- 2. FRONTEND (NEXT.JS) -->
+  <!-- ======================================================== -->
+  <g filter="url(#shadow)">
+    <rect x="440" y="380" width="230" height="180" rx="12" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+    <rect x="440" y="380" width="230" height="38" rx="12" fill="#eff6ff"/>
+    <text x="555" y="404" fill="#1d4ed8" font-size="13" font-weight="700" text-anchor="middle">Frontend (Next.js)</text>
+    
+    <text x="460" y="445" fill="#1e293b" font-size="11" font-weight="600">🖥️ Web Application UI</text>
+    <text x="475" y="463" fill="#64748b" font-size="10.5">Katalog, Detail, Dashboard</text>
+    
+    <text x="460" y="490" fill="#1e293b" font-size="11" font-weight="600">🔐 Passkey &amp; Turnstile</text>
+    <text x="475" y="508" fill="#64748b" font-size="10.5">Biometrik &amp; Verifikasi Anti-Bot</text>
+    
+    <text x="460" y="535" fill="#1e293b" font-size="11" font-weight="600">💳 Snap Modal &amp; QR E-Ticket</text>
+  </g>
+
+  <!-- ======================================================== -->
+  <!-- 3. BACKEND (NESTJS) -->
+  <!-- ======================================================== -->
+  <g filter="url(#shadow)">
+    <rect x="890" y="360" width="270" height="220" rx="12" fill="#ffffff" stroke="#6366f1" stroke-width="2.5"/>
+    <rect x="890" y="360" width="270" height="42" rx="12" fill="#eef2ff"/>
+    <text x="1025" y="386" fill="#4338ca" font-size="14" font-weight="700" text-anchor="middle">Backend System (NestJS)</text>
+    
+    <text x="910" y="425" fill="#1e293b" font-size="11" font-weight="600">🌐 REST API Controllers &amp; DTO</text>
+    <text x="925" y="442" fill="#64748b" font-size="10.5">Validasi input &amp; manajemen sesi</text>
+    
+    <text x="910" y="468" fill="#1e293b" font-size="11" font-weight="600">🆔 KYC Hasher &amp; Passkey Manager</text>
+    <text x="925" y="485" fill="#64748b" font-size="10.5">Hash NIK satu arah (SHA-256)</text>
+    
+    <text x="910" y="511" fill="#1e293b" font-size="11" font-weight="600">🔔 Midtrans Webhook Handler</text>
+    <text x="925" y="528" fill="#64748b" font-size="10.5">Pemrosesan idempoten &amp; verifikasi</text>
+    
+    <text x="910" y="554" fill="#1e293b" font-size="11" font-weight="600">⚡ ZeroDev Relay &amp; EIP-712 Signer</text>
+  </g>
+
+  <!-- ======================================================== -->
+  <!-- 4. DATABASE (MYSQL) - TOP -->
+  <!-- ======================================================== -->
+  <g filter="url(#shadow)">
+    <rect x="890" y="110" width="270" height="150" rx="12" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+    <rect x="890" y="110" width="270" height="38" rx="12" fill="#fffbeb"/>
+    <text x="1025" y="134" fill="#b45309" font-size="13" font-weight="700" text-anchor="middle">Database (MySQL Off-Chain)</text>
+    
+    <text x="910" y="170" fill="#1e293b" font-size="11" font-weight="600">🗄️ Penyimpanan Data Operasional:</text>
+    <text x="920" y="190" fill="#475569" font-size="10.5">• users, kyc_records, passkey_credentials</text>
+    <text x="920" y="210" fill="#475569" font-size="10.5">• events, ticket_categories, ticket_cache</text>
+    <text x="920" y="230" fill="#475569" font-size="10.5">• orders, resale_listings, notifications</text>
+  </g>
+
+  <!-- ======================================================== -->
+  <!-- 5. PAYMENT GATEWAY (MIDTRANS) - RIGHT -->
+  <!-- ======================================================== -->
+  <g filter="url(#shadow)">
+    <rect x="1340" y="380" width="230" height="180" rx="12" fill="#ffffff" stroke="#ea580c" stroke-width="2"/>
+    <rect x="1340" y="380" width="230" height="38" rx="12" fill="#fff7ed"/>
+    <text x="1455" y="404" fill="#c2410c" font-size="13" font-weight="700" text-anchor="middle">Payment Gateway (Midtrans)</text>
+    
+    <text x="1355" y="445" fill="#1e293b" font-size="11" font-weight="600">💳 Simulasi Pembayaran Fiat</text>
+    <text x="1370" y="463" fill="#64748b" font-size="10.5">QRIS, Virtual Account, GoPay</text>
+    
+    <text x="1355" y="490" fill="#1e293b" font-size="11" font-weight="600">⚡ Midtrans Snap Service</text>
+    <text x="1370" y="508" fill="#64748b" font-size="10.5">Pembangkitan payment token</text>
+    
+    <text x="1355" y="535" fill="#1e293b" font-size="11" font-weight="600">🔔 Asynchronous Webhook</text>
+  </g>
+
+  <!-- ======================================================== -->
+  <!-- 6. IPFS (PINATA) - BOTTOM LEFT -->
+  <!-- ======================================================== -->
+  <g filter="url(#shadow)">
+    <rect x="690" y="730" width="250" height="150" rx="12" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+    <rect x="690" y="730" width="250" height="38" rx="12" fill="#ecfdf5"/>
+    <text x="815" y="754" fill="#047857" font-size="13" font-weight="700" text-anchor="middle">IPFS Storage (Pinata)</text>
+    
+    <text x="710" y="790" fill="#1e293b" font-size="11" font-weight="600">📦 Decentralized Metadata:</text>
+    <text x="720" y="810" fill="#475569" font-size="10.5">• Ticket Artwork / Graphic Image</text>
+    <text x="720" y="830" fill="#475569" font-size="10.5">• Ticket Metadata JSON (Deskripsi, Venue)</text>
+    <text x="720" y="850" fill="#047857" font-size="10.5" font-weight="600">• tokenURI: ipfs://Qm... (Immutable CID)</text>
+  </g>
+
+  <!-- ======================================================== -->
+  <!-- 7. BLOCKCHAIN (ETHEREUM SEPOLIA) - BOTTOM RIGHT -->
+  <!-- ======================================================== -->
+  <g filter="url(#shadow)">
+    <rect x="1080" y="710" width="310" height="190" rx="12" fill="#ffffff" stroke="#06b6d4" stroke-width="2"/>
+    <rect x="1080" y="710" width="310" height="38" rx="12" fill="#ecfeff"/>
+    <text x="1235" y="734" fill="#0e7490" font-size="13" font-weight="700" text-anchor="middle">Blockchain (Ethereum Sepolia Testnet)</text>
+    
+    <text x="1100" y="768" fill="#1e293b" font-size="11" font-weight="600">⚡ ERC-4337 Paymaster (Gasless Relayer)</text>
+    <text x="1100" y="795" fill="#0369a1" font-size="11" font-weight="700">📜 TicketContract.sol (ERC-721)</text>
+    <text x="1115" y="812" fill="#475569" font-size="10">• originalPrice Locked, NIK Hash on-chain</text>
+    <text x="1115" y="828" fill="#475569" font-size="10">• Allowlist Transfer Hook &amp; markUsed()</text>
+    
+    <text x="1100" y="855" fill="#0369a1" font-size="11" font-weight="700">🏪 MarketplaceContract.sol</text>
+    <text x="1115" y="872" fill="#475569" font-size="10">• Resale Price-Lock (Anti-Scalping: harga = originalPrice)</text>
+  </g>
+
+
+  <!-- ======================================================== -->
+  <!-- ARROWS & DATA LABELS -->
+  <!-- ======================================================== -->
+
+  <!-- -------------------------------------------------------- -->
+  <!-- CONNECTION 1: PENGGUNA <===> FRONTEND -->
+  <!-- -------------------------------------------------------- -->
+  <!-- Forward Arrow (Top) -->
+  <path d="M 240 440 L 440 440" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arr-blue)"/>
+  <!-- Forward Label -->
+  <rect x="250" y="415" width="180" height="22" rx="4" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="340" y="430" fill="#1e40af" font-size="9.5" font-weight="700" text-anchor="middle">➔ Kirim: Form Order, KTP, Passkey</text>
+
+  <!-- Backward Arrow (Bottom) -->
+  <path d="M 440 500 L 240 500" stroke="#059669" stroke-width="2.5" marker-end="url(#arr-green)"/>
+  <!-- Backward Label -->
+  <rect x="250" y="505" width="180" height="22" rx="4" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1"/>
+  <text x="340" y="520" fill="#065f46" font-size="9.5" font-weight="700" text-anchor="middle">⬅ Output: UI Katalog, E-Ticket QR</text>
+
+
+  <!-- -------------------------------------------------------- -->
+  <!-- CONNECTION 2: FRONTEND <===> BACKEND -->
+  <!-- -------------------------------------------------------- -->
+  <!-- Forward Arrow (Top) -->
+  <path d="M 670 440 L 890 440" stroke="#4f46e5" stroke-width="2.5" marker-end="url(#arr-indigo)"/>
+  <!-- Forward Label -->
+  <rect x="685" y="415" width="200" height="22" rx="4" fill="#eef2ff" stroke="#c7d2fe" stroke-width="1"/>
+  <text x="785" y="430" fill="#3730a3" font-size="9.5" font-weight="700" text-anchor="middle">➔ Kirim: Request JSON (Order &amp; Token)</text>
+
+  <!-- Backward Arrow (Bottom) -->
+  <path d="M 890 500 L 670 500" stroke="#059669" stroke-width="2.5" marker-end="url(#arr-green)"/>
+  <!-- Backward Label -->
+  <rect x="685" y="505" width="200" height="22" rx="4" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1"/>
+  <text x="785" y="520" fill="#065f46" font-size="9.5" font-weight="700" text-anchor="middle">⬅ Output: Snap Token, Status, Metadata</text>
+
+
+  <!-- -------------------------------------------------------- -->
+  <!-- CONNECTION 3: BACKEND <===> DATABASE (MYSQL) -->
+  <!-- -------------------------------------------------------- -->
+  <!-- Upward Arrow (Left) -->
+  <path d="M 990 360 L 990 260" stroke="#d97706" stroke-width="2.5" marker-end="url(#arr-amber)"/>
+  <!-- Upward Label -->
+  <rect x="850" y="295" width="135" height="34" rx="4" fill="#fffbeb" stroke="#fde68a" stroke-width="1"/>
+  <text x="917" y="309" fill="#92400e" font-size="9" font-weight="700" text-anchor="middle">➔ Kirim: Query SQL</text>
+  <text x="917" y="322" fill="#b45309" font-size="8.5" text-anchor="middle">Insert Order, NIK Hash</text>
+
+  <!-- Downward Arrow (Right) -->
+  <path d="M 1060 260 L 1060 360" stroke="#059669" stroke-width="2.5" marker-end="url(#arr-green)"/>
+  <!-- Downward Label -->
+  <rect x="1065" y="295" width="145" height="34" rx="4" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1"/>
+  <text x="1137" y="309" fill="#065f46" font-size="9" font-weight="700" text-anchor="middle">⬅ Output: Data Entitas</text>
+  <text x="1137" y="322" fill="#047857" font-size="8.5" text-anchor="middle">User, Kuota Tiket, Status</text>
+
+
+  <!-- -------------------------------------------------------- -->
+  <!-- CONNECTION 4: BACKEND <===> MIDTRANS -->
+  <!-- -------------------------------------------------------- -->
+  <!-- Forward Arrow (Top) -->
+  <path d="M 1160 440 L 1340 440" stroke="#ea580c" stroke-width="2.5" marker-end="url(#arr-amber)"/>
+  <!-- Forward Label -->
+  <rect x="1175" y="415" width="150" height="22" rx="4" fill="#fff7ed" stroke="#fed7aa" stroke-width="1"/>
+  <text x="1250" y="430" fill="#c2410c" font-size="9.5" font-weight="700" text-anchor="middle">➔ Kirim: Order ID &amp; Gross Amt</text>
+
+  <!-- Backward Arrow (Bottom) -->
+  <path d="M 1340 500 L 1160 500" stroke="#059669" stroke-width="2.5" marker-end="url(#arr-green)"/>
+  <!-- Backward Label -->
+  <rect x="1175" y="505" width="150" height="22" rx="4" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1"/>
+  <text x="1250" y="520" fill="#065f46" font-size="9.5" font-weight="700" text-anchor="middle">⬅ Output: Webhook Settlement</text>
+
+
+  <!-- -------------------------------------------------------- -->
+  <!-- CONNECTION 5: BACKEND <===> IPFS PINATA -->
+  <!-- -------------------------------------------------------- -->
+  <!-- Downward Line -->
+  <path d="M 940 580 L 940 640 L 815 640 L 815 730" fill="none" stroke="#10b981" stroke-width="2.5" marker-end="url(#arr-emerald)"/>
+  <!-- Label Down -->
+  <rect x="710" y="615" width="190" height="22" rx="4" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1"/>
+  <text x="805" y="630" fill="#047857" font-size="9.5" font-weight="700" text-anchor="middle">➔ Kirim: File Artwork &amp; JSON</text>
+
+  <!-- Upward Line -->
+  <path d="M 855 730 L 855 675 L 970 675 L 970 580" fill="none" stroke="#059669" stroke-width="2.5" marker-end="url(#arr-green)"/>
+  <!-- Label Up -->
+  <rect x="850" y="670" width="165" height="22" rx="4" fill="#ffffff" stroke="#6ee7b7" stroke-width="1"/>
+  <text x="932" y="685" fill="#065f46" font-size="9.5" font-weight="700" text-anchor="middle">⬅ Output: CID (tokenURI)</text>
+
+
+  <!-- -------------------------------------------------------- -->
+  <!-- CONNECTION 6: BACKEND <===> BLOCKCHAIN -->
+  <!-- -------------------------------------------------------- -->
+  <!-- Downward Line -->
+  <path d="M 1080 580 L 1080 635 L 1180 635 L 1180 710" fill="none" stroke="#0891b2" stroke-width="2.5" marker-end="url(#arr-cyan)"/>
+  <!-- Label Down -->
+  <rect x="1055" y="620" width="210" height="24" rx="4" fill="#ecfeff" stroke="#a5f3fc" stroke-width="1"/>
+  <text x="1160" y="636" fill="#0e7490" font-size="9.5" font-weight="700" text-anchor="middle">➔ Kirim: UserOp Gasless (Mint/Resale)</text>
+
+  <!-- Upward Line -->
+  <path d="M 1240 710 L 1240 660 L 1120 660 L 1120 580" fill="none" stroke="#059669" stroke-width="2.5" marker-end="url(#arr-green)"/>
+  <!-- Label Up -->
+  <rect x="1145" y="665" width="190" height="24" rx="4" fill="#ffffff" stroke="#67e8f9" stroke-width="1"/>
+  <text x="1240" y="681" fill="#047857" font-size="9.5" font-weight="700" text-anchor="middle">⬅ Output: txHash, tokenId, Receipt</text>
+
+  <!-- ======================================================== -->
+  <!-- LEGEND BOX (BOTTOM LEFT) -->
+  <!-- ======================================================== -->
+  <g filter="url(#shadow)">
+    <rect x="50" y="800" width="480" height="90" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+    <text x="70" y="822" fill="#0f172a" font-size="11" font-weight="700">Keterangan Aliran Data (Legend):</text>
+    <rect x="70" y="834" width="16" height="4" rx="2" fill="#2563eb"/>
+    <text x="95" y="840" fill="#334155" font-size="10" font-weight="600">➔ Panah Warna (Biru/Ungu/Kuning/Cyan): Data Masukan / Request yang Dikirim</text>
+    <rect x="70" y="854" width="16" height="4" rx="2" fill="#059669"/>
+    <text x="95" y="860" fill="#334155" font-size="10" font-weight="600">⬅ Panah Hijau: Data Keluaran / Output Balikan (Response / Receipt / CID)</text>
+    <text x="70" y="880" fill="#64748b" font-size="9.5">*Biaya gas transaksi blockchain disubsidi penuh sistem via ERC-4337 Paymaster (Gasless UX)</text>
+  </g>
+
+</svg>
+"""
+
+with open("d:/STEVE/Project NFT Marketplace/design/arsitektur-simple.svg", "w", encoding="utf-8") as f:
+    f.write(svg_content)
+
+html_content = f"""<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagram Arsitektur Simple & Data Flow</title>
+    <style>
+        body {{
+            margin: 0;
+            padding: 10px;
+            background-color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }}
+        #diagram-box {{
+            background: #ffffff;
+            width: 1620px;
+            height: 980px;
+        }}
+    </style>
+</head>
+<body>
+    <div id="diagram-box">
+        {svg_content}
+    </div>
+</body>
+</html>
+"""
+
+with open("d:/STEVE/Project NFT Marketplace/design/arsitektur-simple.html", "w", encoding="utf-8") as f:
+    f.write(html_content)
+
+print("Created arsitektur-simple.svg and arsitektur-simple.html successfully!")

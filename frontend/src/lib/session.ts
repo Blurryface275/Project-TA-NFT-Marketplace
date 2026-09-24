@@ -57,7 +57,7 @@ export async function createSession(
 ) {
   console.log("🚀 [Session] Memulai createSession untuk userId:", userId);
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-  const session = await encrypt({ userId, expiresAt });
+  const session = await encrypt({ userId, expiresAt, name, walletAddress });
 
   const cookieStore = await cookies();
   cookieStore.set("session", session, {

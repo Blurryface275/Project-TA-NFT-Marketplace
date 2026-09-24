@@ -55,7 +55,7 @@ export class TicketsService {
         ` [TicketsService] Permintaan minting ${qty} tiket untuk alamat dompet: ${dto.walletAddress}`,
       );
 
-      // 1. Cek jumlah tiket yang sudah dimiliki dompet ini di smart contract Sepolia
+      // Cek jumlah tiket yang sudah dimiliki dompet ini di smart contract Sepolia
       const currentBalance = await this.publicClient.readContract({
         address: this.contractAddress,
         abi: TICKET_CONTRACT_ABI,
@@ -130,11 +130,16 @@ export class TicketsService {
 
   async redeemTicket(tokenId: number, walletAddress: string) {
     try {
-      console.log(' [TicketsService] Redeem tiket dengan ID: ' + tokenId + ' oleh wallet: ' + walletAddress);
+      console.log(
+        ' [TicketsService] Redeem tiket dengan ID: ' +
+          tokenId +
+          ' oleh wallet: ' +
+          walletAddress,
+      );
 
       // di sini publicClient digunakan utk baca dta (read-only)
       // walletClient digunakan utk mengirim transaksi (write)
-      
+
       // panggil fungsi ownerOf di smart contract unutk cek apakah owner wallet sudah sesuai
       const owner = await this.publicClient.readContract({
         address: this.contractAddress, // targetnya smart contract dengan ddress sesuai dengan .env
@@ -143,8 +148,10 @@ export class TicketsService {
         args: [BigInt(tokenId)], // argumen / parameter untuk fungsi ownerOf
       });
       // validasi kecocokan : apakah pemegang tiket yang tercatat di blockchain sudah sama dengan pengirim?
-      if(owner.toLowerCase() !== walletAddress.toLowerCase()){
-        throw new BadRequestException(`Validasi gagal: Alamat dompet ini tidak sama dengan pemilik tiket di blockchain`,);
+      if (owner.toLowerCase() !== walletAddress.toLowerCase()) {
+        throw new BadRequestException(
+          `Validasi gagal: Alamat dompet ini tidak sama dengan pemilik tiket di blockchain`,
+        );
       }
 
       // panggil fungsi 'markUsed' di smart contract Sepolia untuk menukar tiket NFT menjadi pulsa
@@ -187,7 +194,7 @@ export class TicketsService {
         args: [BigInt(tokenId)],
       });
 
-      // ambil wallet address  pemilik tiket (standar ERC-721)
+      // ambil wallet address pemilik tiket (standar ERC-721)
       const owner = await this.publicClient.readContract({
         address: this.contractAddress,
         abi: TICKET_CONTRACT_ABI,
@@ -209,17 +216,17 @@ export class TicketsService {
   }
 
   // Mengambil seluruh tiket milik alamat dompet tertentu dari blockchain
-  async getUserTickets(walletAddress: string){
+  async getUserTickets(walletAddress: string) {
     const userTickets = [];
 
     // loop memeriksa tokenId (misal: dari token #1 sampai token #50)
-    for (let i = 1; i <= 50; i++){
-      try{
+    for (let i = 1; i <= 50; i++) {
+      try {
         const ticket = await this.getTicket(i);
 
         // cocokkan apakah pemilik token ini sama dengan walletAddress pengguna yang sedang login
         // perbandingan string ke string harus persis, termasuk case sensitivity atau huruf kecil besar
-        if(ticket.owner.toLowerCase() === walletAddress.toLowerCase()){
+        if (ticket.owner.toLowerCase() === walletAddress.toLowerCase()) {
           userTickets.push(ticket);
         }
       } catch {
