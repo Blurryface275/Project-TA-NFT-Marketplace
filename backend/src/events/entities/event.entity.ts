@@ -41,6 +41,9 @@ export class Event{
     organizersId: number;
 
     // Relasi One-to-Many: 1 Event memiliki banyak kategori tiket
-  @OneToMany(() => TicketCategory, (cat) => cat.event)
-  ticketCategories: TicketCategory[];
+    @OneToMany(() => TicketCategory, (cat) => cat.event)
+    ticketCategories: TicketCategory[];
+
+    @Column({name: 'max_per_wallet', type: 'int', default: 2})
+    maxPerWallet: number; // by default limitnya 2 tickets per user
 }

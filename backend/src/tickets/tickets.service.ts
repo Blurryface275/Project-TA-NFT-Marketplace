@@ -9,6 +9,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { TICKET_CONTRACT_ABI } from './ticket-abi';
 import { sepolia } from 'viem/chains';
 import { MintTicketDto } from './dto/mint-ticket.dto';
+import { EventsService } from '../events/events.service';
 
 @Injectable()
 export class TicketsService {
@@ -17,7 +18,7 @@ export class TicketsService {
   private account;
   private contractAddress: `0x${string}`;
 
-  constructor(private configService: ConfigService) {
+  constructor(private configService: ConfigService, private eventsService: EventsService) {
     // Ambil konfigurasi dari backend/.env via NestJS ConfigService
     const RPC_URL = this.configService.get<string>('SEPOLIA_RPC_URL')!;
     const privateKey = this.configService.get<string>(
@@ -47,23 +48,30 @@ export class TicketsService {
   }
 
   async mintTicket(dto: MintTicketDto) {
-    const MAX_PER_WALLET = 2; // Batasan anti-scalping: maksimal 2 tiket per akun
-    const qty = dto.quantity && dto.quantity > 0 ? dto.quantity : 1;
+    // Ambil data event dari DB MySQL buat dapetin batas kuota yg ditentuin organizer
+    const event = await this.eventsService.findOne(dto.eventId);
+    const MAX_PER_WALLET = event?.maxPerWallet || 2; // jika event null maka batas maksimal adalah 2
+    const qty = dto.quantity && dto.quantity > 0 ? dto.quantity : 1; 
 
     try {
       console.log(
         ` [TicketsService] Permintaan minting ${qty} tiket untuk alamat dompet: ${dto.walletAddress}`,
       );
 
+      // Cek riwayat tiket yg sdh dimliki dompet ini khusus untuk event yg bersangkutan
+      const userTickets = await this.getUserTickets(dto.walletAddress);
+      const currentEventTickets = userTickets.filter(
+        (t) => t.eventId === Number(dto.eventId),
+      );
       // Cek jumlah tiket yang sudah dimiliki dompet ini di smart contract Sepolia
-      const currentBalance = await this.publicClient.readContract({
-        address: this.contractAddress,
-        abi: TICKET_CONTRACT_ABI,
-        functionName: 'balanceOf',
-        args: [dto.walletAddress as `0x${string}`],
-      });
+      // const currentBalance = await this.publicClient.readContract({
+      //   address: this.contractAddress,
+      //   abi: TICKET_CONTRACT_ABI,
+      //   functionName: 'balanceOf',
+      //   args: [dto.walletAddress as `0x${string}`],
+      // });
 
-      const currentCount = Number(currentBalance);
+      const currentCount = Number(currentEventTickets.length);
       console.log(
         ` [TicketsService] Status kepemilikan saat ini: ${currentCount}/${MAX_PER_WALLET} tiket. Permintaan baru: ${qty} tiket.`,
       );
@@ -78,7 +86,7 @@ export class TicketsService {
       const txHashes: string[] = [];
       let lastReceipt: any = null;
 
-      // 2. Loop minting sebanyak kuantiti tiket yang diminta (1 atau 2)
+      // Loop minting sebanyak jumlah tiket yang diminta (1 atau 2)
       for (let i = 0; i < qty; i++) {
         console.log(
           ` [TicketsService] Mengirim transaksi #${i + 1} dari ${qty} ke Sepolia...`,

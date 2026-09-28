@@ -1,6 +1,6 @@
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
-import TicketCard, { TicketData } from "./TicketCard";
+import TicketCard, { TicketData, EventData } from "./TicketCard";
 import Link from "next/link";
 import { Ticket, PlusCircle } from "lucide-react";
 
@@ -20,12 +20,26 @@ export default async function MyTicketsPage() {
   try {
     const res = await fetch(
       `${process.env.BACKEND_URL}/api/tickets/my-tickets/${walletAddress}`,
+      { cache: "no-store" },
     );
     if (res.ok) {
       tickets = await res.json();
     }
   } catch (error) {
     console.error("Error fetching tickets:", error);
+  }
+
+  // Ambil data seluruh event secara dinamis dari database MySQL via API backend
+  let events: EventData[] = [];
+  try {
+    const eventsRes = await fetch(`${process.env.BACKEND_URL}/api/events`, {
+      cache: "no-store",
+    });
+    if (eventsRes.ok) {
+      events = await eventsRes.json();
+    }
+  } catch (error) {
+    console.error("Gagal mengambil daftar event:", error);
   }
 
   return (
@@ -77,7 +91,7 @@ export default async function MyTicketsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {tickets.map((t) => (
-            <TicketCard key={t.tokenId} ticket={t} /> // t adalah object tiketnya, setiaptiket kan punya id unik
+            <TicketCard key={t.tokenId} ticket={t} events={events} /> // t adalah object tiketnya, setiaptiket kan punya id unik
           ))}
         </div>
       )}

@@ -110,8 +110,9 @@ Semua penjelasan disusun secara sistematis dan dilengkapi referensi standar resm
 * **Topik Utama:**
   * Studi kasus konkret menggunakan data riil akun Andi (`name: "Andi Setiawan"`, `walletAddress: "0x811a...61Eb"`).
   * Diagram alur sekuensial (Sequence Diagram) dari klik tombol "Beli Tiket" di UI hingga penambangan blok Sepolia.
+  * Analisis mendalam arsitektur data: Data apa yang diambil saat load (`EventData`, `TicketCategoryData`), data apa yang dikirim saat checkout (`eventId`, `categoryId`, `qty`), dan data apa yang dikembalikan backend (`txHash`, `blockNumber`).
+  * Taksonomi penyimpanan Hybrid Storage: Data apa yang disimpan On-Chain (hak milik, `originalPrice` anti-scalping, `used` anti-double-spend, kuota) vs. Off-Chain di MySQL (nama acara, banner poster, venue) beserta justifikasi optimasi biaya gas.
   * Penelusuran baris kode aktif di setiap file (`BuyTicketCard.tsx` $\rightarrow$ `buy/actions.ts` $\rightarrow$ `session.ts` $\rightarrow$ `mint-ticket.dto.ts` $\rightarrow$ `tickets.controller.ts` $\rightarrow$ `tickets.service.ts` $\rightarrow$ `TicketContract.sol`).
-  * Tabel komprehensif isi nilai nyata di setiap variabel sepanjang perjalanan transaksi.
   * Jawaban ilmiah ujian sidang TA seputar pencegahan spam klik ganda dan peran penguncian harga `originalPrice` untuk Anti-Scalping.
 
 ### 📄 [14. Pola Komunikasi API, Arsitektur RESTful, dan Pola BFF (Backend-for-Frontend)](./14-api-communication-patterns-and-bff-architecture.md)
@@ -150,6 +151,22 @@ Semua penjelasan disusun secara sistematis dan dilengkapi referensi standar resm
   * Siklus hidup countdown timer 60 detik (*Anti-Screenshot Defense*) dan pembersihan memori (*cleanup function*).
   * Alur eksekusi on-chain `markUsed` via Relayer dan pembuktian matematis *Anti-Double-Spend*.
   * Kumpulan tanya-jawab kritis (FAQ) sidang Tugas Akhir seputar batas waktu 60 detik dan multi-modal Passkey.
+
+### 📄 [18. Arsitektur Smart Contract (Multi-Tenant vs. Factory Pattern), Analisis Pemilihan Atribut Entitas, dan Teori TypeORM](./18-orm-typeorm-architecture-and-multi-event-vs-factory.md)
+* **Topik Utama:**
+  * Perbandingan teknis Multi-Tenant Single Contract (`TicketContract.sol`) vs. Factory Pattern (`TicketFactory.sol`) dari sudut pandang gas optimization (hemat 98%) dan integrasi Paymaster ERC-4337.
+  * Analisis fungsi arsitektural `on_chain_event_id` sebagai namespace isolation kuota anti-scalping per wallet.
+  * Schema design rationale dan pemilihan tipe data MySQL (`events` & `ticket_categories`).
+  * Teori Object-Relational Mapping (ORM), Data Mapper Pattern vs. Active Record, serta arsitektur TypeORM pada NestJS.
+  * Rujukan dokumentasi resmi dan sitasi akademik (Ethereum Yellow Paper, EIP-4337, EIP-7562, Martin Fowler, NestJS, TypeORM).
+
+### 📄 [19. Arsitektur Multi-Event Ticket Purchase, Dynamic Anti-Scalping Quota, dan Sequential Seat Assignment](./19-multi-event-ticket-purchase-and-dynamic-quota.md)
+* **Topik Utama:**
+  * Transisi dari pembelian single-event statis (`/api/events/2`) ke ekosistem dinamis Multi-Event (`/api/events`).
+  * Pemenuhan rekomendasi dosen pembimbing: Penyelenggara (organizer) menentukan batas maksimal kuota dompet (`max_per_wallet`) secara dinamis.
+  * Pemecahan bug akumulasi kuota global: Penggantian ERC-721 `balanceOf` dengan filter kepemilikan spesifik per-event (`t.eventId === dto.eventId`).
+  * Implementasi *Sequential Auto-Assignment* nomor kursi otomatis (`VIP-01`, `VIP-02`) yang patuh pada Batasan Masalah #5 proposal skripsi UBAYA (tanpa denah SVG 2D/3D).
+  * Arsitektur pembaruan state reaktif pada Client Component Next.js pasca-minting on-chain di Sepolia Testnet.
 
 ---
 
