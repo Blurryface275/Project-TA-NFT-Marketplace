@@ -11,7 +11,8 @@ type SessionPayload = {
   userId: string;
   expiresAt: Date;
   name?: string; // we need name for display on Navbar
-  walletAddress?: string; // we need walletAddress for display on Profile
+  walletAddress?: string | null; // we need walletAddress for display on Profile
+  email?: string;
 };
 
 // encryption funciton to create JWT from Payload
@@ -53,11 +54,12 @@ export async function decrypt(session: string | undefined) {
 export async function createSession(
   userId: string,
   name?: string,
-  walletAddress?: string,
+  walletAddress?: string | null,
+  email?: string,
 ) {
   console.log("🚀 [Session] Memulai createSession untuk userId:", userId);
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-  const session = await encrypt({ userId, expiresAt, name, walletAddress });
+  const session = await encrypt({ userId, expiresAt, name, walletAddress, email });
 
   const cookieStore = await cookies();
   cookieStore.set("session", session, {
@@ -68,6 +70,37 @@ export async function createSession(
   });
   console.log(
     "🍪 [Session] Cookie 'session' berhasil disimpan ke HttpOnly cookie!",
+  );
+}
+
+// memperbarui alamat dompet di sesi aktif tanpa harus re-login
+export async function updateSessionWallet(walletAddress: string) {
+  console.log("🔄 [Session] Memperbarui alamat dompet ke sesi:", walletAddress);
+  const currentSession = await getSession();
+  if (!currentSession) {
+    console.warn("⚠️ [Session] Gagal update wallet: Sesi aktif tidak ditemukan");
+    return;
+  }
+
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  const updatedPayload: SessionPayload = {
+    userId: currentSession.userId as string,
+    expiresAt,
+    name: currentSession.name as string | undefined,
+    walletAddress,
+    email: currentSession.email as string | undefined,
+  };
+
+  const session = await encrypt(updatedPayload);
+  const cookieStore = await cookies();
+  cookieStore.set("session", session, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 60 * 60 * 24 * 7,
+    path: "/",
+  });
+  console.log(
+    "🍪 [Session] Alamat dompet berhasil diperbarui dalam cookie session!",
   );
 }
 

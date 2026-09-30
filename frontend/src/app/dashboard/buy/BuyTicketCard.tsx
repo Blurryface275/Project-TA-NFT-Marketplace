@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { buyTicketAction, BuyTicketState } from "./actions";
+import { registerPasskey } from "@/lib/passkey";
+import { buyTicketAction, activateWalletAction, BuyTicketState } from "./actions";
 import {
   Calendar,
   MapPin,
@@ -15,7 +16,8 @@ import {
   ArrowRight,
   ArrowLeft,
   Armchair,
-  Tag,
+  Key,
+  ShieldCheck,
 } from "lucide-react";
 
 export interface TicketCategoryData {
@@ -51,6 +53,7 @@ export interface UserTicket {
 
 interface BuyTicketCardProps {
   walletAddress: string;
+  userEmail?: string;
   events?: EventData[];
   userTickets?: UserTicket[];
   initialOwnedCount?: number;
@@ -59,6 +62,7 @@ interface BuyTicketCardProps {
 
 export default function BuyTicketCard({
   walletAddress,
+  userEmail = "",
   events = [],
   userTickets = [],
   event,
@@ -78,6 +82,11 @@ export default function BuyTicketCard({
 
   // Simpan data tiket kepemilikan user dalam state lokal
   const [ownedTickets, setOwnedTickets] = useState<UserTicket[]>(userTickets);
+
+  // State manajemen dompet berbasis Passkey (Progressive Onboarding)
+  const [activeWallet, setActiveWallet] = useState<string>(walletAddress || "");
+  const [isActivatingWallet, setIsActivatingWallet] = useState(false);
+  const [activationError, setActivationError] = useState<string | null>(null);
 
   // Konversi kategori dari DB MySQL milik event yang aktif ke format kartu pilihan
   const categories = (currentEvent?.ticketCategories || []).map((cat) => ({
@@ -148,7 +157,8 @@ export default function BuyTicketCard({
 
   // State jumlah tiket yang ingin dibeli
   const [quantity, setQuantity] = useState(1);
-  const safeQuantity = remainingQuota > 0 ? Math.min(quantity, remainingQuota) : 1;
+  const safeQuantity =
+    remainingQuota > 0 ? Math.min(quantity, remainingQuota) : 1;
   const totalPrice = safeQuantity * pricePerTicket;
 
   // Format tanggal event sesuai zona WIB
@@ -172,8 +182,50 @@ export default function BuyTicketCard({
     setResult(null);
   };
 
+  // Fungsi memicu Passkey dan mengaktifkan dompet di backend (Progressive Onboarding)
+  const handleActivateWallet = async () => {
+    setIsActivatingWallet(true);
+    setActivationError(null);
+
+    try {
+      // 1. Picu WebAuthn di browser (PIN Windows / Biometrik / QR HP)
+      const emailToUse = userEmail || "customer@example.com";
+      const passkey = await registerPasskey(emailToUse);
+
+      // 2. Simpan kredensial ke database via Server Action
+      const res = await activateWalletAction({
+        pubX: passkey.pubX,
+        pubY: passkey.pubY,
+        credentialId: passkey.credentialId,
+        walletAddress: passkey.walletAddress,
+      });
+
+      if (!res.success) {
+        setActivationError(res.message || "Gagal mengaktifkan dompet tiket.");
+        return;
+      }
+
+      // 3. Simpan alamat dompet ke state lokal -> Tombol otomatis berubah jadi 'Beli Tiket'
+      setActiveWallet(passkey.walletAddress);
+    } catch (err: unknown) {
+      console.error("Gagal aktivasi passkey:", err);
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "Gagal membuka sensor biometrik atau PIN Windows.";
+      setActivationError(errorMessage);
+    } finally {
+      setIsActivatingWallet(false);
+    }
+  };
+
   // Fungsi pembelian tiket ke backend relayer
   const handleBuyTicket = async () => {
+    if (!activeWallet) {
+      setActivationError("Silakan aktifkan dompet tiket Anda terlebih dahulu.");
+      return;
+    }
+
     setIsLoading(true);
     setResult(null);
 
@@ -194,7 +246,7 @@ export default function BuyTicketCard({
           categoryId: selectedCategory.id,
           originalPrice: pricePerTicket,
           used: false,
-          owner: walletAddress,
+          owner: activeWallet,
         }));
 
         setOwnedTickets((prev) => [...prev, ...newlyMintedTickets]);
@@ -236,7 +288,9 @@ export default function BuyTicketCard({
             const isEventFull = ownedInThisEvent >= eventMax;
 
             // Cari harga tiket termurah untuk label "Mulai dari"
-            const prices = (evt.ticketCategories || []).map((c) => Number(c.price));
+            const prices = (evt.ticketCategories || []).map((c) =>
+              Number(c.price),
+            );
             const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
 
             const formattedDate = evt.startDate
@@ -442,7 +496,9 @@ export default function BuyTicketCard({
                       </p>
                     </div>
                     <div className="mt-3 pt-2.5 border-t border-border/40 flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Harga</span>
+                      <span className="text-xs text-muted-foreground">
+                        Harga
+                      </span>
                       <span className="text-sm font-bold text-foreground">
                         Rp {cat.price.toLocaleString("id-ID")}
                       </span>
@@ -468,8 +524,8 @@ export default function BuyTicketCard({
                 </span>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Nomor kursi ditentukan otomatis berurutan sesuai urutan konfirmasi
-                blok di blockchain (*Sequential Auto-Assignment*).
+                Nomor kursi ditentukan otomatis berurutan sesuai urutan
+                konfirmasi blok di blockchain (*Sequential Auto-Assignment*).
               </p>
             </div>
           </div>
@@ -563,10 +619,12 @@ export default function BuyTicketCard({
               <span>Penerima NFT:</span>
             </div>
             <span
-              className="font-mono text-foreground font-semibold truncate max-w-[240px] sm:max-w-none"
-              title={walletAddress}
+              className={`font-mono font-semibold truncate max-w-[240px] sm:max-w-none ${
+                activeWallet ? "text-foreground" : "text-amber-400"
+              }`}
+              title={activeWallet || "Belum Aktif"}
             >
-              {walletAddress}
+              {activeWallet ? activeWallet : "⚠️ Belum Aktif (Perlu Aktivasi)"}
             </span>
           </div>
 
@@ -632,38 +690,77 @@ export default function BuyTicketCard({
               <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
               <div>
                 <p className="font-semibold">Pembelian Gagal</p>
-                <p className="text-xs text-red-300/90 mt-0.5">{result.message}</p>
+                <p className="text-xs text-red-300/90 mt-0.5">
+                  {result.message}
+                </p>
               </div>
             </div>
           )}
 
-          {/* Tombol Eksekusi Beli */}
-          <button
-            type="button"
-            onClick={handleBuyTicket}
-            disabled={isLoading || isQuotaFull}
-            className="w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl font-semibold text-white bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-primary/25 transition cursor-pointer"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span>Memproses Minting ({safeQuantity} Tiket)...</span>
-              </>
-            ) : isQuotaFull ? (
-              <>
-                <CheckCircle2 className="h-5 w-5" />
-                <span>Batas Kuota {MAX_PER_WALLET} Tiket Telah Tercapai</span>
-              </>
-            ) : (
-              <>
-                <Ticket className="h-5 w-5" />
-                <span>
-                  Beli {safeQuantity} Tiket Sekarang (Rp{" "}
-                  {totalPrice.toLocaleString("id-ID")})
-                </span>
-              </>
-            )}
-          </button>
+          {/* JIKA DOMPET BELUM AKTIF: Tampilkan Tombol Aktivasi Passkey */}
+          {!activeWallet ? (
+            <div className="space-y-3">
+              <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-200 text-xs space-y-1.5">
+                <div className="flex items-center gap-2 font-semibold text-purple-300">
+                  <ShieldCheck className="h-4 w-4 text-purple-400" />
+                  <span>Aktivasi Dompet Tiket Diperlukan</span>
+                </div>
+                <p className="text-muted-foreground leading-relaxed">
+                  Untuk mengunci tiket resmi anti-calo di blockchain, akun Anda memerlukan Smart Account berbasis Passkey. Cukup 1x klik menggunakan PIN Windows, sidik jari, atau scan QR ponsel.
+                </p>
+                {activationError && (
+                  <p className="text-red-400 font-medium">{activationError}</p>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleActivateWallet}
+                disabled={isActivatingWallet}
+                className="w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl font-semibold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 transition shadow-lg cursor-pointer"
+              >
+                {isActivatingWallet ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Menghubungkan Sensor Biometrik / PIN...</span>
+                  </>
+                ) : (
+                  <>
+                    <Key className="h-5 w-5" />
+                    <span>Aktifkan Dompet Tiket (1-Klik Passkey/PIN)</span>
+                  </>
+                )}
+              </button>
+            </div>
+          ) : (
+            /* JIKA DOMPET SUDAH AKTIF: Tampilkan Tombol Beli Tiket Biasa */
+            <button
+              type="button"
+              onClick={handleBuyTicket}
+              disabled={isLoading || isQuotaFull}
+              className="w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl font-semibold text-white bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-primary/25 transition cursor-pointer"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Memproses Minting ({safeQuantity} Tiket)...</span>
+                </>
+              ) : isQuotaFull ? (
+                <>
+                  <CheckCircle2 className="h-5 w-5" />
+                  <span>Batas Kuota {MAX_PER_WALLET} Tiket Telah Tercapai</span>
+                </>
+              ) : (
+                <>
+                  <Ticket className="h-5 w-5" />
+                  <span>
+                    Beli {safeQuantity} Tiket Sekarang (Rp{" "}
+                    {totalPrice.toLocaleString("id-ID")})
+                  </span>
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>

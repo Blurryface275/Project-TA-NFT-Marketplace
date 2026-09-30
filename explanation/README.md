@@ -166,7 +166,13 @@ Semua penjelasan disusun secara sistematis dan dilengkapi referensi standar resm
   * Pemenuhan rekomendasi dosen pembimbing: Penyelenggara (organizer) menentukan batas maksimal kuota dompet (`max_per_wallet`) secara dinamis.
   * Pemecahan bug akumulasi kuota global: Penggantian ERC-721 `balanceOf` dengan filter kepemilikan spesifik per-event (`t.eventId === dto.eventId`).
   * Implementasi *Sequential Auto-Assignment* nomor kursi otomatis (`VIP-01`, `VIP-02`) yang patuh pada Batasan Masalah #5 proposal skripsi UBAYA (tanpa denah SVG 2D/3D).
-  * Arsitektur pembaruan state reaktif pada Client Component Next.js pasca-minting on-chain di Sepolia Testnet.
+### 📄 [20. Progressive Onboarding & Pemisahan Dua Tahap (Autentikasi Akun vs Aktivasi Dompet Tiket)](./20-progressive-onboarding-and-two-stage-wallet-provisioning.md)
+* **Topik Utama:**
+  * Latar belakang friksi UX Web3: Menghilangkan kendala *high bounce rate* akibat pemaksaan sensor biometrik di halaman pendaftaran awal.
+  * Prinsip *Progressive Profiling* & *Just-In-Time (JIT) Wallet Provisioning*: Pemisahan subsistem Autentikasi Pengguna (Web2) dan subsistem Kesiapan Dompet Blockchain (Web3).
+  * Solusi kendala hardware: Bagaimana pengguna tanpa webcam Windows Hello atau sensor sidik jari tetap dapat menggunakan PIN lokal Windows (TPM 2.0), FIDO2 Cross-Device Hybrid QR Code, atau Google Password Manager.
+  * Skema database `customers.wallet_address` (nullable), pemisahan endpoint `POST /api/auth/register` vs `POST /api/auth/setup-wallet`, dan pembaruan session cookie transparan (`updateSessionWallet`).
+  * Panduan argumentasi akademis untuk ujian sidang skripsi Bab 4 dan Bab 5.
 
 ---
 

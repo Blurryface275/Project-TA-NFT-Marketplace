@@ -1,4 +1,10 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 
 // Dto adalah Data Transfer Object yang mendeskripsikan bagaimana object itu hrs dikirimkan dalam jaringan
 export class RegisterDto {
@@ -14,20 +20,20 @@ export class RegisterDto {
   @MinLength(8, { message: 'Password minimal 8 karakter' })
   password: string;
 
-  // Data Kriptografi Passkey & Smart Account dari Browser
-  @IsNotEmpty({ message: 'Public Key X tidak boleh kosong' })
+  // Data Kriptografi Passkey & Smart Account (Opsional pada Tahap 1 Progressive Onboarding)
+  @IsOptional()
   @IsString()
-  pubX: string;
+  pubX?: string;
 
-  @IsNotEmpty({ message: 'Public Key Y tidak boleh kosong' })
+  @IsOptional()
   @IsString()
-  pubY: string;
+  pubY?: string;
 
-  @IsNotEmpty({ message: 'Credential ID tidak boleh kosong' })
+  @IsOptional()
   @IsString()
-  credentialId: string;
+  credentialId?: string;
 
-  @IsNotEmpty({ message: 'Wallet Address tidak boleh kosong' })
+  @IsOptional()
   @IsString()
-  walletAddress: string;
+  walletAddress?: string;
 } // mengisyaratkan data apa aja yang harus dikirimkan oleh client pada saat register

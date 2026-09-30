@@ -8,25 +8,27 @@ export default async function MyTicketsPage() {
   // ambil session pengguna lagnsugn di server
   const session = await getSession();
 
-  if (!session?.walletAddress) {
-    return redirect("/login"); // kalau tidak ada walletAddress di session berarti dia tidak login, maka akan di redirect ke login
+  if (!session?.userId) {
+    return redirect("/login"); // jika belum login sama sekali, redirect ke login
   }
 
-  // ambil data tiket milik pengguna dari backend
+  // ambil data tiket milik pengguna dari backend jika dompet sudah aktif
   const walletAddress = session.walletAddress;
 
   // ambil seluruh tiket milik alamat dompet pengguna dari Backend NestJS
   let tickets: TicketData[] = [];
-  try {
-    const res = await fetch(
-      `${process.env.BACKEND_URL}/api/tickets/my-tickets/${walletAddress}`,
-      { cache: "no-store" },
-    );
-    if (res.ok) {
-      tickets = await res.json();
+  if (walletAddress) {
+    try {
+      const res = await fetch(
+        `${process.env.BACKEND_URL}/api/tickets/my-tickets/${walletAddress}`,
+        { cache: "no-store" },
+      );
+      if (res.ok) {
+        tickets = await res.json();
+      }
+    } catch (error) {
+      console.error("Error fetching tickets:", error);
     }
-  } catch (error) {
-    console.error("Error fetching tickets:", error);
   }
 
   // Ambil data seluruh event secara dinamis dari database MySQL via API backend

@@ -204,3 +204,5 @@
 | **16** | [`16-data-integrity-single-source-of-truth-and-anti-fraud.md`](file:///d:/STEVE/Project%20NFT%20Marketplace/explanation/16-data-integrity-single-source-of-truth-and-anti-fraud.md) | Single source of truth, pemisahan kasta data, dan mekanisme anti-fraud |
 | **17** | [`17-dynamic-qr-webauthn-signature-and-gate-redemption.md`](file:///d:/STEVE/Project%20NFT%20Marketplace/explanation/17-dynamic-qr-webauthn-signature-and-gate-redemption.md) | Dynamic QR Code, WebAuthn Passkey signature, countdown 60s, dan protokol gate |
 | **18** | [`18-orm-typeorm-architecture-and-multi-event-vs-factory.md`](file:///d:/STEVE/Project%20NFT%20Marketplace/explanation/18-orm-typeorm-architecture-and-multi-event-vs-factory.md) | Multi-Tenant vs Factory smart contract, fungsi `on_chain_event_id`, dan teori TypeORM |
+| **20** | [`20-progressive-onboarding-and-two-stage-wallet-provisioning.md`](file:///d:/STEVE/Project%20NFT%20Marketplace/explanation/20-progressive-onboarding-and-two-stage-wallet-provisioning.md) | Progressive Onboarding, pemisahan Auth Web2 vs Wallet Web3, dan mitigasi hardware |
+

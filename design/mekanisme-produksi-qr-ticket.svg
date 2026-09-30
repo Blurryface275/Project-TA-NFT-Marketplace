@@ -1,0 +1,368 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1720 1150" width="1720" height="1150" style="background:#0f172a; font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;">
+  <defs>
+    <!-- Soft Gradients -->
+    <linearGradient id="bg-header" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4f46e5"/>
+      <stop offset="50%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#9333ea"/>
+    </linearGradient>
+
+    <linearGradient id="card-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+
+    <linearGradient id="accent-cyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+
+    <linearGradient id="accent-purple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+
+    <linearGradient id="accent-green" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+
+    <linearGradient id="accent-amber" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+
+    <!-- Filters -->
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="112%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+
+    <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+
+    <!-- Arrow Markers -->
+    <marker id="arr-purple" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#a855f7"/>
+    </marker>
+    <marker id="arr-cyan" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#38bdf8"/>
+    </marker>
+    <marker id="arr-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10b981"/>
+    </marker>
+  </defs>
+
+  <!-- ========================================== -->
+  <!-- 0. HEADER TITLE BANNER -->
+  <!-- ========================================== -->
+  <rect x="50" y="30" width="1620" height="75" rx="14" fill="url(#bg-header)" filter="url(#shadow)"/>
+  <text x="80" y="65" fill="#ffffff" font-size="20" font-weight="800" letter-spacing="0.5">ARSITEKTUR &amp; ALIRAN DATA: MEKANISME PRODUKSI DYNAMIC QR TICKET</text>
+  <text x="80" y="87" fill="#e0e7ff" font-size="12.5" font-weight="500">Autentikasi Kriptografi Hardware WebAuthn (ECDSA NIST P-256) • Anti-Screenshot 60s • Anti-Replay CSPRNG • Kasus Nyata: Token #5 (Rock in Indonesia 2026)</text>
+  
+  <rect x="1460" y="48" width="180" height="38" rx="10" fill="#1e1b4b" stroke="#a855f7" stroke-width="1.5"/>
+  <text x="1550" y="72" fill="#c084fc" font-size="12" font-weight="700" text-anchor="middle">Data Flow Architecture</text>
+
+  <!-- ========================================== -->
+  <!-- 1. TAHAP 1: INPUT DATA & INISIASI PENGGUNA -->
+  <!-- ========================================== -->
+  <g filter="url(#shadow)">
+    <rect x="50" y="135" width="370" height="970" rx="16" fill="url(#card-grad)" stroke="#334155" stroke-width="2"/>
+    <rect x="50" y="135" width="370" height="46" rx="16" fill="#1e293b"/>
+    <circle cx="75" cy="158" r="14" fill="#6366f1"/>
+    <text x="75" y="163" fill="#ffffff" font-size="12" font-weight="800" text-anchor="middle">1</text>
+    <text x="100" y="163" fill="#f8fafc" font-size="13.5" font-weight="700">Tahap 1: Inisiasi &amp; Data Mentah</text>
+
+    <!-- Sub-card A: Aktor Pengguna -->
+    <rect x="70" y="195" width="330" height="110" rx="12" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+    <text x="85" y="218" fill="#94a3b8" font-size="11" font-weight="700">AKTOR: PEMILIK TIKET (BUYER)</text>
+    <text x="85" y="240" fill="#38bdf8" font-size="13" font-weight="700">Benedictus Leonardo (User)</text>
+    <text x="85" y="260" fill="#cbd5e1" font-size="11">Aksi: Klik tombol "Lihat QR Gate (Passkey)"</text>
+    <rect x="85" y="272" width="170" height="22" rx="6" fill="#4f46e5"/>
+    <text x="170" y="287" fill="#ffffff" font-size="10.5" font-weight="600" text-anchor="middle">🔑 Lihat QR Gate (Passkey)</text>
+
+    <!-- Sub-card B: Data Tiket Asli (Sepolia On-Chain) -->
+    <rect x="70" y="320" width="330" height="240" rx="12" fill="#0f172a" stroke="#6366f1" stroke-width="1.5"/>
+    <rect x="70" y="320" width="330" height="30" rx="12" fill="#312e81"/>
+    <text x="85" y="340" fill="#c7d2fe" font-size="11" font-weight="700">DATA ASLI TIKET DARI BLOCKCHAIN</text>
+    
+    <text x="85" y="372" fill="#94a3b8" font-size="11">Token ID:</text>
+    <text x="210" y="372" fill="#f8fafc" font-size="11.5" font-weight="700">#5</text>
+    
+    <text x="85" y="395" fill="#94a3b8" font-size="11">Event ID &amp; Nama:</text>
+    <text x="210" y="395" fill="#a78bfa" font-size="11" font-weight="700">2 (Rock in Indonesia)</text>
+
+    <text x="85" y="418" fill="#94a3b8" font-size="11">Kategori Tiket:</text>
+    <text x="210" y="418" fill="#f8fafc" font-size="11" font-weight="700">#4 (VIP Rock)</text>
+
+    <text x="85" y="441" fill="#94a3b8" font-size="11">Harga Asli On-Chain:</text>
+    <text x="210" y="441" fill="#34d399" font-size="11" font-weight="700">Rp 250.000</text>
+
+    <text x="85" y="464" fill="#94a3b8" font-size="11">Nomor Kursi (Sequential):</text>
+    <text x="210" y="464" fill="#f59e0b" font-size="11.5" font-weight="800">VIP-01</text>
+
+    <text x="85" y="487" fill="#94a3b8" font-size="11">Status Terpakai (used):</text>
+    <text x="210" y="487" fill="#10b981" font-size="11" font-weight="700">false (Belum Digunakan)</text>
+
+    <text x="85" y="510" fill="#94a3b8" font-size="11">Alamat Smart Account:</text>
+    <text x="85" y="528" fill="#38bdf8" font-size="9.5" font-family="Consolas, monospace">0xCfa8A4273BfE7586fE0196773aD0Cf3E81c36102</text>
+    <text x="85" y="546" fill="#64748b" font-size="9.5">(Alamat Akun Pembeli Riil di Sepolia)</text>
+
+    <!-- Sub-card C: Entropi Nonce & Timestamp -->
+    <rect x="70" y="575" width="330" height="235" rx="12" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+    <rect x="70" y="575" width="330" height="30" rx="12" fill="#1e293b"/>
+    <text x="85" y="595" fill="#cbd5e1" font-size="11" font-weight="700">GENERASI ENTROPI NONCE &amp; WAKTU</text>
+
+    <text x="85" y="625" fill="#f59e0b" font-size="11" font-weight="700">• Nonce CSPRNG (32-Bit Integer):</text>
+    <text x="85" y="642" fill="#94a3b8" font-size="10">Web Crypto API: crypto.getRandomValues(uint32)</text>
+    <rect x="85" y="650" width="300" height="26" rx="6" fill="#1e293b"/>
+    <text x="95" y="668" fill="#fbbf24" font-size="11.5" font-family="Consolas, monospace" font-weight="700">nonce = 34829104</text>
+
+    <text x="85" y="700" fill="#06b6d4" font-size="11" font-weight="700">• Timestamp Pembuatan (ISO 8601):</text>
+    <text x="85" y="717" fill="#94a3b8" font-size="10">Waktu instan saat klik tombol:</text>
+    <rect x="85" y="725" width="300" height="26" rx="6" fill="#1e293b"/>
+    <text x="95" y="743" fill="#38bdf8" font-size="10.5" font-family="Consolas, monospace">"2026-09-28T07:54:10.000Z"</text>
+
+    <text x="85" y="775" fill="#ef4444" font-size="10.5" font-weight="600">🛡️ Proteksi Anti-Replay:</text>
+    <text x="85" y="793" fill="#94a3b8" font-size="9.5">Setiap klik menghasilkan nonce baru; nonce lama hangus.</text>
+
+    <!-- Sub-card D: Countdown Timer Indicator -->
+    <rect x="70" y="825" width="330" height="110" rx="12" fill="#1e1b4b" stroke="#8b5cf6" stroke-width="1"/>
+    <text x="85" y="848" fill="#c084fc" font-size="11" font-weight="700">TIMER KEDALUWARSA (60 DETIK)</text>
+    <text x="85" y="868" fill="#e2e8f0" font-size="11">useEffect Interval 1000ms: timeLeft 60s ➔ 0s</text>
+    <rect x="85" y="880" width="300" height="14" rx="7" fill="#312e81"/>
+    <rect x="85" y="880" width="220" height="14" rx="7" fill="#8b5cf6"/>
+    <text x="85" y="915" fill="#a78bfa" font-size="10">Jika timer = 0: QR ditutup otomatis (Anti-Screenshot)</text>
+  </g>
+
+  <!-- Arrow 1 -> 2 -->
+  <path d="M 420 540 L 470 540" stroke="#a855f7" stroke-width="3" stroke-dasharray="6,4" marker-end="url(#arr-purple)"/>
+
+  <!-- ========================================== -->
+  <!-- 2. TAHAP 2: KONSTRUKSI CHALLENGE & BUFFER -->
+  <!-- ========================================== -->
+  <g filter="url(#shadow)">
+    <rect x="480" y="135" width="380" height="970" rx="16" fill="url(#card-grad)" stroke="#334155" stroke-width="2"/>
+    <rect x="480" y="135" width="380" height="46" rx="16" fill="#1e293b"/>
+    <circle cx="505" cy="158" r="14" fill="#a855f7"/>
+    <text x="505" y="163" fill="#ffffff" font-size="12" font-weight="800" text-anchor="middle">2</text>
+    <text x="530" y="163" fill="#f8fafc" font-size="13.5" font-weight="700">Tahap 2: Konstruksi Challenge Biner</text>
+
+    <!-- Penjelasan String Challenge -->
+    <rect x="500" y="195" width="340" height="230" rx="12" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+    <text x="515" y="218" fill="#94a3b8" font-size="11" font-weight="700">FORMULA CHALLENGE STRING</text>
+    <text x="515" y="238" fill="#cbd5e1" font-size="10.5">Penggabungan parameter kritis menjadi string kanonikal:</text>
+    
+    <rect x="515" y="250" width="310" height="45" rx="6" fill="#1e1b4b" stroke="#6366f1" stroke-width="1"/>
+    <text x="525" y="268" fill="#c7d2fe" font-size="9" font-family="Consolas, monospace">`NFTIX-AUTH:Token#${tokenId}:Owner#${owner}:`</text>
+    <text x="525" y="283" fill="#c7d2fe" font-size="9" font-family="Consolas, monospace">`Nonce#${currentNonce}:Time#${currentTime}`</text>
+
+    <text x="515" y="315" fill="#f59e0b" font-size="10.5" font-weight="700">NILAI STRING ASLI YANG DIBANGUN:</text>
+    <rect x="515" y="325" width="310" height="85" rx="6" fill="#1e293b"/>
+    <text x="525" y="345" fill="#38bdf8" font-size="9" font-family="Consolas, monospace">NFTIX-AUTH:Token#5:</text>
+    <text x="525" y="360" fill="#38bdf8" font-size="9" font-family="Consolas, monospace">Owner#0xCfa8A4273BfE7586fE...</text>
+    <text x="525" y="375" fill="#38bdf8" font-size="9" font-family="Consolas, monospace">Nonce#34829104:</text>
+    <text x="525" y="390" fill="#38bdf8" font-size="9" font-family="Consolas, monospace">Time#2026-09-28T07:54:10.000Z</text>
+
+    <!-- TextEncoder & Konversi ArrayBuffer -->
+    <rect x="500" y="445" width="340" height="245" rx="12" fill="#0f172a" stroke="#0284c7" stroke-width="1.5"/>
+    <rect x="500" y="445" width="340" height="30" rx="12" fill="#0c4a6e"/>
+    <text x="515" y="465" fill="#bae6fd" font-size="11" font-weight="700">KONVERSI BINARY (TextEncoder API)</text>
+
+    <text x="515" y="495" fill="#cbd5e1" font-size="11">JavaScript Web API:</text>
+    <rect x="515" y="505" width="310" height="28" rx="6" fill="#1e293b"/>
+    <text x="525" y="523" fill="#38bdf8" font-size="10" font-family="Consolas, monospace">const challengeBuffer =</text>
+    <text x="675" y="523" fill="#f8fafc" font-size="10" font-family="Consolas, monospace">new TextEncoder().encode(str);</text>
+
+    <text x="515" y="555" fill="#94a3b8" font-size="10.5">Mengapa Harus Diubah ke ArrayBuffer?</text>
+    <text x="515" y="572" fill="#cbd5e1" font-size="10">• Standar W3C WebAuthn Level 3 mewajibkan tipe data</text>
+    <text x="525" y="587" fill="#f59e0b" font-size="10" font-weight="600">BufferSource (Uint8Array mentah), bukan String.</text>
+    <text x="515" y="605" fill="#cbd5e1" font-size="10">• Chip TPM hanya menerima byte data biner murni</text>
+    <text x="525" y="620" fill="#cbd5e1" font-size="10">untuk di-hash (SHA-256) di dalam hardware enclave.</text>
+
+    <rect x="515" y="635" width="310" height="40" rx="6" fill="#1e1b4b"/>
+    <text x="525" y="652" fill="#a78bfa" font-size="9" font-family="Consolas, monospace">Hasil: Uint8Array(104) [78, 70, 84, 73, 88,</text>
+    <text x="525" y="667" fill="#a78bfa" font-size="9" font-family="Consolas, monospace">45, 65, 85, 84, 72, 58, 84, 111, 107, 101, ...]</text>
+
+    <!-- Request WebAuthn Get Assertion -->
+    <rect x="500" y="710" width="340" height="215" rx="12" fill="#0f172a" stroke="#8b5cf6" stroke-width="1.5"/>
+    <rect x="500" y="710" width="340" height="30" rx="12" fill="#312e81"/>
+    <text x="515" y="730" fill="#c7d2fe" font-size="11" font-weight="700">PEMANGGILAN navigator.credentials.get()</text>
+
+    <text x="515" y="760" fill="#cbd5e1" font-size="10.5">Payload Options yang Dikirim ke Browser:</text>
+    <rect x="515" y="770" width="310" height="100" rx="6" fill="#1e293b"/>
+    <text x="525" y="788" fill="#e2e8f0" font-size="9.5" font-family="Consolas, monospace">navigator.credentials.get({</text>
+    <text x="535" y="803" fill="#e2e8f0" font-size="9.5" font-family="Consolas, monospace">publicKey: {</text>
+    <text x="545" y="818" fill="#38bdf8" font-size="9.5" font-family="Consolas, monospace">challenge: challengeBuffer,</text>
+    <text x="545" y="833" fill="#a78bfa" font-size="9.5" font-family="Consolas, monospace">timeout: 60000,</text>
+    <text x="545" y="848" fill="#f59e0b" font-size="9.5" font-family="Consolas, monospace">userVerification: "preferred"</text>
+    <text x="535" y="863" fill="#e2e8f0" font-size="9.5" font-family="Consolas, monospace">}</text>
+    <text x="525" y="878" fill="#e2e8f0" font-size="9.5" font-family="Consolas, monospace">});</text>
+
+    <text x="515" y="895" fill="#34d399" font-size="10" font-weight="600">➔ Memicu Dialog Biometrik Sistem Operasi</text>
+  </g>
+
+  <!-- Arrow 2 -> 3 -->
+  <path d="M 860 540 L 910 540" stroke="#38bdf8" stroke-width="3" stroke-dasharray="6,4" marker-end="url(#arr-cyan)"/>
+
+  <!-- ========================================== -->
+  <!-- 3. TAHAP 3: HARDWARE SECURITY ENCLAVE / TPM -->
+  <!-- ========================================== -->
+  <g filter="url(#shadow)">
+    <rect x="920" y="135" width="380" height="970" rx="16" fill="url(#card-grad)" stroke="#334155" stroke-width="2"/>
+    <rect x="920" y="135" width="380" height="46" rx="16" fill="#1e293b"/>
+    <circle cx="945" cy="158" r="14" fill="#06b6d4"/>
+    <text x="945" y="163" fill="#ffffff" font-size="12" font-weight="800" text-anchor="middle">3</text>
+    <text x="970" y="163" fill="#f8fafc" font-size="13.5" font-weight="700">Tahap 3: Penandatanganan Hardware</text>
+
+    <!-- Kotak Hardware TPM Enclave -->
+    <rect x="940" y="195" width="340" height="235" rx="12" fill="#082f49" stroke="#0284c7" stroke-width="2"/>
+    <text x="955" y="220" fill="#38bdf8" font-size="12" font-weight="800">CHIP KEAMANAN HARDWARE (TPM / SE)</text>
+    <text x="955" y="238" fill="#94a3b8" font-size="10">Windows Hello TPM 2.0 / Apple Secure Enclave / Titan M</text>
+
+    <!-- Dialog Biometrik Box -->
+    <rect x="955" y="250" width="310" height="65" rx="8" fill="#0f172a" stroke="#0ea5e9" stroke-width="1"/>
+    <text x="970" y="272" fill="#f8fafc" font-size="11" font-weight="700">🛡️ Prompt Verifikasi Biometrik:</text>
+    <text x="970" y="290" fill="#cbd5e1" font-size="10">• Sidik Jari / Face ID / PIN Windows Hello</text>
+    <text x="970" y="305" fill="#34d399" font-size="10" font-weight="600">✓ Berhasil Divalidasi oleh User</text>
+
+    <text x="955" y="335" fill="#cbd5e1" font-size="10.5">• Private Key P-256 berada di ruang terisolasi fisik,</text>
+    <text x="965" y="350" fill="#f59e0b" font-size="10" font-weight="600">TIDAK PERNAH BISA DIEKSPOR / DICURI SOFTWARE.</text>
+    <text x="955" y="370" fill="#cbd5e1" font-size="10.5">• Algoritma Kriptografi:</text>
+    <text x="965" y="385" fill="#38bdf8" font-size="10.5" font-family="Consolas, monospace" font-weight="700">ECDSA kurva NIST P-256 (secp256r1)</text>
+    <text x="955" y="405" fill="#cbd5e1" font-size="10.5">• Input Hash: SHA-256(challengeBuffer)</text>
+    <text x="955" y="420" fill="#a78bfa" font-size="10.5">• Output: Signature Binary ASN.1 DER</text>
+
+    <!-- Format Output ASN.1 DER -->
+    <rect x="940" y="450" width="340" height="235" rx="12" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+    <text x="955" y="473" fill="#94a3b8" font-size="11" font-weight="700">STRUKTUR ASN.1 DER SIGNATURE</text>
+    <text x="955" y="493" fill="#cbd5e1" font-size="10">Standar encoding biner kriptografi (70 - 72 Bytes):</text>
+
+    <rect x="955" y="505" width="310" height="60" rx="6" fill="#1e293b"/>
+    <text x="965" y="523" fill="#f59e0b" font-size="9" font-family="Consolas, monospace">0x30 [len] ➔ SEQUENCE Wrapper</text>
+    <text x="965" y="538" fill="#38bdf8" font-size="9" font-family="Consolas, monospace">  0x02 [rLen] [rBytes...] ➔ INTEGER r (32 Bytes)</text>
+    <text x="965" y="553" fill="#a78bfa" font-size="9" font-family="Consolas, monospace">  0x02 [sLen] [sBytes...] ➔ INTEGER s (32 Bytes)</text>
+
+    <text x="955" y="583" fill="#34d399" font-size="10.5" font-weight="700">EKSTRAKSI KOORDINAT ASLI (r, s):</text>
+    <rect x="955" y="593" width="310" height="80" rx="6" fill="#1e1b4b"/>
+    <text x="965" y="612" fill="#cbd5e1" font-size="9" font-family="Consolas, monospace">Nilai r (Hex 32-Byte):</text>
+    <text x="965" y="627" fill="#38bdf8" font-size="8.5" font-family="Consolas, monospace">0x7a29e1f82c40e58f01b54a0d927c44e9...</text>
+    <text x="965" y="647" fill="#cbd5e1" font-size="9" font-family="Consolas, monospace">Nilai s (Hex 32-Byte):</text>
+    <text x="965" y="662" fill="#a78bfa" font-size="8.5" font-family="Consolas, monospace">0x4b81c2057d3e9a11f26e33b00c98ea51...</text>
+
+    <!-- Hasil Heksadesimal Full Signature -->
+    <rect x="940" y="705" width="340" height="235" rx="12" fill="#0f172a" stroke="#10b981" stroke-width="1.5"/>
+    <rect x="940" y="705" width="340" height="30" rx="12" fill="#064e3b"/>
+    <text x="955" y="725" fill="#a7f3d0" font-size="11" font-weight="700">DATA HASIL: FULL SIGNATURE HEX (0x...)</text>
+
+    <text x="955" y="755" fill="#cbd5e1" font-size="10">Konversi sigBytes ke string Heksadesimal:</text>
+    <rect x="955" y="765" width="310" height="115" rx="6" fill="#1e293b"/>
+    <text x="965" y="785" fill="#34d399" font-size="8" font-family="Consolas, monospace">generatedSignature =</text>
+    <text x="965" y="800" fill="#34d399" font-size="8" font-family="Consolas, monospace">"0x30450221007a29e1f82c40e58f01b54a0d92</text>
+    <text x="965" y="813" fill="#34d399" font-size="8" font-family="Consolas, monospace">7c44e931fa0498ec510d738f6120c4e72459</text>
+    <text x="965" y="826" fill="#34d399" font-size="8" font-family="Consolas, monospace">02204b81c2057d3e9a11f26e33b00c98ea51</text>
+    <text x="965" y="839" fill="#34d399" font-size="8" font-family="Consolas, monospace">a6b93701df9281a9540026e9527cf63e"</text>
+    
+    <text x="955" y="905" fill="#cbd5e1" font-size="9.5">Tanda tangan ini membuktikan secara matematis:</text>
+    <text x="955" y="920" fill="#facc15" font-size="9.5" font-weight="600">HP &amp; Biometrik Fisik Penonton Asli Berada di Lokasi.</text>
+  </g>
+
+  <!-- Arrow 3 -> 4 -->
+  <path d="M 1300 540 L 1350 540" stroke="#10b981" stroke-width="3" stroke-dasharray="6,4" marker-end="url(#arr-green)"/>
+
+  <!-- ========================================== -->
+  <!-- 4. TAHAP 4: PERAKITAN PAYLOAD & QR CODE -->
+  <!-- ========================================== -->
+  <g filter="url(#shadow)">
+    <rect x="1360" y="135" width="310" height="970" rx="16" fill="url(#card-grad)" stroke="#334155" stroke-width="2"/>
+    <rect x="1360" y="135" width="310" height="46" rx="16" fill="#1e293b"/>
+    <circle cx="1385" cy="158" r="14" fill="#10b981"/>
+    <text x="1385" y="163" fill="#ffffff" font-size="12" font-weight="800" text-anchor="middle">4</text>
+    <text x="1410" y="163" fill="#f8fafc" font-size="13" font-weight="700">Tahap 4: Payload QR Code Final</text>
+
+    <!-- JSON Payload Card -->
+    <rect x="1375" y="195" width="280" height="380" rx="12" fill="#0f172a" stroke="#8b5cf6" stroke-width="1.5"/>
+    <rect x="1375" y="195" width="280" height="28" rx="12" fill="#312e81"/>
+    <text x="1385" y="214" fill="#c7d2fe" font-size="10.5" font-weight="700">JSON PAYLOAD DI DALAM QR CODE</text>
+
+    <rect x="1385" y="230" width="260" height="335" rx="6" fill="#1e293b"/>
+    <text x="1395" y="248" fill="#e2e8f0" font-size="8" font-family="Consolas, monospace">{</text>
+    <text x="1405" y="263" fill="#a78bfa" font-size="8" font-family="Consolas, monospace">"tokenId": 5,</text>
+    <text x="1405" y="278" fill="#a78bfa" font-size="8" font-family="Consolas, monospace">"eventId": 2,</text>
+    <text x="1405" y="293" fill="#a78bfa" font-size="8" font-family="Consolas, monospace">"eventName": "Rock in Indonesia",</text>
+    <text x="1405" y="308" fill="#a78bfa" font-size="8" font-family="Consolas, monospace">"categoryId": 4,</text>
+    <text x="1405" y="323" fill="#a78bfa" font-size="8" font-family="Consolas, monospace">"categoryName": "VIP Rock",</text>
+    <text x="1405" y="338" fill="#f59e0b" font-size="8" font-family="Consolas, monospace">"seatNumber": "VIP-01",</text>
+    <text x="1405" y="353" fill="#38bdf8" font-size="8" font-family="Consolas, monospace">"owner": "0xCfa8A...36102",</text>
+    <text x="1405" y="368" fill="#34d399" font-size="8" font-family="Consolas, monospace">"used": false,</text>
+    <text x="1405" y="383" fill="#38bdf8" font-size="8" font-family="Consolas, monospace">"walletAddress": "0xCfa8...6102",</text>
+    <text x="1405" y="398" fill="#fbbf24" font-size="8" font-family="Consolas, monospace">"nonce": 34829104,</text>
+    <text x="1405" y="413" fill="#38bdf8" font-size="8" font-family="Consolas, monospace">"signedAt": "2026-09-28...",</text>
+    <text x="1405" y="428" fill="#f43f5e" font-size="8" font-family="Consolas, monospace">"expiresInSeconds": 60,</text>
+    <text x="1405" y="443" fill="#c084fc" font-size="7.5" font-family="Consolas, monospace">"signature": "0x30450221..."</text>
+    <text x="1395" y="458" fill="#e2e8f0" font-size="8" font-family="Consolas, monospace">}</text>
+
+    <!-- Visual QR Code Simulated Box -->
+    <rect x="1375" y="590" width="280" height="350" rx="12" fill="#0f172a" stroke="#10b981" stroke-width="1.5"/>
+    <text x="1390" y="612" fill="#34d399" font-size="11" font-weight="700">TAMPILAN DI LAYAR HP PENONTON</text>
+    
+    <!-- White QR Container -->
+    <rect x="1420" y="625" width="190" height="190" rx="8" fill="#ffffff"/>
+    
+    <!-- Simulated QR Code Patterns -->
+    <rect x="1435" y="640" width="45" height="45" fill="#0f172a"/>
+    <rect x="1443" y="648" width="29" height="29" fill="#ffffff"/>
+    <rect x="1450" y="655" width="15" height="15" fill="#0f172a"/>
+
+    <rect x="1550" y="640" width="45" height="45" fill="#0f172a"/>
+    <rect x="1558" y="648" width="29" height="29" fill="#ffffff"/>
+    <rect x="1565" y="655" width="15" height="15" fill="#0f172a"/>
+
+    <rect x="1435" y="755" width="45" height="45" fill="#0f172a"/>
+    <rect x="1443" y="763" width="29" height="29" fill="#ffffff"/>
+    <rect x="1450" y="770" width="15" height="15" fill="#0f172a"/>
+
+    <!-- Small Data Dots -->
+    <rect x="1490" y="645" width="10" height="10" fill="#0f172a"/>
+    <rect x="1515" y="645" width="10" height="10" fill="#0f172a"/>
+    <rect x="1500" y="660" width="10" height="10" fill="#0f172a"/>
+    <rect x="1530" y="665" width="10" height="10" fill="#0f172a"/>
+    <rect x="1490" y="680" width="10" height="10" fill="#0f172a"/>
+    <rect x="1510" y="695" width="10" height="10" fill="#0f172a"/>
+    <rect x="1540" y="710" width="10" height="10" fill="#0f172a"/>
+    <rect x="1490" y="730" width="10" height="10" fill="#0f172a"/>
+    <rect x="1520" y="745" width="10" height="10" fill="#0f172a"/>
+    <rect x="1550" y="760" width="10" height="10" fill="#0f172a"/>
+    <rect x="1510" y="780" width="10" height="10" fill="#0f172a"/>
+    <rect x="1570" y="785" width="10" height="10" fill="#0f172a"/>
+
+    <!-- Live Timer Pill -->
+    <rect x="1420" y="830" width="190" height="30" rx="8" fill="#1e1b4b" stroke="#a855f7" stroke-width="1"/>
+    <circle cx="1440" cy="845" r="5" fill="#ef4444"/>
+    <text x="1455" y="849" fill="#f8fafc" font-size="11" font-weight="700">Masa Berlaku: 59 Detik</text>
+
+    <!-- Gate Scanner Notice -->
+    <rect x="1385" y="875" width="260" height="50" rx="8" fill="#064e3b" stroke="#10b981" stroke-width="1"/>
+    <text x="1395" y="895" fill="#a7f3d0" font-size="10.5" font-weight="700">STATUS: SIAP PINDAI DI VENUE</text>
+    <text x="1395" y="912" fill="#d1fae5" font-size="9">Petugas men-scan payload JSON di atas</text>
+  </g>
+
+  <!-- ========================================== -->
+  <!-- 5. FOOTER SUMMARY TABLE -->
+  <!-- ========================================== -->
+  <rect x="50" y="1030" width="1620" height="85" rx="12" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+  <text x="75" y="1055" fill="#38bdf8" font-size="12" font-weight="700">RINGKASAN DATA ALIRAN (TRACEABILITY MATRIX)</text>
+  
+  <text x="75" y="1078" fill="#94a3b8" font-size="10.5">• DATA DIKIRIM (INPUT):</text>
+  <text x="210" y="1078" fill="#cbd5e1" font-size="10.5">challengeBuffer (Uint8Array 104-B) ➔ navigator.credentials.get()</text>
+
+  <text x="75" y="1098" fill="#94a3b8" font-size="10.5">• DATA DIHASILKAN (OUTPUT):</text>
+  <text x="210" y="1098" fill="#cbd5e1" font-size="10.5">sigBytes (DER 71-B) ➔ Koordinat (r, s) Hex ➔ JSON qrPayload ➔ URL Image QR Code Dinamis 200x200</text>
+
+  <text x="1000" y="1078" fill="#f59e0b" font-size="10.5" font-weight="700">• KETAHANAN SERANGAN:</text>
+  <text x="1170" y="1078" fill="#cbd5e1" font-size="10.5">Anti-Screenshot (Expiry 60s) • Anti-Replay (Nonce CSPRNG 32-bit)</text>
+
+  <text x="1000" y="1098" fill="#10b981" font-size="10.5" font-weight="700">• KEDAULATAN HARDWARE:</text>
+  <text x="1170" y="1098" fill="#cbd5e1" font-size="10.5">Private Key P-256 tersimpan permanen di chip TPM / Secure Enclave.</text>
+</svg>

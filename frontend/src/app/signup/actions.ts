@@ -2,72 +2,71 @@
 
 import { SignUpFormSchema, FormState } from "@/lib/definitions";
 import { createSession } from "@/lib/session";
-import { register } from "module";
 import { redirect } from "next/navigation";
 
 export async function signup(state: FormState, formData: FormData) {
-  // Validasi field form menggunakan skema dari definitions.ts
-  // safeParse fugnsinya untuk mengecek data apakah sudah valid atau belum
+  // 1. Validasi field form menggunakan Zod schema
   const validatedFields = SignUpFormSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
     password: formData.get("password"),
   });
 
-  // Cek jika validasi gagal -> return error
+  // Jika validasi form gagal, kembalikan pesan error ke UI
   if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
-      message: "Input gagal",
+      message: "Input gagal. Periksa kembali data pendaftaran Anda.",
     };
   }
 
-  const { name, email, password } = validatedFields.data; // validatedFields.data =  ini berisi data yang sudah valid
-
-  // Ambil data kriptografi dari passkey.ts (Passkey & Smart Account yang dikirim browser)
-  const pubX = formData.get("pubX") as string; // diubah ke string biar tidak terjadi error type "undefined"
-  const pubY = formData.get("pubY") as string;
-  const credentialId = formData.get("credentialId") as string;
-  const walletAddress = formData.get("walletAddress") as string;
+  const { name, email, password } = validatedFields.data;
 
   console.log("============================================");
-  console.log("Nama:", name);
+  console.log("🚀 [Signup Action] Registrasi Akun Baru (Progressive Onboarding)");
+  console.log("Nama :", name);
   console.log("Email:", email);
-  console.log("Public Key (X):", pubX);
-  console.log("Public Key (Y):", pubY);
-  console.log("Credential ID:", credentialId);
-  console.log("Wallet Address:", walletAddress);
+  console.log("Status Dompet: Ditangguhkan (Aktivasi saat beli tiket)");
   console.log("============================================");
 
-  // Kirim data lengkap ke Backend NestJS
-  const response = await fetch(`${process.env.BACKEND_URL}/api/auth/register`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      name,
-      email,
-      password,
-      pubX,
-      pubY,
-      credentialId,
-      walletAddress,
-    }),
-  });
+  let response;
+  try {
+    // 2. Kirim data registrasi Web2 (nama, email, password) ke Backend NestJS
+    response = await fetch(`${process.env.BACKEND_URL}/api/auth/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+      }),
+    });
+  } catch (error) {
+    console.error("❌ [Signup Action] Gagal terhubung ke backend:", error);
+    return {
+      message: "Gagal terhubung ke server backend. Pastikan server backend berjalan.",
+    };
+  }
 
   const resData = await response.json();
 
-  // Jika Backend menolak (misal: Email udh terdaftar / HTTP 409 conflict)
+  // 3. Jika backend menolak (misal: Email sudah pernah terdaftar)
   if (!response.ok) {
     return {
-      message: resData.message || "Registrasi gagal",
+      message: resData.message || "Registrasi gagal.",
     };
   }
 
-  // Jika berhasil, simpan ID user asli dari database MySQL ke Cookie Session
-  await createSession(resData.id.toString(), resData.name, resData.walletAddress);
+  // 4. Simpan session cookie pengguna (walletAddress bernilai null sebelum diaktivasi)
+  await createSession(
+    resData.id.toString(),
+    resData.name,
+    resData.walletAddress || null,
+    resData.email || email,
+  );
 
-  // Redirect pengguna ke dashboard
+  // 5. Arahkan pengguna ke dashboard utama
   redirect("/dashboard");
 }

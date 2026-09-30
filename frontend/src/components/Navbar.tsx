@@ -17,7 +17,7 @@ export default async function Navbar() {
 
   // Helper untuk memotong alamat dompet (misal: 0x811a...61Eb)
   const formatAddress = (addr?: string) => {
-    if (!addr) return "0x00...0000";
+    if (!addr) return "Belum Aktif";
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 

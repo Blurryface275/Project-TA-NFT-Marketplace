@@ -226,16 +226,26 @@ export class TicketsService {
   // Mengambil seluruh tiket milik alamat dompet tertentu dari blockchain
   async getUserTickets(walletAddress: string) {
     const userTickets = [];
+    // Pelacak urutan nomor kursi sequential per event dan kategori di blockchain
+    const eventCategoryCounters: Record<string, number> = {};
 
     // loop memeriksa tokenId (misal: dari token #1 sampai token #50)
     for (let i = 1; i <= 50; i++) {
       try {
         const ticket = await this.getTicket(i);
 
+        // Hitung urutan nomor kursi sequential khusus untuk kategori event tersebut
+        const key = `${ticket.eventId}-${ticket.categoryId}`;
+        eventCategoryCounters[key] = (eventCategoryCounters[key] || 0) + 1;
+        const seatIndex = eventCategoryCounters[key];
+
         // cocokkan apakah pemilik token ini sama dengan walletAddress pengguna yang sedang login
         // perbandingan string ke string harus persis, termasuk case sensitivity atau huruf kecil besar
         if (ticket.owner.toLowerCase() === walletAddress.toLowerCase()) {
-          userTickets.push(ticket);
+          userTickets.push({
+            ...ticket,
+            seatIndex, // Urutan kursi ke-1, ke-2, dst dalam kategori event bersangkutan
+          });
         }
       } catch {
         // Jika error (misalnya tiket belum pernah dibuat/minting) abaikan saja dan hentikan pencarian

@@ -26,6 +26,29 @@ export interface TicketData {
   originalPrice: number;
   used: boolean;
   owner: string;
+  seatIndex?: number;
+}
+
+export interface TicketCategoryData {
+  id: string;
+  name: string;
+  price: string | number;
+  quota: number;
+  eventsId: number;
+}
+
+export interface EventData {
+  id: number;
+  onChainEventId: string;
+  eventName: string;
+  startDate: string;
+  venueLocation: string;
+  category: string;
+  capacity: number;
+  maxPerWallet?: number;
+  imageIpfsCid: string | null;
+  organizersId?: number;
+  ticketCategories: TicketCategoryData[];
 }
 
 // Helper pemetaan nama kategori dan nomor kursi berdsarkan categoryId & tokenId
@@ -65,6 +88,7 @@ export function getCategoryMeta(categoryId: number, tokenId: number){
 interface TicketCardProps {
   // properti apa aja yg dikirim dari halaman utama
   ticket: TicketData; // menerima data tiket
+  events?: EventData[];
 }
 
 // Helper generator Nonce berbasis CSPRNG (Cryptographically Secure Pseudo-Random Number Generator)
@@ -78,8 +102,51 @@ function getCSPRNGNonce(): number {
   return Math.floor(Math.random() * 1000000);
 }
 
-export default function TicketCard({ ticket }: TicketCardProps) {
-  // ini kita pakai TIcketCardProps sbg tipe data yg masuk ke komponen
+export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
+  // Cari data event yang sesuai dengan eventId tiket dari blockchain
+  const currentEvent = events.find(
+    (e) => Number(e.onChainEventId || e.id) === ticket.eventId,
+  );
+
+  // Cari data kategori tiket yang sesuai dari event
+  const matchedCategory = (currentEvent?.ticketCategories || []).find(
+    (c) => Number(c.id) === ticket.categoryId,
+  );
+
+  // Tentukan nama kategori secara dinamis
+  const fallbackMeta = getCategoryMeta(ticket.categoryId, ticket.tokenId);
+  const categoryName = matchedCategory?.name || fallbackMeta.name;
+
+  // Tentukan prefiks kursi secara dinamis
+  const seatPrefix = categoryName.includes("VIP")
+    ? "VIP"
+    : categoryName.includes("CAT")
+      ? "CAT1"
+      : categoryName.includes("Regular")
+        ? "REG"
+        : "FEST";
+
+  // Gunakan seatIndex (urutan kursi per event & kategori) jika tersedia, fallback ke tokenId
+  const seatIndex = ticket.seatIndex || ticket.tokenId;
+  const seatNumber = `${seatPrefix}-${String(seatIndex).padStart(2, "0")}`;
+  const badgeColor = categoryName.includes("VIP")
+    ? "text-amber-400"
+    : categoryName.includes("CAT")
+      ? "text-indigo-400"
+      : categoryName.includes("Regular")
+        ? "text-cyan-400"
+        : "text-emerald-400";
+
+  // Format tanggal event sesuai zona WIB
+  const eventDateFormatted = currentEvent?.startDate
+    ? new Date(currentEvent.startDate).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }) + " WIB"
+    : "15 November 2026, 18:00 WIB";
 
   const [isUsed, setIsUsed] = useState(ticket.used);
   const [isLoading, setIsLoading] = useState(false);
@@ -287,13 +354,13 @@ export default function TicketCard({ ticket }: TicketCardProps) {
 
   // Payload data untuk QR Code gerbang masuk (Gate Verification oleh petugas)
   // Catatan: expiresInSeconds bernilai 60 (durasi total), BUKAN timeLeft agar gambar QR stabil dan tidak berubah-ubah tiap detik
-  const categoryMeta = getCategoryMeta(ticket.categoryId, ticket.tokenId); // buat ngambil meta data kategori
   const qrPayload = {
     tokenId: ticket.tokenId,
     eventId: ticket.eventId,
+    eventName: currentEvent?.eventName || "UBAYA Music Fest 2026",
     categoryId: ticket.categoryId,
-    categoryName: categoryMeta.name,
-    seatNumber: categoryMeta.seatNumber,
+    categoryName: categoryName,
+    seatNumber: seatNumber,
     owner: ticket.owner,
     used: isUsed,
     walletAddress: ticket.owner,
@@ -380,27 +447,29 @@ export default function TicketCard({ ticket }: TicketCardProps) {
           )}
         </div>
         <h3 className="text-xl font-bold text-white tracking-tight mt-2">
-          UBAYA Music Fest 2026
+          {currentEvent?.eventName || "UBAYA Music Fest 2026"}
         </h3>
-        <p className={`text-xs font-semibold mt-0.5 ${categoryMeta.badgeColor}`}>
-          {categoryMeta.name} • {categoryMeta.seatNumber}
+        <p className={`text-xs font-semibold mt-0.5 ${badgeColor}`}>
+          {categoryName} • {seatNumber}
         </p>
       </div>
-      {/* Info Waktu & Lokasi */}
+      {/* Info Waktu & Lokasi Dinamis */}
       <div className="px-5 py-3.5 bg-muted/20 border-b border-border/40 flex flex-wrap items-center justify-between text-xs text-muted-foreground gap-2">
         <div className="flex items-center gap-1.5">
           <Calendar className="w-3.5 h-3.5 text-purple-400" />
-          <span>15 November 2026, 18:00 WIB</span>
+          <span>{eventDateFormatted}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <MapPin className="w-3.5 h-3.5 text-purple-400" />
-          <span>Stadion Gelora 10 November</span>
+          <span>
+            {currentEvent?.venueLocation || "Stadion Gelora 10 November"}
+          </span>
         </div>
       </div>
       {/* Badan Tiket */}
       <div className="p-5 space-y-4">
-        {/* Info Harga Asli & Kategori */}
-        <div className="grid grid-cols-3 gap-3 text-xs">
+        {/* Info Harga Asli & Kategori Dinamis */}
+        <div className="grid grid-cols-2 gap-3 text-xs">
           <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
             <span className="text-muted-foreground block text-[11px]">
               Harga Asli (On-Chain)
@@ -411,9 +480,11 @@ export default function TicketCard({ ticket }: TicketCardProps) {
           </div>
           <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
             <span className="text-muted-foreground block text-[11px]">
-              Kategori
+              Kategori Tiket
             </span>
-            <span className="text-sm font-bold text-amber-400">VIP Ticket</span>
+            <span className={`text-sm font-bold ${badgeColor}`}>
+              {categoryName}
+            </span>
           </div>
         </div>
         {/* Alamat Dompet Pemilik */}

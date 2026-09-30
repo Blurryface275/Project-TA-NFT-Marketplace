@@ -2,6 +2,7 @@ import {
   Injectable,
   ConflictException,
   UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 // Conflict Exception (HTTP 409) digunakan untuk error ketika user sudah terdaftar
 // Unauthorized Exception (HTTP 401) digunakan untuk error ketika login gagal
@@ -10,6 +11,7 @@ import { Customer } from '../customers/entities/customer.entity';
 import { PasskeyCredential } from './entities/passkey-credential.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { SetupWalletDto } from './dto/setup-wallet.dto';
 
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -41,7 +43,7 @@ export class AuthService {
     const salt = await bcrypt.genSalt(10); // ini salt dihasilkan pakai algoritma CSPRNG
     const hashedPassword = await bcrypt.hash(registerDto.password, salt); // password di enkripsi pakai bcrypt
 
-    // Insert user baru ke 3 table dalam DB
+    // Insert user baru ke table dalam DB
     return await this.dataSource.transaction(async (manager) => {
       // buat dan simpan user baru
       // pakai manager krn lg di dalam transaction
@@ -52,22 +54,24 @@ export class AuthService {
       });
       const savedUser = await manager.save(user);
 
-      // lanjut insert customer
+      // lanjut insert customer (walletAddress bisa null pada Tahap 1)
       const customer = manager.create(Customer, {
-        walletAddress: registerDto.walletAddress,
+        walletAddress: registerDto.walletAddress || null,
         usersId: savedUser.id,
       });
       const savedCustomer = await manager.save(customer);
 
-      // lanjut insert passkey credential
-      const passkeyCredential = manager.create(PasskeyCredential, {
-        publicKeyX: registerDto.pubX,
-        publicKeyY: registerDto.pubY,
-        credentialId: registerDto.credentialId,
-        counter: 0,
-        customersId: savedCustomer.id,
-      });
-      await manager.save(passkeyCredential);
+      // lanjut insert passkey credential jika disertakan
+      if (registerDto.pubX && registerDto.pubY && registerDto.credentialId) {
+        const passkeyCredential = manager.create(PasskeyCredential, {
+          publicKeyX: registerDto.pubX,
+          publicKeyY: registerDto.pubY,
+          credentialId: registerDto.credentialId,
+          counter: 0,
+          customersId: savedCustomer.id,
+        });
+        await manager.save(passkeyCredential);
+      }
 
       const { password, ...result } = savedUser;
       return {
@@ -78,33 +82,67 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto) {
-    {
-      // Cari user dari email dan sertakan relasi customernya
-      const user = await this.userRepository.findOne({
-        where: { email: loginDto.email },
-        relations: { customer: true },
-      });
+    // Cari user dari email dan sertakan relasi customernya
+    const user = await this.userRepository.findOne({
+      where: { email: loginDto.email },
+      relations: { customer: true },
+    });
 
-      // Kalau user ga ditemukan -> throw error 401
-      if (!user) {
-        throw new UnauthorizedException('Email atau password salah');
-      }
-
-      // bandingkan passowrd input dengan hashedPassowrd pada DB
-      const isPasswordValid = await bcrypt.compare(
-        loginDto.password,
-        user.password,
-      );
-      if (!isPasswordValid) {
-        throw new UnauthorizedException('Email atau password salah!');
-      }
-
-      // Hapus password dari hasil response
-      const { password, ...result } = user;
-      return {
-        ...result,
-        walletAddress: user.customer?.walletAddress || '',
-      };
+    // Kalau user ga ditemukan -> throw error 401
+    if (!user) {
+      throw new UnauthorizedException('Email atau password salah');
     }
+
+    // bandingkan passowrd input dengan hashedPassowrd pada DB
+    const isPasswordValid = await bcrypt.compare(
+      loginDto.password,
+      user.password,
+    );
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Email atau password salah!');
+    }
+
+    // Hapus password dari hasil response
+    const { password, ...result } = user;
+    return {
+      ...result,
+      walletAddress: user.customer?.walletAddress || '',
+    };
+  }
+
+  async setupWallet(setupWalletDto: SetupWalletDto) {
+    const user = await this.userRepository.findOne({
+      where: { id: setupWalletDto.userId },
+      relations: { customer: true },
+    });
+
+    if (!user || !user.customer) {
+      throw new NotFoundException('Customer tidak ditemukan untuk akun ini.');
+    }
+
+    return await this.dataSource.transaction(async (manager) => {
+      // 1. Update alamat dompet pada tabel customers
+      await manager.update(
+        Customer,
+        { id: user.customer.id },
+        { walletAddress: setupWalletDto.walletAddress },
+      );
+
+      // 2. Simpan kredensial passkey ke tabel passkey_credentials
+      const passkeyCredential = manager.create(PasskeyCredential, {
+        publicKeyX: setupWalletDto.pubX,
+        publicKeyY: setupWalletDto.pubY,
+        credentialId: setupWalletDto.credentialId,
+        counter: 0,
+        customersId: user.customer.id,
+      });
+      await manager.save(passkeyCredential);
+
+      return {
+        success: true,
+        message: 'Dompet tiket berhasil diaktifkan.',
+        walletAddress: setupWalletDto.walletAddress,
+      };
+    });
   }
 }

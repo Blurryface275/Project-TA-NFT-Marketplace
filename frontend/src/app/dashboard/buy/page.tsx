@@ -6,26 +6,32 @@ export default async function BuyTicketPage() {
   // Ambil session langsung di server
   const session = await getSession();
 
-  // Jika session tidak ditemukan atau dompet belum ada, arahkan ke login
-  if (!session?.walletAddress) {
+  // Jika session tidak ditemukan atau userId belum ada, arahkan ke login
+  if (!session?.userId) {
     redirect("/login");
   }
 
+  // Ambil data dompet dan email dari session yang sudah divalidasi
+  const walletAddress = (session.walletAddress as string) || "";
+  const userEmail = (session.email as string) || "";
+
   // Ambil data seluruh tiket yang sudah dimiliki user dari backend relayer
   let userTickets: UserTicket[] = [];
-  try {
-    const res = await fetch(
-      `${process.env.BACKEND_URL}/api/tickets/my-tickets/${session.walletAddress}`,
-      { cache: "no-store" },
-    );
-    if (res.ok) {
-      const tickets = await res.json();
-      if (Array.isArray(tickets)) {
-        userTickets = tickets;
+  if (walletAddress) {
+    try {
+      const res = await fetch(
+        `${process.env.BACKEND_URL}/api/tickets/my-tickets/${walletAddress}`,
+        { cache: "no-store" },
+      );
+      if (res.ok) {
+        const tickets = await res.json();
+        if (Array.isArray(tickets)) {
+          userTickets = tickets;
+        }
       }
+    } catch (err) {
+      console.error("Gagal mengambil data tiket user:", err);
     }
-  } catch (err) {
-    console.error("Gagal mengambil data tiket user:", err);
   }
 
   // Ambil data seluruh event secara dinamis dari database MySQL via API backend
@@ -55,7 +61,8 @@ export default async function BuyTicketPage() {
 
       {/* Kartu Pembelian Tiket Interaktif Multi-Event */}
       <BuyTicketCard
-        walletAddress={session.walletAddress as string}
+        walletAddress={walletAddress}
+        userEmail={userEmail}
         events={events}
         userTickets={userTickets}
       />

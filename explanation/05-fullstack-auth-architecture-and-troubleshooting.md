@@ -17,11 +17,13 @@ Dokumen ini menjelaskan arsitektur komunikasi antara Frontend Next.js dan Backen
 │               ▼                        │       │                  ▼                   │
 │       [actions.ts] ───────fetch───────┼───────┼──────> [MySQL: nft-marketplace]      │
 │  (Next.js Server Action)               │       │        - users                       │
-│               │                        │       │        - customers                   │
-│               ▼                        │       │        - passkey_credentials         │
-│       [createSession()]                │       │                                      │
+│               │                        │       │        - customers (wallet_address   │
+│               ▼                        │       │                     diisi NULL saat  │
+│       [createSession()]                │       │                     awal daftar)     │
 │    (HttpOnly JWT Cookie)               │       │                                      │
 └────────────────────────────────────────┘       └──────────────────────────────────────┘
+ *Catatan: Tabel 'passkey_credentials' kini diisi pada Tahap 2 (Aktivasi Dompet di /dashboard/buy).
+  Lihat Penjelasan 20 untuk arsitektur Progressive Onboarding secara lengkap.
 ```
 
 ---
