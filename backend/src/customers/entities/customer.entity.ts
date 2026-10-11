@@ -14,11 +14,11 @@ export class Customer {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'wallet_address', length: 42, nullable: true })
+  @Column({ type: 'varchar', name: 'wallet_address', length: 42, nullable: true })
   walletAddress: string | null; // Alamat smart account ERC-4337 (bisa null sebelum aktivasi)
 
-  @Column({ name: 'recovery_phrase_hash', length: 255, nullable: true })
-  recoveryPhraseHash: string; // Cadangan seed phrase (tahap berikutnya)
+  @Column({ type: 'varchar', name: 'recovery_phrase_hash', length: 255, nullable: true })
+  recoveryPhraseHash: string | null; // Cadangan seed phrase (tahap berikutnya)
 
   @Column({ name: 'users_id' })
   usersId: number;

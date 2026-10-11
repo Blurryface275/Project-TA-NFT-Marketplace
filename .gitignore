@@ -22,5 +22,10 @@ spike-next/
 # Docs Kerja
 docs/
 
+# Uploads statis (gambar tiket yang diunggah saat runtime)
+backend/uploads/
+uploads/
+scratch/*.png
+
 # Explanation
 explanation/

@@ -4,7 +4,6 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col items-center justify-center p-6 min-h-[calc(100vh-4rem)]">
       <div className="w-full max-w-md p-6 bg-card border rounded-xl shadow-sm text-center flex flex-col gap-4">
-        <div className="text-4xl">🎉</div>
         <h1 className="text-2xl font-bold text-foreground">
           Selamat Datang di Dashboard!
         </h1>

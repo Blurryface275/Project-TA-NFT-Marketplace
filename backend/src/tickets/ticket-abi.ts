@@ -1,5 +1,29 @@
 export const TICKET_CONTRACT_ABI = [
   {
+    type: 'function',
+    name: 'createEvent',
+    inputs: [
+      { name: 'eventId', type: 'uint256' },
+      { name: 'organizer', type: 'address' },
+      { name: 'eventTimestamp', type: 'uint64' },
+      { name: 'maxPerWallet', type: 'uint32' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'addCategory',
+    inputs: [
+      { name: 'eventId', type: 'uint256' },
+      { name: 'categoryId', type: 'uint256' },
+      { name: 'price', type: 'uint96' },
+      { name: 'quota', type: 'uint32' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
     // Reference :
     // Ada di function mintTicket apda file TicketContract.sol
     // function mintTicket(address to, uint256 eventId, uint256 categoryId) external returns (uint256)

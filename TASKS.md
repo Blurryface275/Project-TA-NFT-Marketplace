@@ -1,15 +1,17 @@
 # TASKS.md — Rencana Pengerjaan dan Peta Kerja Menuju Sidang Tugas Akhir
 
 > **Dokumen Patokan Mutlak:**
+>
 > 1. `dokumen/Proposal TA_160423176.pdf` (20 Agustus 2026)
 > 2. `dokumen/TA_Benedictus Leonardo Edward Stephen Sugianto_160423176.pdf` (Bab 1–3)
 > 3. Catatan Rekomendasi Dosen Pembimbing:
->    - *Dual-Scan Verification*: Scan 1 = Dynamic QR (layar HP); Scan 2 = KTP Fisik dicocokkan dengan `keccak256(NIK)` (NIK mentah tidak pernah disimpan permanen, UU PDP No. 27/2022).
->    - *Seat Selection*: Sequential Auto-Assignment per kategori (`VIP-01`, `VIP-02`), tanpa interaktif SVG seat map (Batasan Proposal #5).
->    - *Ticket Banner Image*: Banner dinamis (1200x500px, 16:9) dengan *dark gradient overlay* agar teks tetap kontras.
->    - *Batas Tiket Dinamis*: Penyelenggara/Organizer dapat menentukan sendiri `max_per_wallet` per event.
+>    - _Dual-Scan Verification_: Scan 1 = Dynamic QR (layar HP); Scan 2 = KTP Fisik dicocokkan dengan `keccak256(NIK)` (NIK mentah tidak pernah disimpan permanen, UU PDP No. 27/2022).
+>    - _Seat Selection_: Sequential Auto-Assignment per kategori (`VIP-01`, `VIP-02`), tanpa interaktif SVG seat map (Batasan Proposal #5).
+>    - _Ticket Banner Image_: Banner dinamis (1200x500px, 16:9) dengan _dark gradient overlay_ agar teks tetap kontras.
+>    - _Batas Tiket Dinamis_: Penyelenggara/Organizer dapat menentukan sendiri `max_per_wallet` per event.
 >
 > **Aturan Pengerjaan:**
+>
 > - Tugas disusun mengikuti **6 Tahap Metodologi Penelitian** resmi dari Bab 1 Tugas Akhir.
 > - Suatu kotak tugas hanya boleh dicentang (`[x]`) jika **bukti selesai** sudah terpenuhi secara nyata (kode teruji, transaksi on-chain terverifikasi, atau dokumen selesai).
 > - Seluruh kode ditulis sendiri oleh Edward (Steve) mengacu pada panduan di [CLAUDE.md](file:///d:/STEVE/Project%20NFT%20Marketplace/CLAUDE.md).
@@ -18,17 +20,17 @@
 
 ## Ringkasan Progres Utama
 
-| Fase | Deskripsi | Target Selesai | Status |
-|---|---|---|---|
-| **Tahap 1–2** | Persiapan & Analisis Sistem (Bab 1, 2, 3) | Selesai | [x] **Selesai** (Naskah Bab 1–3 di dokumen TA) |
-| **Tahap 3** | Desain Sistem & Arsitektur (Bab 4) | 10 September 2026 | [x] **Selesai** (ERD, BPMN, Sequence Diagram, Skema TypeORM) |
-| **Tahap 4A** | Smart Contract: `TicketContract.sol` & Test | 11 September 2026 | [x] **Selesai** (Foundry 25 Unit Tests Passed 100%, Gas Snapshot Selesai) |
-| **Tahap 4B** | Smart Contract: `MarketplaceContract.sol` (Resale) | Oktober 2026 | [ ] Direncanakan setelah Customer & Gate Flow tuntas |
-| **Tahap 4C** | Deploy Sepolia & Validasi On-Chain | 15 September 2026 | [x] **Selesai** (Kontrak `0x4A6e85...` aktif, Event 1 Kategori 1–3 terverifikasi) |
-| **Tahap 4D** | Backend NestJS 12 Relayer & Data Dinamis | 25 September 2026 | [x] **90% Selesai** (Auth, Events API, Seeder, Mint Relayer selesai; sync-onchain in progress) |
-| **Tahap 4E** | Frontend Next.js (Passkey, Buy Ticket, Dynamic QR) | 28 September 2026 | [x] **85% Selesai** (Customer-side siap; finishing Event Selector & Gate Verify) |
-| **Tahap 5** | Uji Coba & Evaluasi Usability SUS (Bab 6) | 10 Oktober 2026 | [ ] Menunggu Tahap 4 Tuntas |
-| **Tahap 6** | Penyusunan Laporan Akhir (Bab 4, 5, 6, 7) | 17–24 Oktober 2026 | [ ] Menuju LSTA 10 Nov & Sidang 17 Nov |
+| Fase          | Deskripsi                                          | Target Selesai     | Status                                                                                         |
+| ------------- | -------------------------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------- |
+| **Tahap 1–2** | Persiapan & Analisis Sistem (Bab 1, 2, 3)          | Selesai            | [x] **Selesai** (Naskah Bab 1–3 di dokumen TA)                                                 |
+| **Tahap 3**   | Desain Sistem & Arsitektur (Bab 4)                 | 10 September 2026  | [x] **Selesai** (ERD, BPMN, Sequence Diagram, Skema TypeORM)                                   |
+| **Tahap 4A**  | Smart Contract: `TicketContract.sol` & Test        | 11 September 2026  | [x] **Selesai** (Foundry 25 Unit Tests Passed 100%, Gas Snapshot Selesai)                      |
+| **Tahap 4B**  | Smart Contract: `MarketplaceContract.sol` (Resale) | Oktober 2026       | [ ] Direncanakan setelah Customer & Gate Flow tuntas                                           |
+| **Tahap 4C**  | Deploy Sepolia & Validasi On-Chain                 | 15 September 2026  | [x] **Selesai** (Kontrak `0x4A6e85...` aktif, Event 1 Kategori 1–3 terverifikasi)              |
+| **Tahap 4D**  | Backend NestJS 12 Relayer & Data Dinamis           | 25 September 2026  | [x] **90% Selesai** (Auth, Events API, Seeder, Mint Relayer selesai; sync-onchain in progress) |
+| **Tahap 4E**  | Frontend Next.js (Passkey, Buy Ticket, Dynamic QR) | 28 September 2026  | [x] **85% Selesai** (Customer-side siap; finishing Event Selector & Gate Verify)               |
+| **Tahap 5**   | Uji Coba & Evaluasi Usability SUS (Bab 6)          | 10 Oktober 2026    | [ ] Menunggu Tahap 4 Tuntas                                                                    |
+| **Tahap 6**   | Penyusunan Laporan Akhir (Bab 4, 5, 6, 7)          | 17–24 Oktober 2026 | [ ] Menuju LSTA 10 Nov & Sidang 17 Nov                                                         |
 
 ---
 
@@ -53,7 +55,8 @@
 ## Tahap 4 — Implementasi Sistem Bertahap
 
 ### 4A. Smart Contract: `TicketContract.sol` Selesai dan Teruji
-*Status:* Kontrak utama selesai, lulus pengujian Foundry 100%, dan ter-deploy di Sepolia.
+
+_Status:_ Kontrak utama selesai, lulus pengujian Foundry 100%, dan ter-deploy di Sepolia.
 
 - [x] **Suite Pengujian Unit Foundry:**
   - 25 tests passed di `contracts/test/TicketContract.t.sol` menguji `createEvent`, `addCategory`, `setSalesOpen`, `setMarketplace`, `setSystemSigner`.
@@ -63,14 +66,15 @@
   - Eksekusi `_safeMint(to, tokenId)` dan emisi event `TicketMinted`.
 - [x] **Fungsi Verifikasi Penggunaan Tiket (`markUsed`):**
   - Mengubah status tiket menjadi `used = true` di blockchain.
-  - Revert jika tiket sudah terpakai (*Anti-Double-Spend*) atau event belum dimulai.
+  - Revert jika tiket sudah terpakai (_Anti-Double-Spend_) atau event belum dimulai.
 - [x] **Snapshot Gas Smart Contract:**
   - Eksekusi `forge snapshot` selesai, menghasilkan file `.gas-snapshot` sebagai data empiris konsumsi gas untuk Bab 6.
 
 ---
 
 ### 4B. Smart Contract: `MarketplaceContract.sol` (Pasar Sekunder Resmi)
-*Status:* Dijadwalkan setelah seluruh alur Customer & Gate Verification tuntas.
+
+_Status:_ Dijadwalkan setelah seluruh alur Customer & Gate Verification tuntas.
 
 - [ ] **Rancang Kontrak Pasar Sekunder (`MarketplaceContract.sol`):**
   - Struct listing resale: `tokenId`, `seller`, `price`, `active`.
@@ -81,18 +85,19 @@
 ---
 
 ### 4C. Deployment ke Sepolia Testnet & Verifikasi On-Chain
-*Status:* Kontrak resmi aktif di Sepolia.
+
+_Status:_ Kontrak resmi aktif di Sepolia.
 
 - [x] **Deployment `TicketContract.sol` di Sepolia Testnet:**
   - **Alamat Kontrak:** `0x4A6e85fACA6df9eb2dB5BA832B4B48790D60F9b3`
   - **Deployer / Admin Relayer:** `0x8C2CF82F28567478eE12d2fDE1bF6E7304D1e0DA`
 - [x] **Pendaftaran Event 1 & Kategori di Sepolia:**
-  - Event 1: *UBAYA Music Fest 2026* (`exists = true`, `salesOpen = true`)
+  - Event 1: _UBAYA Music Fest 2026_ (`exists = true`, `salesOpen = true`)
   - Kategori 1: VIP (Harga 150.000, Kuota 50)
   - Kategori 2: CAT 1 TRIBUN (Harga 100.000, Kuota 100)
   - Kategori 3: FESTIVAL (Harga 75.000, Kuota 150)
 - [x] **Sinkronisasi On-Chain Otomatis untuk Event 2 & 3:**
-  - Eksekusi skrip [`backend/src/database/seeds/sync-onchain.ts`](file:///d:/STEVE/Project%20NFT%20Marketplace/backend/src/database/seeds/sync-onchain.ts) berhasil mendaftarkan Event 2 (*Rock in Indonesia*, Blok #11794929, Kategori 4 & 5) dan Event 3 (*Art & Tech Expo*, Blok #11794933, Kategori 6) ke smart contract Sepolia.
+  - Eksekusi skrip [`backend/src/database/seeds/sync-onchain.ts`](file:///d:/STEVE/Project%20NFT%20Marketplace/backend/src/database/seeds/sync-onchain.ts) berhasil mendaftarkan Event 2 (_Rock in Indonesia_, Blok #11794929, Kategori 4 & 5) dan Event 3 (_Art & Tech Expo_, Blok #11794933, Kategori 6) ke smart contract Sepolia.
 
 ---
 
@@ -122,6 +127,9 @@
   - Ditambahkan `@Column({ name: 'max_per_wallet', default: 2 })` di [`event.entity.ts`](file:///d:/STEVE/Project%20NFT%20Marketplace/backend/src/events/entities/event.entity.ts).
 - [x] **Skrip Sinkronisasi On-Chain (`sync-onchain.ts` / `npm run db:sync-onchain`):**
   - Skrip [`backend/src/database/seeds/sync-onchain.ts`](file:///d:/STEVE/Project%20NFT%20Marketplace/backend/src/database/seeds/sync-onchain.ts) sukses mengeksekusi pendaftaran multi-event dan seluruh kategori ke blockchain Sepolia.
+- [x] **Portal Admin Pembuatan Event & Upload Background Tiket (Dual Sync On-Chain + MySQL):**
+  - Backend: Endpoint `POST /api/events` dengan Multer storage (`uploads/`), auto-serving static assets di `main.ts`, persistensi MySQL (Event & TicketCategory), dan otomatis eksekusi `createEvent` serta `addCategory` ke smart contract `TicketContract.sol` di Sepolia Testnet.
+  - Frontend: Portal Admin `/dashboard/admin/events/new` lengkap dengan formulir master event, pengunggah file background tiket dengan *Live Real-Time Ticket Preview*, dynamic category builder, dan rekap transaksi Sepolia Etherscan.
 
 ---
 
@@ -134,13 +142,13 @@
   - Navbar responsif menampilkan status login, nama pengguna, pemotongan alamat dompet (`formatAddress`), dan tombol logout.
 - [x] **Halaman Pembelian Tiket Dinamis (`/dashboard/buy`):**
   - Terhubung langsung ke Backend REST API via Server Component [`page.tsx`](file:///d:/STEVE/Project%20NFT%20Marketplace/frontend/src/app/dashboard/buy/page.tsx).
-  - Banner poster konser dinamis dari `image_ipfs_cid` dengan efek *dark gradient overlay* (rekomendasi dosen pembimbing).
+  - Banner poster konser dinamis dari `image_ipfs_cid` dengan efek _dark gradient overlay_ (rekomendasi dosen pembimbing).
   - Format jadwal tanggal Indonesia (WIB) dan nama venue lokasi konser.
   - Pilihan kategori tiket dinamis dari database (`activeCategories`) yang sinkron dengan smart contract Sepolia.
-  - Estimasi alokasi nomor kursi otomatis (*Sequential Auto-Assignment*: `VIP-01`, `VIP-02`) sesuai Batasan Proposal #5.
+  - Estimasi alokasi nomor kursi otomatis (_Sequential Auto-Assignment_: `VIP-01`, `VIP-02`) sesuai Batasan Proposal #5.
   - Server Action [`buy/actions.ts`](file:///d:/STEVE/Project%20NFT%20Marketplace/frontend/src/app/dashboard/buy/actions.ts) memanggil relayer dan merender resi sukses + tautan Sepolia Etherscan.
 - [x] **Fitur Event Selector di Halaman Beli (`/dashboard/buy`):**
-  - Mengintegrasikan tab selector interaktif multi-event pada [`BuyTicketCard.tsx`](file:///d:/STEVE/Project%20NFT%20Marketplace/frontend/src/app/dashboard/buy/BuyTicketCard.tsx) untuk memilih Event 1 (*UBAYA Music Fest*), Event 2 (*Rock in Indonesia*), atau Event 3 (*Art & Tech Expo*).
+  - Mengintegrasikan tab selector interaktif multi-event pada [`BuyTicketCard.tsx`](file:///d:/STEVE/Project%20NFT%20Marketplace/frontend/src/app/dashboard/buy/BuyTicketCard.tsx) untuk memilih Event 1 (_UBAYA Music Fest_), Event 2 (_Rock in Indonesia_), atau Event 3 (_Art & Tech Expo_).
   - Menggunakan batas kuota dinamis `event.maxPerWallet` dari database MySQL dan mengisolasi penghitungan kepemilikan tiket spesifik per-event.
 - [x] **Dashboard "Tiket Saya" (`/dashboard/tickets`):**
   - Komponen [`TicketCard.tsx`](file:///d:/STEVE/Project%20NFT%20Marketplace/frontend/src/app/dashboard/tickets/TicketCard.tsx) menampilkan NFT yang dimiliki dari blockchain Sepolia.
@@ -157,18 +165,19 @@
       - Pengecekan status kepemilikan on-chain (`used == false`).
     - [ ] **Scan 2 (KTP Fisik Penonton - Barcode / Input NIK):**
       - Staf gate memindai barcode KTP fisik atau menginput 16 digit NIK.
-      - Penghitungan instan `calculatedHash = keccak256(toUtf8Bytes(nik))` di memori sementara (*ephemeral RAM*).
+      - Penghitungan instan `calculatedHash = keccak256(toUtf8Bytes(nik))` di memori sementara (_ephemeral RAM_).
       - Sanitasi instan: NIK mentah langsung dibuang seketika dari RAM tanpa disimpan ke database/disk (UU PDP No. 27/2022).
     - [ ] **Pencocokan Identitas & Eksekusi On-Chain `markUsed`:**
       - Pencocokan deterministik: `calculatedHash === identityHash`.
       - Panggil endpoint relayer `POST /api/tickets/redeem` untuk menjalankan transaksi `markUsed(tokenId)` di Sepolia.
-      - Tampilan visual hasil: Hijau (*Akses Diizinkan*) atau Merah (*Akses Ditolak*).
+      - Tampilan visual hasil: Hijau (_Akses Diizinkan_) atau Merah (_Akses Ditolak_).
 
 ---
 
 ## Tahap 5 — Uji Coba & Evaluasi Sistem (Bab 6)
 
 ### 5A. Verifikasi Fungsional & Keamanan (Testnet)
+
 - [ ] **Uji Fungsional Alur Utama:** Registrasi Passkey, Pembelian Tiket, dan Dual-Scan Gate Verification tercatat lengkap di matriks pengujian.
 - [ ] **Uji Keamanan Anti-Scalping:**
   - Pembuktian bahwa pembelian tiket ke-3 oleh akun yang sama otomatis ditolak on-chain (`MaxPerWalletExceeded`).
@@ -180,6 +189,7 @@
   - Pengukuran waktu konfirmasi transaksi rata-rata (detik) di Sepolia Testnet.
 
 ### 5B. Validasi Usability Pengguna Umum (Kuesioner SUS)
+
 - [ ] **Penyebaran Skenario Uji Coba Pengguna:** Responden umum mencoba alur pembelian tiket via Passkey tanpa instalasi wallet ekstensi MetaMask.
 - [ ] **Rekapitulasi Skor System Usability Scale (SUS):** Evaluasi kemudahan sistem bagi masyarakat awam.
 
@@ -197,12 +207,11 @@
 
 ## Indeks Dokumen Penjelasan Teknis Terkait
 
-| No | Judul Dokumen | Topik Relevan |
-|---|---|---|
-| **13** | [`13-end-to-end-ticket-purchase-flow.md`](file:///d:/STEVE/Project%20NFT%20Marketplace/explanation/13-end-to-end-ticket-purchase-flow.md) | Alur transaksi pembelian, data kirim/respon, dan pemisahan On-chain vs Off-chain |
-| **14** | [`14-api-communication-patterns-and-bff-architecture.md`](file:///d:/STEVE/Project%20NFT%20Marketplace/explanation/14-api-communication-patterns-and-bff-architecture.md) | Pola komunikasi API, RESTful NestJS, dan BFF Next.js |
-| **16** | [`16-data-integrity-single-source-of-truth-and-anti-fraud.md`](file:///d:/STEVE/Project%20NFT%20Marketplace/explanation/16-data-integrity-single-source-of-truth-and-anti-fraud.md) | Single source of truth, pemisahan kasta data, dan mekanisme anti-fraud |
-| **17** | [`17-dynamic-qr-webauthn-signature-and-gate-redemption.md`](file:///d:/STEVE/Project%20NFT%20Marketplace/explanation/17-dynamic-qr-webauthn-signature-and-gate-redemption.md) | Dynamic QR Code, WebAuthn Passkey signature, countdown 60s, dan protokol gate |
-| **18** | [`18-orm-typeorm-architecture-and-multi-event-vs-factory.md`](file:///d:/STEVE/Project%20NFT%20Marketplace/explanation/18-orm-typeorm-architecture-and-multi-event-vs-factory.md) | Multi-Tenant vs Factory smart contract, fungsi `on_chain_event_id`, dan teori TypeORM |
-| **20** | [`20-progressive-onboarding-and-two-stage-wallet-provisioning.md`](file:///d:/STEVE/Project%20NFT%20Marketplace/explanation/20-progressive-onboarding-and-two-stage-wallet-provisioning.md) | Progressive Onboarding, pemisahan Auth Web2 vs Wallet Web3, dan mitigasi hardware |
-
+| No     | Judul Dokumen                                                                                                                                                                               | Topik Relevan                                                                         |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| **13** | [`13-end-to-end-ticket-purchase-flow.md`](file:///d:/STEVE/Project%20NFT%20Marketplace/explanation/13-end-to-end-ticket-purchase-flow.md)                                                   | Alur transaksi pembelian, data kirim/respon, dan pemisahan On-chain vs Off-chain      |
+| **14** | [`14-api-communication-patterns-and-bff-architecture.md`](file:///d:/STEVE/Project%20NFT%20Marketplace/explanation/14-api-communication-patterns-and-bff-architecture.md)                   | Pola komunikasi API, RESTful NestJS, dan BFF Next.js                                  |
+| **16** | [`16-data-integrity-single-source-of-truth-and-anti-fraud.md`](file:///d:/STEVE/Project%20NFT%20Marketplace/explanation/16-data-integrity-single-source-of-truth-and-anti-fraud.md)         | Single source of truth, pemisahan kasta data, dan mekanisme anti-fraud                |
+| **17** | [`17-dynamic-qr-webauthn-signature-and-gate-redemption.md`](file:///d:/STEVE/Project%20NFT%20Marketplace/explanation/17-dynamic-qr-webauthn-signature-and-gate-redemption.md)               | Dynamic QR Code, WebAuthn Passkey signature, countdown 60s, dan protokol gate         |
+| **18** | [`18-orm-typeorm-architecture-and-multi-event-vs-factory.md`](file:///d:/STEVE/Project%20NFT%20Marketplace/explanation/18-orm-typeorm-architecture-and-multi-event-vs-factory.md)           | Multi-Tenant vs Factory smart contract, fungsi `on_chain_event_id`, dan teori TypeORM |
+| **20** | [`20-progressive-onboarding-and-two-stage-wallet-provisioning.md`](file:///d:/STEVE/Project%20NFT%20Marketplace/explanation/20-progressive-onboarding-and-two-stage-wallet-provisioning.md) | Progressive Onboarding, pemisahan Auth Web2 vs Wallet Web3, dan mitigasi hardware     |

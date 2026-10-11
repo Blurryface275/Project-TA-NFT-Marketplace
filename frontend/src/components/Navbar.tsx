@@ -9,6 +9,7 @@ import {
   Repeat,
   LogOut,
   Wallet,
+  CalendarPlus,
 } from "lucide-react";
 
 export default async function Navbar() {
@@ -64,6 +65,15 @@ export default async function Navbar() {
               Soon
             </span>
           </div>
+
+          {/* Menu buat event bagi organizernya */}
+          <Link
+            href="/dashboard/admin/events/new"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-md hover:bg-purple-500/10 text-purple-400 hover:text-purple-300 transition font-semibold"
+          >
+            <CalendarPlus className="h-4 w-4" />
+            <span>Buat Event</span>
+          </Link>
 
           <Link
             href="/dashboard/verify"
