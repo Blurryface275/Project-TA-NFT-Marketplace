@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useActionState } from "react";
+import { useState, useActionState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { login } from "@/app/login/actions";
 import { signup, verifyOtpAction, resendOtpAction } from "@/app/signup/actions";
@@ -36,16 +36,19 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
   const [otpSuccess, setOtpSuccess] = useState<string | null>(null);
   const [isResending, setIsResending] = useState(false);
   const [resendNotice, setResendNotice] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
 
   const registeredEmail = signupState?.email || "";
   const isOtpStep = mode === "signup" && signupState?.step === "verify_otp";
   const verifiedNotice = searchParams.get("verified") === "true";
 
   const handleModeSwitch = (targetMode: "login" | "signup") => {
-    setMode(targetMode);
-    setWeb3Message(null);
-    setOtpError(null);
-    window.history.replaceState(null, "", targetMode === "login" ? "/login" : "/signup");
+    startTransition(() => {
+      setMode(targetMode);
+      setWeb3Message(null);
+      setOtpError(null);
+      window.history.replaceState(null, "", targetMode === "login" ? "/login" : "/signup");
+    });
   };
 
   const handlePasskeyAuth = async () => {
@@ -53,10 +56,10 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
     setWeb3Message(null);
     try {
       if (typeof window !== "undefined" && window.PublicKeyCredential) {
-        setWeb3Message("Menghubungkan biometrik perangkat...");
+        setWeb3Message("Menghubungkan sensor biometrik perangkat...");
         setTimeout(() => {
           setIsWeb3Loading(false);
-          setWeb3Message("Passkey terverifikasi. Anda dapat melanjutkan.");
+          setWeb3Message("Passkey terverifikasi. Masuk berhasil.");
         }, 800);
       } else {
         setIsWeb3Loading(false);
@@ -64,7 +67,7 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
       }
     } catch {
       setIsWeb3Loading(false);
-      setWeb3Message("Verifikasi dibatalkan.");
+      setWeb3Message("Verifikasi biometrik dibatalkan.");
     }
   };
 
@@ -75,7 +78,7 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
       if (typeof window !== "undefined" && (window as unknown as { ethereum?: unknown }).ethereum) {
         setWeb3Message("Dompet terhubung.");
       } else {
-        setWeb3Message("Ekstensi dompet Web3 tidak ditemukan.");
+        setWeb3Message("Ekstensi dompet Web3 tidak terdeteksi.");
       }
       setIsWeb3Loading(false);
     }, 600);
@@ -84,7 +87,7 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
   const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otp.length !== 6) {
-      setOtpError("Masukkan 6 digit kode OTP.");
+      setOtpError("Masukkan 6 digit kode verifikasi.");
       return;
     }
     setIsVerifyingOtp(true);
@@ -116,7 +119,7 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
   return (
     <div className="min-h-screen w-full bg-[#FAF9F6] text-slate-800 flex items-center justify-center p-4 font-sans antialiased selection:bg-[#FF5A36]/15 selection:text-[#FF5A36]">
       {/* Centered Main Card */}
-      <div className="w-full max-w-[400px] bg-white rounded-3xl p-6 sm:p-8 shadow-[0_4px_30px_rgba(0,0,0,0.03)] border border-slate-100/60">
+      <div className="w-full max-w-[400px] bg-white rounded-3xl p-6 sm:p-8 shadow-[0_4px_30px_rgba(0,0,0,0.03)] border border-slate-100/60 transition-all">
         
         {/* Title & Subtitle */}
         <div className="mb-6">
@@ -136,13 +139,21 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
           </p>
         </div>
 
-        {/* Segmented Pill Switcher */}
+        {/* Accessible Segmented Pill Switcher */}
         {!isOtpStep && (
-          <div className="flex bg-slate-100/70 p-1 rounded-2xl mb-6">
+          <div
+            role="tablist"
+            aria-label="Pilihan Autentikasi"
+            className="flex bg-slate-100/70 p-1 rounded-2xl mb-6"
+          >
             <button
+              role="tab"
+              id="tab-login"
+              aria-selected={mode === "login"}
+              aria-controls="panel-login"
               type="button"
               onClick={() => handleModeSwitch("login")}
-              className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all duration-200 cursor-pointer ${
+              className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all duration-200 cursor-pointer min-h-[38px] ${
                 mode === "login"
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-500 hover:text-slate-800"
@@ -151,9 +162,13 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
               Masuk
             </button>
             <button
+              role="tab"
+              id="tab-signup"
+              aria-selected={mode === "signup"}
+              aria-controls="panel-signup"
               type="button"
               onClick={() => handleModeSwitch("signup")}
-              className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all duration-200 cursor-pointer ${
+              className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all duration-200 cursor-pointer min-h-[38px] ${
                 mode === "signup"
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-500 hover:text-slate-800"
@@ -166,14 +181,22 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
 
         {/* Verification Notification */}
         {verifiedNotice && (
-          <div className="mb-4 p-3 rounded-2xl bg-emerald-50 border border-emerald-100 text-xs text-emerald-800 flex items-center gap-2">
-            <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+          <div
+            role="status"
+            aria-live="polite"
+            className="mb-4 p-3 rounded-2xl bg-emerald-50 border border-emerald-100 text-xs text-emerald-800 flex items-center gap-2"
+          >
+            <Check className="w-4 h-4 text-emerald-600 shrink-0" aria-hidden="true" />
             <span>Email berhasil diverifikasi. Silakan masuk.</span>
           </div>
         )}
 
         {web3Message && (
-          <div className="mb-4 p-3 rounded-2xl bg-[#FFF2ED] border border-[#FFD9CE]/60 text-xs text-[#D43812]">
+          <div
+            role="status"
+            aria-live="polite"
+            className="mb-4 p-3 rounded-2xl bg-[#FFF2ED] border border-[#FFD9CE]/60 text-xs text-[#D43812]"
+          >
             {web3Message}
           </div>
         )}
@@ -182,50 +205,71 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
         {isOtpStep ? (
           <div className="space-y-4">
             {otpSuccess && (
-              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-100 text-xs text-emerald-800 text-center font-medium">
+              <div
+                role="status"
+                aria-live="polite"
+                className="p-3 rounded-2xl bg-emerald-50 border border-emerald-100 text-xs text-emerald-800 text-center font-medium"
+              >
                 {otpSuccess}
               </div>
             )}
 
             {otpError && (
-              <div role="alert" className="p-3 rounded-2xl bg-rose-50 border border-rose-100 text-xs text-rose-600 text-center font-medium">
+              <div
+                role="alert"
+                aria-live="assertive"
+                className="p-3 rounded-2xl bg-rose-50 border border-rose-100 text-xs text-rose-600 text-center font-medium"
+              >
                 {otpError}
               </div>
             )}
 
             {resendNotice && (
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 text-xs text-slate-600 text-center">
+              <div
+                role="status"
+                aria-live="polite"
+                className="p-3 rounded-2xl bg-slate-50 border border-slate-100 text-xs text-slate-600 text-center"
+              >
                 {resendNotice}
               </div>
             )}
 
-            <form onSubmit={handleOtpSubmit} className="space-y-4">
+            <form onSubmit={handleOtpSubmit} className="space-y-4" noValidate>
               <div className="space-y-1.5">
-                <label htmlFor="otp" className="text-xs font-medium text-slate-600 block text-center">
+                <label
+                  htmlFor="otp"
+                  className="text-xs font-medium text-slate-600 block text-center"
+                >
                   Kode 6 Digit
                 </label>
                 <input
                   type="text"
                   id="otp"
                   name="otp"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="one-time-code"
                   maxLength={6}
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
                   placeholder="••••••"
                   autoFocus
-                  className="w-full bg-slate-50/70 border border-slate-200/50 rounded-2xl px-4 py-3 text-center text-2xl tracking-[0.35em] font-semibold text-slate-900 outline-none focus:bg-white focus:border-[#FF5A36] focus:ring-1 focus:ring-[#FF5A36] transition-all"
+                  aria-required="true"
+                  aria-invalid={!!otpError}
+                  className="w-full bg-slate-50/70 border border-slate-200/50 rounded-2xl px-4 py-3 text-center text-2xl tracking-[0.35em] font-semibold text-slate-900 outline-none focus:bg-white focus:border-[#FF5A36] focus:ring-1 focus:ring-[#FF5A36] transition-all min-h-[52px]"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isVerifyingOtp || otp.length !== 6 || !!otpSuccess}
-                className="w-full py-3 px-4 bg-[#FF5A36] hover:bg-[#F04824] active:bg-[#E03C18] text-white text-xs font-bold rounded-2xl shadow-sm shadow-[#FF5A36]/20 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 cursor-pointer border-0"
+                className="w-full py-3 px-4 bg-[#FF5A36] hover:bg-[#F04824] active:bg-[#E03C18] text-white text-xs font-bold rounded-2xl shadow-sm shadow-[#FF5A36]/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 cursor-pointer border-0 min-h-[46px]"
               >
                 {isVerifyingOtp ? (
                   <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <RefreshCw className="w-4 h-4 animate-spin" aria-hidden="true" />
                     <span>Memverifikasi...</span>
+                    <span className="sr-only">Sedang memverifikasi kode</span>
                   </>
                 ) : (
                   <span>Verifikasi Akun</span>
@@ -238,17 +282,20 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
                 type="button"
                 onClick={handleResendOtp}
                 disabled={isResending || !!otpSuccess}
-                className="hover:text-[#FF5A36] font-medium transition flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                className="hover:text-[#FF5A36] font-medium transition flex items-center gap-1 cursor-pointer disabled:opacity-40 min-h-[36px]"
               >
-                <RefreshCw className={`w-3 h-3 ${isResending ? "animate-spin" : ""}`} />
+                <RefreshCw
+                  className={`w-3 h-3 ${isResending ? "animate-spin" : ""}`}
+                  aria-hidden="true"
+                />
                 <span>Kirim Ulang</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleModeSwitch("signup")}
-                className="hover:text-slate-800 transition flex items-center gap-1 cursor-pointer"
+                className="hover:text-slate-800 transition flex items-center gap-1 cursor-pointer min-h-[36px]"
               >
-                <ArrowLeft className="w-3 h-3" />
+                <ArrowLeft className="w-3 h-3" aria-hidden="true" />
                 <span>Ganti Email</span>
               </button>
             </div>
@@ -261,9 +308,9 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
                 type="button"
                 onClick={handlePasskeyAuth}
                 disabled={isWeb3Loading}
-                className="w-full py-2.5 px-4 bg-[#FFF2ED] hover:bg-[#FFE6DC] text-[#D43812] transition-colors text-xs font-semibold rounded-2xl flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99] border-0"
+                className="w-full py-2.5 px-4 bg-[#FFF2ED] hover:bg-[#FFE6DC] text-[#D43812] transition-colors text-xs font-semibold rounded-2xl flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] border-0 min-h-[44px]"
               >
-                <Fingerprint className="w-4 h-4 text-[#FF5A36]" />
+                <Fingerprint className="w-4 h-4 text-[#FF5A36]" aria-hidden="true" />
                 <span>Masuk Cepat dengan Passkey</span>
               </button>
 
@@ -271,9 +318,9 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
                 type="button"
                 onClick={handleWalletConnect}
                 disabled={isWeb3Loading}
-                className="w-full py-2 px-4 bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-medium rounded-2xl transition-colors flex items-center justify-center gap-2 cursor-pointer border-0"
+                className="w-full py-2 px-4 bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-medium rounded-2xl transition-colors flex items-center justify-center gap-2 cursor-pointer border-0 min-h-[40px]"
               >
-                <Wallet className="w-3.5 h-3.5 text-slate-400" />
+                <Wallet className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
                 <span>Sambungkan Dompet Kripto</span>
               </button>
             </div>
@@ -290,27 +337,43 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
 
             {/* Login Form */}
             {mode === "login" ? (
-              <form action={loginAction} className="space-y-3.5">
+              <form
+                id="panel-login"
+                role="tabpanel"
+                aria-labelledby="tab-login"
+                action={loginAction}
+                className="space-y-3.5"
+                noValidate
+              >
                 {loginState?.message && (
-                  <div role="alert" className="p-3 rounded-2xl bg-rose-50 border border-rose-100 text-xs text-rose-600 font-medium">
+                  <div
+                    role="alert"
+                    aria-live="assertive"
+                    className="p-3 rounded-2xl bg-rose-50 border border-rose-100 text-xs text-rose-600 font-medium"
+                  >
                     {loginState.message}
                   </div>
                 )}
 
                 <div className="space-y-1">
-                  <label htmlFor="email" className="text-xs font-medium text-slate-700 block">
+                  <label htmlFor="login-email" className="text-xs font-medium text-slate-700 block">
                     Email
                   </label>
                   <input
-                    id="email"
+                    id="login-email"
                     name="email"
                     type="email"
                     required
+                    autoComplete="email"
+                    spellCheck={false}
+                    aria-required="true"
+                    aria-invalid={!!loginState?.errors?.email}
+                    aria-describedby={loginState?.errors?.email ? "login-email-error" : undefined}
                     placeholder="nama@email.com"
-                    className="w-full bg-slate-50/70 border border-slate-200/50 rounded-2xl px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-[#FF5A36] focus:ring-1 focus:ring-[#FF5A36] transition-all duration-150"
+                    className="w-full bg-slate-50/70 border border-slate-200/50 rounded-2xl px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-[#FF5A36] focus:ring-1 focus:ring-[#FF5A36] transition-all duration-150 min-h-[44px]"
                   />
                   {loginState?.errors?.email && (
-                    <p role="alert" className="text-[11px] text-rose-500 mt-1">
+                    <p id="login-email-error" role="alert" className="text-[11px] text-rose-500 mt-1">
                       {loginState.errors.email[0]}
                     </p>
                   )}
@@ -318,33 +381,44 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
 
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <label htmlFor="password" className="text-xs font-medium text-slate-700 block">
+                    <label htmlFor="login-password" className="text-xs font-medium text-slate-700 block">
                       Kata Sandi
                     </label>
-                    <a href="#" className="text-[11px] text-[#FF5A36] hover:text-[#D43812] font-semibold transition">
+                    <a
+                      href="#"
+                      className="text-[11px] text-[#FF5A36] hover:text-[#D43812] font-semibold transition"
+                    >
                       Lupa sandi?
                     </a>
                   </div>
                   <div className="relative">
                     <input
-                      id="password"
+                      id="login-password"
                       name="password"
                       type={showPassword ? "text" : "password"}
                       required
+                      autoComplete="current-password"
+                      aria-required="true"
+                      aria-invalid={!!loginState?.errors?.password}
+                      aria-describedby={loginState?.errors?.password ? "login-password-error" : undefined}
                       placeholder="Minimal 8 karakter"
-                      className="w-full bg-slate-50/70 border border-slate-200/50 rounded-2xl px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-[#FF5A36] focus:ring-1 focus:ring-[#FF5A36] transition-all duration-150 pr-10"
+                      className="w-full bg-slate-50/70 border border-slate-200/50 rounded-2xl px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-[#FF5A36] focus:ring-1 focus:ring-[#FF5A36] transition-all duration-150 pr-10 min-h-[44px]"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-2.5 text-slate-400 hover:text-slate-600 transition cursor-pointer"
-                      aria-label="Lihat kata sandi"
+                      className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 transition cursor-pointer p-0.5"
+                      aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" aria-hidden="true" />
+                      ) : (
+                        <Eye className="w-4 h-4" aria-hidden="true" />
+                      )}
                     </button>
                   </div>
                   {loginState?.errors?.password && (
-                    <p role="alert" className="text-[11px] text-rose-500 mt-1">
+                    <p id="login-password-error" role="alert" className="text-[11px] text-rose-500 mt-1">
                       {loginState.errors.password[0]}
                     </p>
                   )}
@@ -353,44 +427,60 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
                 <button
                   type="submit"
                   disabled={loginPending}
-                  className="w-full mt-2 py-3 px-4 bg-[#FF5A36] hover:bg-[#F04824] active:bg-[#E03C18] text-white text-xs font-bold rounded-2xl shadow-sm shadow-[#FF5A36]/20 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-1.5 cursor-pointer border-0"
+                  className="w-full mt-2 py-3 px-4 bg-[#FF5A36] hover:bg-[#F04824] active:bg-[#E03C18] text-white text-xs font-bold rounded-2xl shadow-sm shadow-[#FF5A36]/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5 cursor-pointer border-0 min-h-[46px]"
                 >
                   {loginPending ? (
                     <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
                       <span>Memproses...</span>
+                      <span className="sr-only">Sedang memproses masuk</span>
                     </>
                   ) : (
                     <>
                       <span>Masuk</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
                     </>
                   )}
                 </button>
               </form>
             ) : (
               /* Signup Form */
-              <form action={signupAction} className="space-y-3.5">
+              <form
+                id="panel-signup"
+                role="tabpanel"
+                aria-labelledby="tab-signup"
+                action={signupAction}
+                className="space-y-3.5"
+                noValidate
+              >
                 {signupState?.message && (
-                  <div role="alert" className="p-3 rounded-2xl bg-rose-50 border border-rose-100 text-xs text-rose-600 font-medium">
+                  <div
+                    role="alert"
+                    aria-live="assertive"
+                    className="p-3 rounded-2xl bg-rose-50 border border-rose-100 text-xs text-rose-600 font-medium"
+                  >
                     {signupState.message}
                   </div>
                 )}
 
                 <div className="space-y-1">
-                  <label htmlFor="name" className="text-xs font-medium text-slate-700 block">
+                  <label htmlFor="signup-name" className="text-xs font-medium text-slate-700 block">
                     Nama Lengkap
                   </label>
                   <input
-                    id="name"
+                    id="signup-name"
                     name="name"
                     type="text"
                     required
+                    autoComplete="name"
+                    aria-required="true"
+                    aria-invalid={!!signupState?.errors?.name}
+                    aria-describedby={signupState?.errors?.name ? "signup-name-error" : undefined}
                     placeholder="Nama lengkap sesuai identitas"
-                    className="w-full bg-slate-50/70 border border-slate-200/50 rounded-2xl px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-[#FF5A36] focus:ring-1 focus:ring-[#FF5A36] transition-all duration-150"
+                    className="w-full bg-slate-50/70 border border-slate-200/50 rounded-2xl px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-[#FF5A36] focus:ring-1 focus:ring-[#FF5A36] transition-all duration-150 min-h-[44px]"
                   />
                   {signupState?.errors?.name && (
-                    <p role="alert" className="text-[11px] text-rose-500 mt-1">
+                    <p id="signup-name-error" role="alert" className="text-[11px] text-rose-500 mt-1">
                       {signupState.errors.name[0]}
                     </p>
                   )}
@@ -405,11 +495,16 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
                     name="email"
                     type="email"
                     required
+                    autoComplete="email"
+                    spellCheck={false}
+                    aria-required="true"
+                    aria-invalid={!!signupState?.errors?.email}
+                    aria-describedby={signupState?.errors?.email ? "signup-email-error" : undefined}
                     placeholder="nama@email.com"
-                    className="w-full bg-slate-50/70 border border-slate-200/50 rounded-2xl px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-[#FF5A36] focus:ring-1 focus:ring-[#FF5A36] transition-all duration-150"
+                    className="w-full bg-slate-50/70 border border-slate-200/50 rounded-2xl px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-[#FF5A36] focus:ring-1 focus:ring-[#FF5A36] transition-all duration-150 min-h-[44px]"
                   />
                   {signupState?.errors?.email && (
-                    <p role="alert" className="text-[11px] text-rose-500 mt-1">
+                    <p id="signup-email-error" role="alert" className="text-[11px] text-rose-500 mt-1">
                       {signupState.errors.email[0]}
                     </p>
                   )}
@@ -425,20 +520,28 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
                       name="password"
                       type={showPassword ? "text" : "password"}
                       required
+                      autoComplete="new-password"
+                      aria-required="true"
+                      aria-invalid={!!signupState?.errors?.password}
+                      aria-describedby={signupState?.errors?.password ? "signup-password-error" : undefined}
                       placeholder="Minimal 8 karakter"
-                      className="w-full bg-slate-50/70 border border-slate-200/50 rounded-2xl px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-[#FF5A36] focus:ring-1 focus:ring-[#FF5A36] transition-all duration-150 pr-10"
+                      className="w-full bg-slate-50/70 border border-slate-200/50 rounded-2xl px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-[#FF5A36] focus:ring-1 focus:ring-[#FF5A36] transition-all duration-150 pr-10 min-h-[44px]"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-2.5 text-slate-400 hover:text-slate-600 transition cursor-pointer"
-                      aria-label="Lihat kata sandi"
+                      className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 transition cursor-pointer p-0.5"
+                      aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" aria-hidden="true" />
+                      ) : (
+                        <Eye className="w-4 h-4" aria-hidden="true" />
+                      )}
                     </button>
                   </div>
                   {signupState?.errors?.password && (
-                    <p role="alert" className="text-[11px] text-rose-500 mt-1">
+                    <p id="signup-password-error" role="alert" className="text-[11px] text-rose-500 mt-1">
                       {signupState.errors.password[0]}
                     </p>
                   )}
@@ -447,17 +550,18 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
                 <button
                   type="submit"
                   disabled={signupPending}
-                  className="w-full mt-2 py-3 px-4 bg-[#FF5A36] hover:bg-[#F04824] active:bg-[#E03C18] text-white text-xs font-bold rounded-2xl shadow-sm shadow-[#FF5A36]/20 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-1.5 cursor-pointer border-0"
+                  className="w-full mt-2 py-3 px-4 bg-[#FF5A36] hover:bg-[#F04824] active:bg-[#E03C18] text-white text-xs font-bold rounded-2xl shadow-sm shadow-[#FF5A36]/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5 cursor-pointer border-0 min-h-[46px]"
                 >
                   {signupPending ? (
                     <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
                       <span>Mendaftarkan...</span>
+                      <span className="sr-only">Sedang memproses pendaftaran</span>
                     </>
                   ) : (
                     <>
                       <span>Lanjut ke Verifikasi</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
                     </>
                   )}
                 </button>
@@ -474,7 +578,7 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
               <button
                 type="button"
                 onClick={() => handleModeSwitch("signup")}
-                className="text-[#FF5A36] hover:text-[#D43812] font-bold cursor-pointer transition"
+                className="text-[#FF5A36] hover:text-[#D43812] font-bold cursor-pointer transition min-h-[32px] inline-flex items-center"
               >
                 Daftar di sini
               </button>
@@ -485,7 +589,7 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
               <button
                 type="button"
                 onClick={() => handleModeSwitch("login")}
-                className="text-[#FF5A36] hover:text-[#D43812] font-bold cursor-pointer transition"
+                className="text-[#FF5A36] hover:text-[#D43812] font-bold cursor-pointer transition min-h-[32px] inline-flex items-center"
               >
                 Masuk di sini
               </button>
