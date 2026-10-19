@@ -54,15 +54,17 @@ export interface UserTicket {
 interface BuyTicketCardProps {
   walletAddress: string;
   userEmail?: string;
+  isLoggedIn?: boolean;
   events?: EventData[];
   userTickets?: UserTicket[];
   initialOwnedCount?: number;
   event?: EventData | null;
 }
 
-export default function BuyTicketCard({
+export default function BuyTicketCard({ // ini akan jadi default value untuk BuyTicketCardProps
   walletAddress,
   userEmail = "",
+  isLoggedIn = false,
   events = [],
   userTickets = [],
   event,
@@ -697,8 +699,28 @@ export default function BuyTicketCard({
             </div>
           )}
 
-          {/* JIKA DOMPET BELUM AKTIF: Tampilkan Tombol Aktivasi Passkey */}
-          {!activeWallet ? (
+          {/* KONDISI 1: JIKA BELUM LOGIN (TAMU) */}
+          {!isLoggedIn ? (
+            <div className="space-y-3">
+              <div className="p-4 rounded-xl bg-muted/50 border border-border text-xs space-y-1">
+                <p className="font-semibold text-foreground">
+                  Login Diperlukan untuk Membeli Tiket
+                </p>
+                <p className="text-muted-foreground">
+                  Silakan masuk atau buat akun terlebih dahulu untuk memesan tiket resmi dan menyimpannya di smart account Anda.
+                </p>
+              </div>
+
+              <Link
+                href="/login"
+                className="w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl font-semibold text-white bg-primary hover:bg-primary/90 transition shadow-md"
+              >
+                <span>Masuk untuk Membeli Tiket</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          ) : !activeWallet ? (
+            /* KONDISI 2: SUDAH LOGIN TAPI DOMPET BELUM AKTIF */
             <div className="space-y-3">
               <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-200 text-xs space-y-1.5">
                 <div className="flex items-center gap-2 font-semibold text-purple-300">

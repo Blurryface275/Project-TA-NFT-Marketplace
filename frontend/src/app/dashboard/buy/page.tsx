@@ -3,17 +3,13 @@ import { redirect } from "next/navigation";
 import BuyTicketCard, { EventData, UserTicket } from "./BuyTicketCard";
 
 export default async function BuyTicketPage() {
-  // Ambil session langsung di server
+  // Ambil session jika ada (bisa null jg misalnya user blm login)
   const session = await getSession();
 
-  // Jika session tidak ditemukan atau userId belum ada, arahkan ke login
-  if (!session?.userId) {
-    redirect("/login");
-  }
-
   // Ambil data dompet dan email dari session yang sudah divalidasi
-  const walletAddress = (session.walletAddress as string) || "";
-  const userEmail = (session.email as string) || "";
+  const walletAddress = (session?.walletAddress as string) || ""; // string kosong kalau belum login
+  const userEmail = (session?.email as string) || ""; // string kosong kalau belum login
+  const isLoggedIn = Boolean(session?.userId); // true jika udh login, false jika blm login
 
   // Ambil data seluruh tiket yang sudah dimiliki user dari backend relayer
   let userTickets: UserTicket[] = [];
@@ -63,6 +59,7 @@ export default async function BuyTicketPage() {
       <BuyTicketCard
         walletAddress={walletAddress}
         userEmail={userEmail}
+        isLoggedIn={isLoggedIn}
         events={events}
         userTickets={userTickets}
       />

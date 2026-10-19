@@ -80,8 +80,14 @@ export async function login(
   }
 
   // Buat session cookie via helper session yang tadi kamu buat
-  await createSession(resData.id.toString(), resData.name, resData.walletAddress);
-  // Redirect pengguna ke halaman dashboard
+  await createSession(
+    resData.id.toString(),
+    resData.name,
+    resData.walletAddress,
+    resData.email,
+    resData.role,
+  );
+  
   redirect("/dashboard");
 }
 

@@ -7,12 +7,13 @@ const publicRoutes = ["/login", "/signup"]; // biar bisa dimasuki tanpa autentik
 
 export default async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
-  const isProtectedRoute = path.startsWith('/dashboard');
+  const isProtectedRoute = path.startsWith('/dashboard') && !path.startsWith("/dashboard/buy"); // tujuannya biar customer bisa lihat buy ticket walaupn dia belum login
   const isPublicRoute = publicRoutes.includes(path);
 
   // 2. Baca cookie session langsung dari request
   const cookie = req.cookies.get("session")?.value;
   const session = await decrypt(cookie);
+  const isAdminRoute = path.startsWith("/dashboard/admin");
 
   console.log(`🛡️ [Middleware] Mengakses: ${path} | Login: ${!!session?.userId}`);
 
@@ -20,6 +21,14 @@ export default async function middleware(req: NextRequest) {
   if (isProtectedRoute && !session?.userId) {
     console.log(`⛔ [Middleware] Akses ke ${path} ditolak! Redirect ke /login`);
     return NextResponse.redirect(new URL("/login", req.nextUrl));
+  }
+
+  // Proteksi route /dashboard/create-event khusus role organizer
+  if (isAdminRoute && session?.role?.toString().toUpperCase() !== "ORGANIZER") {
+    console.log(
+      `⛔ [Middleware] Akses ke /dashboard/create-event ditolak! User bukan organizer`,
+    );
+    return NextResponse.redirect(new URL("/dashboard", req.nextUrl));
   }
 
   // 4. Jika user sudah login tapi membuka /login -> arahkan ke /dashboard

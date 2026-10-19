@@ -36,5 +36,8 @@ export type FormState =
         password?: string[]; // Array string: Menampung lebih dari 1 pesan error jika password melanggar beberapa aturan sekaligus
       };
       message?: string; // Pesan status umum/global (misal: "Pendaftaran gagal" atau pesan sistem)
+      success?: boolean; // success/gagal mengirim
+      step?: string;
+      email?: string;
     }
-  | undefined; // Nilai awal (initial state) sebelum pengguna pertama kali menekan tombol submit
+  | undefined; // Nilai awal (initial state) sebelum pengguna pertama kali menekan tombol submit

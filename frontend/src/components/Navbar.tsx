@@ -10,11 +10,18 @@ import {
   LogOut,
   Wallet,
   CalendarPlus,
+  LogIn,
+  UserPlus,
+  History,
 } from "lucide-react";
+import NavbarWalletButton from "./NavbarWalletButton";
 
 export default async function Navbar() {
   // Ambil data session user langsung di server
   const session = await getSession();
+  const isLoggedIn = !!session?.userId; // true jika udh login, false jika blm login
+  const userEmail = (session?.email as string) || "";
+  const userRole = (session?.role as string) || "CUSTOMER";
 
   // Helper untuk memotong alamat dompet (misal: 0x811a...61Eb)
   const formatAddress = (addr?: string) => {
@@ -31,7 +38,7 @@ export default async function Navbar() {
         {/* SISI KIRI: BRAND LOGO */}
         <div className="flex items-center">
           <Link
-            href="/dashboard"
+            href={isLoggedIn ? "/dashboard" : "/"}
             className="flex items-center gap-2 font-bold text-xl tracking-tight text-foreground hover:opacity-90 transition"
           >
             <Ticket className="h-5 w-5" />
@@ -66,14 +73,15 @@ export default async function Navbar() {
             </span>
           </div>
 
-          {/* Menu buat event bagi organizernya */}
-          <Link
-            href="/dashboard/admin/events/new"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-md hover:bg-purple-500/10 text-purple-400 hover:text-purple-300 transition font-semibold"
-          >
-            <CalendarPlus className="h-4 w-4" />
-            <span>Buat Event</span>
-          </Link>
+          {userRole === "ORGANIZER" && (
+            <Link
+              href="/dashboard/admin/events/new"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-md hover:bg-purple-500/10 text-purple-400 hover:text-purple-300 transition font-semibold"
+            >
+              <CalendarPlus className="h-4 w-4" />
+              <span>Buat Event</span>
+            </Link>
+          )}
 
           <Link
             href="/dashboard/verify"
@@ -86,33 +94,32 @@ export default async function Navbar() {
 
         {/* 3. SISI KANAN: PROFIL & SIGN OUT (RATA KANAN) */}
         <div className="flex items-center gap-3">
-          {/* Pill Badge Identitas User & Alamat Smart Account */}
-          <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-border bg-card shadow-sm text-xs">
-            <div className="h-6 w-6 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold">
-              {userName.charAt(0).toUpperCase()}
+          {isLoggedIn ? (
+            /* Komponen Profil & Wallet ala Polymarket (Tombol Buat Wallet + Avatar Dropdown) */
+            <NavbarWalletButton
+              initialWalletAddress={walletAddress}
+              userEmail={userEmail}
+              userName={userName}
+            />
+          ) : (
+            /* Tampilan jika belum login (Tamu / Guest) */
+            <div className="flex items-center gap-2">
+              <Link
+                href="/login"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-border text-foreground hover:bg-muted text-xs font-semibold transition"
+              >
+                <LogIn className="h-3.5 w-3.5" />
+                <span>Masuk</span>
+              </Link>
+              <Link
+                href="/signup"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold shadow-sm transition"
+              >
+                <UserPlus className="h-3.5 w-3.5" />
+                <span>Daftar Akun</span>
+              </Link>
             </div>
-            <div className="flex flex-col text-left">
-              <span className="font-semibold text-foreground leading-none">
-                {userName}
-              </span>
-              <span className="text-[11px] font-mono text-muted-foreground flex items-center gap-1 mt-0.5">
-                <Wallet className="h-3 w-3" />
-                {formatAddress(walletAddress)}
-              </span>
-            </div>
-          </div>
-
-          {/* Tombol Logout (Server Action) */}
-          <form action={logout}>
-            <button
-              type="submit"
-              title="Keluar dari akun"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border hover:bg-red-500/10 hover:text-red-600 hover:border-red-500/20 text-muted-foreground text-xs font-medium transition cursor-pointer"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Sign Out</span>
-            </button>
-          </form>
+          )}
         </div>
       </div>
     </header>

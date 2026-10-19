@@ -13,6 +13,8 @@ type SessionPayload = {
   name?: string; // we need name for display on Navbar
   walletAddress?: string | null; // we need walletAddress for display on Profile
   email?: string;
+  role?: string; // dipake buat nanti hide/show menu buy event dan wallet di frontend
+  
 };
 
 // encryption funciton to create JWT from Payload
@@ -56,10 +58,11 @@ export async function createSession(
   name?: string,
   walletAddress?: string | null,
   email?: string,
+  role?:string,
 ) {
   console.log("🚀 [Session] Memulai createSession untuk userId:", userId);
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-  const session = await encrypt({ userId, expiresAt, name, walletAddress, email });
+  const session = await encrypt({ userId, expiresAt, name, walletAddress, email, role });
 
   const cookieStore = await cookies();
   cookieStore.set("session", session, {
@@ -89,7 +92,9 @@ export async function updateSessionWallet(walletAddress: string) {
     name: currentSession.name as string | undefined,
     walletAddress,
     email: currentSession.email as string | undefined,
+    role: currentSession.role as string | undefined,
   };
+
 
   const session = await encrypt(updatedPayload);
   const cookieStore = await cookies();
