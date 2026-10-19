@@ -5,7 +5,13 @@ import { signup, verifyOtpAction, resendOtpAction } from "@/app/signup/actions";
 import { useActionState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ShieldCheck, Loader2, ArrowLeft, RefreshCw, CheckCircle2 } from "lucide-react";
+import {
+  ShieldCheck,
+  Loader2,
+  ArrowLeft,
+  RefreshCw,
+  CheckCircle2,
+} from "lucide-react";
 
 export default function SignUpForm() {
   const router = useRouter();
@@ -40,7 +46,9 @@ export default function SignUpForm() {
       return;
     }
 
-    setOtpSuccess("Email berhasil diverifikasi! Mengalihkan ke halaman login...");
+    setOtpSuccess(
+      "Email berhasil diverifikasi! Mengalihkan ke halaman login...",
+    );
     setTimeout(() => {
       router.push("/login?verified=true");
     }, 1500);
@@ -100,7 +108,10 @@ export default function SignUpForm() {
 
         <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4 mt-1">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="otp" className="text-xs font-medium text-center text-muted-foreground">
+            <label
+              htmlFor="otp"
+              className="text-xs font-medium text-center text-muted-foreground"
+            >
               Masukkan 6 Digit Kode OTP
             </label>
             <input
@@ -140,7 +151,9 @@ export default function SignUpForm() {
             disabled={isResending || !!otpSuccess}
             className="text-primary hover:underline font-medium flex items-center gap-1 cursor-pointer disabled:opacity-50"
           >
-            <RefreshCw className={`w-3 h-3 ${isResending ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`w-3 h-3 ${isResending ? "animate-spin" : ""}`}
+            />
             <span>Kirim Ulang Kode OTP</span>
           </button>
 
@@ -236,7 +249,10 @@ export default function SignUpForm() {
 
       <p className="text-center text-xs text-muted-foreground mt-1">
         Sudah punya akun?{" "}
-        <Link href="/login" className="text-primary font-medium hover:underline">
+        <Link
+          href="/login"
+          className="text-primary font-medium hover:underline"
+        >
           Masuk di sini
         </Link>
       </p>

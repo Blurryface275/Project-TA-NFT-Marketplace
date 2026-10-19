@@ -1,9 +1,11 @@
-import { LoginForm } from "./LoginForm";
+import { Suspense } from "react";
+import AuthPortal from "@/components/auth/AuthPortal";
 
 export default function LoginPage() {
   return (
-    <main className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <LoginForm />
-    </main>
+    <Suspense fallback={<div className="min-h-screen bg-[#FAF9F6]" />}>
+      <AuthPortal initialMode="login" />
+    </Suspense>
   );
 }
+

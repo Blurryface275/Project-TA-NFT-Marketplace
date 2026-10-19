@@ -21,6 +21,7 @@ import * as bcrypt from 'bcryptjs';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 
 import crypto from 'crypto';
+import { MailService } from './mail.service';
 
 @Injectable()
 export class AuthService {
@@ -28,6 +29,7 @@ export class AuthService {
     @InjectRepository(User) // digunakan untuk memberikan akses ke repository tabel users
     private readonly userRepository: Repository<User>, // hasil tabel users dipetakan ke variabel userRepository
     private readonly dataSource: DataSource, // wajib hukumnya krn dibutuhin buat jalanin DB Transaction saat registrasi (nanti insert ke tabel user, customer, passkey)
+    private readonly mailService: MailService,
   ) {}
   async register(registerDto: RegisterDto) {
     // cek dulu apakah email udh dipake apa blom
@@ -67,6 +69,13 @@ export class AuthService {
 
       console.log(
         `📧 [OTP Register] Kode verifikasi untuk ${registerDto.email}: ${otp} (Masa berlaku 10 menit)`,
+      );
+
+      // Kirim email OTP via Mailtrap
+      await this.mailService.sendOtpEmail(
+        registerDto.email,
+        registerDto.name,
+        otp,
       );
 
       // lanjut insert customer (walletAddress bisa null pada Tahap 1)
@@ -245,7 +254,8 @@ export class AuthService {
 
     console.log(`✅ [AuthService] OTP baru untuk ${email}: ${newOtp} (Masa berlaku 10 menit)`);
 
-    // TODO: kirim OTP ke user via email
+    // Pemanggilan pengiriman email di method resendOtp()
+    await this.mailService.sendOtpEmail(email, user.name, newOtp);
 
     return {
       success: true,

@@ -9,7 +9,7 @@ export function LoginForm() {
   // Hook React 19 untuk mengelola state return dari Server Action
   // hook adalah fitur react yang memungkinkan kita untuk menambahkan fungsionalitas pada komponen tanpa harus membuat komponen baru
   // useActionState adalah sebuah hook yang memungkinkan kita untuk mengelola state return dari Server Action
-  // useActionState menerima dua parameter: 
+  // useActionState menerima dua parameter:
   // 1. Server Action yang akan dieksekusi -> function login dari actions.ts
   // 2. State awal (opsional) -> karena tidak ada state awal maka undefined
   const [state, loginAction] = useActionState(login, undefined);
@@ -68,7 +68,10 @@ export function LoginForm() {
       {/* Navigasi ke Sign Up */}
       <p className="text-center text-xs text-muted-foreground mt-1">
         Belum punya akun?{" "}
-        <Link href="/signup" className="text-primary font-medium hover:underline">
+        <Link
+          href="/signup"
+          className="text-primary font-medium hover:underline"
+        >
           Daftar di sini
         </Link>
       </p>

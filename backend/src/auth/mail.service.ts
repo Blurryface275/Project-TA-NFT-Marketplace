@@ -22,32 +22,53 @@ export class MailService {
       const mailOptions = {
         from:
           process.env.MAIL_FROM ||
-          '"NFT Marketplace" <noreply@nftmarketplace.local>',
+          '"Web3 NFT Marketplace" <noreply@nftmarketplace.local>',
         to,
-        subject: `${otp} adalah Kode Verifikasi Pendaftaran Anda`,
+        subject: `${otp} is your verification code`,
         html: `
-          <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 520px; margin: 0 auto; padding: 28px; background-color: #0b0f19; border: 1px solid #1f293d; border-radius: 14px; color: #f3f4f6;">
-            <div style="text-align: center; margin-bottom: 24px;">
-              <h2 style="color: #6366f1; margin: 0; font-size: 22px; letter-spacing: -0.5px;">Web3 NFT Marketplace</h2>
-              <p style="color: #94a3b8; font-size: 13px; margin-top: 4px;">Verifikasi Akun Pelanggan</p>
-            </div>
-            
-            <p style="font-size: 15px; line-height: 1.5; color: #e2e8f0;">Halo <strong>${name}</strong>,</p>
-            <p style="font-size: 14px; line-height: 1.6; color: #94a3b8;">
-              Terima kasih telah mendaftar. Masukkan kode 6 digit berikut pada halaman verifikasi untuk mengaktifkan akun Anda:
-            </p>
-            <div style="text-align: center; margin: 32px 0;">
-              <div style="display: inline-block; padding: 14px 32px; background: #1e1b4b; border: 1px solid #4338ca; border-radius: 10px; font-size: 32px; font-weight: 700; letter-spacing: 10px; color: #a5b4fc; font-family: monospace;">
-                ${otp}
+          <div style="background-color: #f3f4f6; padding: 40px 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            <div style="max-width: 480px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+              
+              <!-- Header Banner -->
+              <div style="background-color: #4f46e5; padding: 22px 20px; text-align: center;">
+                <h1 style="color: #ffffff; font-size: 22px; font-weight: 700; margin: 0; letter-spacing: 0.3px;">
+                  Your OTP Code
+                </h1>
               </div>
+
+              <!-- Body Content -->
+              <div style="padding: 32px 28px; color: #374151; font-size: 14px; line-height: 1.6;">
+                <p style="margin-top: 0; margin-bottom: 16px; font-weight: 600; color: #111827;">
+                  Hello ${name},
+                </p>
+                <p style="margin-bottom: 24px; color: #4b5563;">
+                  Your One-Time Password (OTP) for account verification is:
+                </p>
+
+                <!-- OTP Box -->
+                <div style="background-color: #f1f5f9; border-radius: 8px; padding: 14px 20px; text-align: center; margin: 24px 0;">
+                  <span style="font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #4338ca; font-family: 'Courier New', Courier, monospace;">
+                    ${otp}
+                  </span>
+                </div>
+
+                <p style="margin-top: 24px; margin-bottom: 8px; color: #4b5563;">
+                  This OTP is valid for <strong>10 minutes</strong>. Please do not share this code with anyone.
+                </p>
+                <p style="margin-top: 0; margin-bottom: 16px; color: #6b7280; font-size: 13px;">
+                  If you didn't request this code, please ignore this email.
+                </p>
+                <p style="margin: 0; color: #374151; font-weight: 500;">
+                  Thank you for using our service!
+                </p>
+              </div>
+
+              <!-- Footer -->
+              <div style="background-color: #f9fafb; padding: 16px; text-align: center; border-top: 1px solid #f3f4f6; font-size: 12px; color: #9ca3af;">
+                &copy; ${new Date().getFullYear()} Web3 NFT Marketplace. All rights reserved.
+              </div>
+
             </div>
-            <p style="font-size: 12px; color: #f59e0b; background-color: #78350f22; border: 1px solid #78350f44; padding: 10px 14px; border-radius: 8px;">
-              ⚠️ Kode ini hanya berlaku selama <strong>10 menit</strong>. Jangan bagikan kode ini kepada siapa pun.
-            </p>
-            <hr style="border: none; border-top: 1px solid #1f293d; margin: 28px 0 16px 0;" />
-            <p style="font-size: 11px; color: #64748b; text-align: center; margin: 0;">
-              Jika Anda tidak merasa mendaftar di Web3 NFT Marketplace, abaikan email ini.
-            </p>
           </div>
         `,
       };
