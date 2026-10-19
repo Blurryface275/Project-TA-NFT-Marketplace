@@ -5,8 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { login } from "@/app/login/actions";
 import { signup, verifyOtpAction, resendOtpAction } from "@/app/signup/actions";
 import {
-  Fingerprint,
-  Wallet,
   ArrowRight,
   RefreshCw,
   ArrowLeft,
@@ -24,8 +22,6 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [showPassword, setShowPassword] = useState(false);
-  const [isWeb3Loading, setIsWeb3Loading] = useState(false);
-  const [web3Message, setWeb3Message] = useState<string | null>(null);
 
   const [loginState, loginAction, loginPending] = useActionState(login, undefined);
   const [signupState, signupAction, signupPending] = useActionState(signup, undefined);
@@ -45,43 +41,9 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
   const handleModeSwitch = (targetMode: "login" | "signup") => {
     startTransition(() => {
       setMode(targetMode);
-      setWeb3Message(null);
       setOtpError(null);
       window.history.replaceState(null, "", targetMode === "login" ? "/login" : "/signup");
     });
-  };
-
-  const handlePasskeyAuth = async () => {
-    setIsWeb3Loading(true);
-    setWeb3Message(null);
-    try {
-      if (typeof window !== "undefined" && window.PublicKeyCredential) {
-        setWeb3Message("Menghubungkan sensor biometrik perangkat...");
-        setTimeout(() => {
-          setIsWeb3Loading(false);
-          setWeb3Message("Passkey terverifikasi. Masuk berhasil.");
-        }, 800);
-      } else {
-        setIsWeb3Loading(false);
-        setWeb3Message("Perangkat Anda belum mendukung Passkey.");
-      }
-    } catch {
-      setIsWeb3Loading(false);
-      setWeb3Message("Verifikasi biometrik dibatalkan.");
-    }
-  };
-
-  const handleWalletConnect = async () => {
-    setIsWeb3Loading(true);
-    setWeb3Message("Mendeteksi dompet Web3...");
-    setTimeout(() => {
-      if (typeof window !== "undefined" && (window as unknown as { ethereum?: unknown }).ethereum) {
-        setWeb3Message("Dompet terhubung.");
-      } else {
-        setWeb3Message("Ekstensi dompet Web3 tidak terdeteksi.");
-      }
-      setIsWeb3Loading(false);
-    }, 600);
   };
 
   const handleOtpSubmit = async (e: React.FormEvent) => {
@@ -191,16 +153,6 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
           </div>
         )}
 
-        {web3Message && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="mb-4 p-3 rounded-2xl bg-[#FFF2ED] border border-[#FFD9CE]/60 text-xs text-[#D43812]"
-          >
-            {web3Message}
-          </div>
-        )}
-
         {/* Step 2: OTP Verification */}
         {isOtpStep ? (
           <div className="space-y-4">
@@ -302,39 +254,6 @@ export default function AuthPortal({ initialMode = "login" }: AuthPortalProps) {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Quick 1-Tap Biometric / Passkey */}
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={handlePasskeyAuth}
-                disabled={isWeb3Loading}
-                className="w-full py-2.5 px-4 bg-[#FFF2ED] hover:bg-[#FFE6DC] text-[#D43812] transition-colors text-xs font-semibold rounded-2xl flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] border-0 min-h-[44px]"
-              >
-                <Fingerprint className="w-4 h-4 text-[#FF5A36]" aria-hidden="true" />
-                <span>Masuk Cepat dengan Passkey</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleWalletConnect}
-                disabled={isWeb3Loading}
-                className="w-full py-2 px-4 bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-medium rounded-2xl transition-colors flex items-center justify-center gap-2 cursor-pointer border-0 min-h-[40px]"
-              >
-                <Wallet className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
-                <span>Sambungkan Dompet Kripto</span>
-              </button>
-            </div>
-
-            {/* Divider */}
-            <div className="relative flex items-center justify-center py-1">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-100/80" />
-              </div>
-              <span className="relative px-3 bg-white text-[11px] font-medium text-slate-400">
-                atau gunakan email
-              </span>
-            </div>
-
             {/* Login Form */}
             {mode === "login" ? (
               <form
