@@ -1,62 +1,42 @@
-# Dokumentasi Proyek — Peta Baca
+# Dokumentasi Arsitektur Proyek dan Panduan Navigasi
 
-Dokumen di folder ini ditulis supaya **siapa pun paham**: teman yang baru
-masuk tim, product manager, sampai orang yang belum pernah dengar kata
-"blockchain". Gaya bahasanya santai, pakai perumpamaan sehari-hari, dan
-langsung ke inti.
+Folder ini memuat dokumentasi arsitektur, spesifikasi teknis, alur sistem, dan kamus istilah untuk proyek Marketplace Tiket NFT berbasis Ethereum Sepolia dan Account Abstraction ERC-4337.
 
-Ditulis ulang **2 September 2026**. Ada empat folder:
+---
 
-| Folder | Isinya | Untuk siapa |
+## Struktur Folder Dokumentasi
+
+| Folder | Cakupan Konten | Target Pembaca |
 |---|---|---|
-| `docs/` (berkas `00`–`11`) | Penjelasan santai dengan perumpamaan | Semua orang |
-| `docs/bab-3-4/` | Bahan formal Bab 3–4 skripsi (baku, bertabel, pakai kode `KF`/`KNF`) — **jangan ditulis ulang jadi santai** | Penulisan skripsi |
-| `docs/kerja/` | Jadwal, log keputusan, catatan konsultasi, alamat kontrak | Pengerjaan sehari-hari; tidak masuk skripsi |
-| `docs/arsip/` | Rancangan awal Agustus yang sudah digantikan + `modules/` lama | Riwayat saja, bukan acuan |
+| `docs/` (`00` s.d. `11`) | Spesifikasi teknis inti dan diagram alur sistem | Developer, Technical Reviewer, Penguji Sistem |
+| `docs/working-module/` | Panduan kerja modular implementasi backend, contracts, dan frontend | Pengembang fitur aktif |
+| `docs/bab-3-4/` | Naskah formal analisis kebutuhan dan perancangan skripsi (KF/KNF) | Penulisan laporan akademik |
+| `docs/kerja/` | Log keputusan arsitektur, catatan konsultasi, dan alamat kontrak deployment | Anggota tim pengembang |
+| `docs/arsip/` | Riwayat rancangan awal yang telah diperbarui | Arsip historis |
 
-## Baca yang mana?
+---
 
-| Kalau kamu… | Baca |
-|---|---|
-| Baru pertama dengar proyek ini | `00` → `01` → `11` (istilah) |
-| Product manager / bukan orang teknis | `00`, `02`, `03`, `10` |
-| Developer baru | `01`, `04`, `05`, `06`, `07`, `09` |
-| Mau tahu apa yang **belum diputuskan** | `kerja/keputusan.md` |
-| Mau tahu jadwal dan tugas | `TASKS.md` (di root), `kerja/panduan-pengerjaan.md` |
+## Indeks Berkas Spesifikasi Teknis
 
-## Daftar dokumen
+| Dokumen | Deskripsi Ruang Lingkup | Diagram Tersemat |
+|---|---|---|
+| [00-gambaran-besar.md](file:///d:/STEVE/Project%20NFT%20Marketplace/docs/00-gambaran-besar.md) | Analisis masalah, data empiris, solusi, dan sasaran sistem | Matriks Kebutuhan |
+| [01-cara-kerja-sistem.md](file:///d:/STEVE/Project%20NFT%20Marketplace/docs/01-cara-kerja-sistem.md) | Pembagian tanggung jawab lapisan web, server, blockchain, dan gateway | **Mermaid System Architecture** |
+| [02-fitur-sistem.md](file:///d:/STEVE/Project%20NFT%20Marketplace/docs/02-fitur-sistem.md) | Matriks fitur pengguna, penyelenggara acara, dan administrator | Tabel Matriks Fitur |
+| [03-alur-pengguna.md](file:///d:/STEVE/Project%20NFT%20Marketplace/docs/03-alur-pengguna.md) | Alur registrasi, pembelian, penjualan kembali, dan verifikasi gerbang | **5x Mermaid Sequence Diagrams** |
+| [04-dompet-dan-passkey.md](file:///d:/STEVE/Project%20NFT%20Marketplace/docs/04-dompet-dan-passkey.md) | Arsitektur ERC-4337, integrasi passkey WebAuthn, dan recovery | **Mermaid Dual-Auth & Kernel Lifecycle** |
+| [05-smart-contract.md](file:///d:/STEVE/Project%20NFT%20Marketplace/docs/05-smart-contract.md) | Spesifikasi fungsi Solidity, penegakan kuota, dan anti-scalping | **Mermaid State Machine & Class Diagram** |
+| [06-database.md](file:///d:/STEVE/Project%20NFT%20Marketplace/docs/06-database.md) | Rancangan skema basis data relasional MySQL | **Mermaid Entity-Relationship Diagram (ERD)** |
+| [07-pembayaran-penyimpanan-bot.md](file:///d:/STEVE/Project%20NFT%20Marketplace/docs/07-pembayaran-penyimpanan-bot.md) | Integrasi gateway Midtrans, IPFS Pinata, dan Cloudflare Turnstile | Integrasi Layanan Pihak Ketiga |
+| [08-kualitas-yang-dijanjikan.md](file:///d:/STEVE/Project%20NFT%20Marketplace/docs/08-kualitas-yang-dijanjikan.md) | Metrik kualitas sistem: performa, keamanan, dan keandalan | Metrik Non-Fungsional |
+| [09-pengujian.md](file:///d:/STEVE/Project%20NFT%20Marketplace/docs/09-pengujian.md) | Strategi pengujian unit Foundry, integrasi Jest, dan audit keamanan | Rencana Pengujian |
+| [10-keterbatasan.md](file:///d:/STEVE/Project%20NFT%20Marketplace/docs/10-keterbatasan.md) | Batasan teknis, asumsi dependensi, dan batasan operasional | Analisis Batasan Sistem |
+| [11-istilah.md](file:///d:/STEVE/Project%20NFT%20Marketplace/docs/11-istilah.md) | Glosarium istilah teknis Web3, kriptografi, dan infrastruktur | Glosarium Terminologi |
 
-| Berkas | Isinya, satu kalimat |
-|---|---|
-| `00-gambaran-besar.md` | Masalah apa yang diselesaikan, dan caranya |
-| `01-cara-kerja-sistem.md` | Bagian-bagian sistem dan cara mereka bicara satu sama lain |
-| `02-fitur-sistem.md` | Semua yang bisa dilakukan, dikelompokkan per siapa yang memakai |
-| `03-alur-pengguna.md` | Langkah demi langkah: daftar, beli, jual ulang |
-| `04-dompet-dan-passkey.md` | Kenapa pengguna tidak perlu paham blockchain |
-| `05-smart-contract.md` | Aturan yang dipaksa mesin, dan apa yang sudah/belum ada di kode |
-| `06-database.md` | Lemari arsip di luar blockchain |
-| `07-pembayaran-penyimpanan-bot.md` | Midtrans, Pinata/IPFS, Cloudflare Turnstile |
-| `08-kualitas-yang-dijanjikan.md` | Janji mutu — cepat, aman, gampang dipakai |
-| `09-pengujian.md` | Cara membuktikan semuanya benar-benar jalan |
-| `10-keterbatasan.md` | Apa yang sistem ini **tidak** bisa, dan kenapa |
-| `11-istilah.md` | Kamus, dijelaskan dengan perumpamaan |
+---
 
-## Tanda yang dipakai di semua dokumen
+## Konvensi Simbol Status
 
-- 🔶 **Masih dibahas dengan dosen pembimbing** — jangan dibangun dulu. Daftar
-  lengkapnya di `kerja/keputusan.md`.
-- `[BUTUH DATA UJI]` — angkanya baru ada setelah diukur. Bukan lupa diisi.
-- ✅ sudah ada di kode · 🚧 belum ada di kode.
-
-## Aturan menulis di folder ini
-
-1. Tanpa kode seperti "K10" atau "KF-01". Sebut **nama** fitur atau
-   keputusannya.
-2. Kalau istilah teknis tak terhindarkan, jelaskan sekali dengan perumpamaan,
-   lalu pakai.
-3. Jangan mengarang angka, jangan mengarang status. Kalau belum ada di kode,
-   tulis belum.
-4. Berkas kerja (jadwal, keputusan, catatan konsultasi) ada di `kerja/` dan
-   **tidak masuk skripsi**.
-5. Dokumen hasil implementasi (`20-*`) dan hasil pengujian (`30-*`) **baru
-   ditulis setelah** modul/pengujiannya benar-benar ada — bukan sebelumnya.
+- `✅` : Fitur telah diimplementasikan dalam basis kode aktif.
+- `🚧` : Fitur dalam proses implementasi atau pengujian lanjutan.
+- `🔶` : Kebijakan atau skema masih dalam tahap konfirmasi keputusan.

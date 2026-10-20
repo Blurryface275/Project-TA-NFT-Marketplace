@@ -1,101 +1,88 @@
-# 01 — Cara Kerja Sistem
+# 01. Cara Kerja Sistem
 
-## Perumpamaan: bioskop
+## Arsitektur Sistem
 
-Bayangkan bioskop.
+Sistem terdiri dari tiga lapisan utama dengan batas tanggung jawab yang tegas: antarmuka web, server API, dan smart contract blockchain. Aturan integritas kuota, penguncian harga, dan otorisasi pemindahan tiket ditegakkan langsung oleh smart contract di level blockchain agar tidak dapat diubah oleh pihak mana pun, termasuk pengelola sistem.
 
-- **Loket dan layar** yang kamu lihat = **situs web** (dibuat dengan Next.js).
-- **Petugas di balik loket** yang mengecek pembayaranmu, memegang stempel
-  resmi, dan mencatat ke buku = **server** (dibuat dengan NestJS).
-- **Buku besar di dinding aula yang bisa dibaca semua orang dan tidak bisa
-  dihapus** = **blockchain** (Sepolia, jaringan latihan Ethereum). Di dalam
-  buku itu ada **mesin aturan** yang tidak bisa disogok siapa pun = **smart
-  contract**.
+```mermaid
+graph TB
+    subgraph ClientLayer ["1. Lapisan Pengguna & Klien"]
+        User["Pengguna (Browser / HP)"]
+        Passkey["Passkey WebAuthn (Kunci P-256)"]
+        NextClient["Frontend Next.js (App Router)"]
+        User -->|Interaksi UI| NextClient
+        User -->|Sentuhan Biometrik| Passkey
+    end
 
-Tiga lapisan ini punya tugas tegas, dan yang penting: **aturan yang tidak
-boleh dilanggar ditaruh di mesin aturan, bukan di petugas.** Kalau petugasnya
-dibujuk (server dibobol), kuota tiket, harga asli, dan jalur jual ulang tetap
-tidak bisa diakali.
+    subgraph SecurityGate ["2. Keamanan & Verifikasi Bot"]
+        Turnstile["Cloudflare Turnstile (Anti-Bot Shield)"]
+        NextClient -->|Validasi Manusia| Turnstile
+    end
 
+    subgraph ServerLayer ["3. Lapisan Server & API Backend"]
+        NestServer["Backend NestJS (API & Controller)"]
+        MySQL[(Database MySQL Off-Chain)]
+        Signer["Backend System Signer (EIP-712)"]
+        
+        NextClient -->|Request REST / JSON| NestServer
+        NestServer -->|Simpan Akun, Pesanan, KYC| MySQL
+        NestServer -->|Generate Stempel Otorisasi| Signer
+    end
+
+    subgraph ExternalServices ["4. Layanan Eksternal & Gateway"]
+        Midtrans["Midtrans Payment Gateway (Simulasi Fiat)"]
+        Pinata["Pinata IPFS (Penyimpanan Metadata & Gambar)"]
+        ZeroDev["ZeroDev Bundler & Paymaster (ERC-4337)"]
+
+        NextClient -->|Pembayaran Snap| Midtrans
+        Midtrans -->|Webhook Pembayaran Lunas| NestServer
+        NestServer -->|Unggah Metadata JSON| Pinata
+        NestServer -->|Sponsori Gas Transaksi| ZeroDev
+    end
+
+    subgraph BlockchainLayer ["5. Lapisan Blockchain (Sepolia Ethereum)"]
+        TicketContract["TicketContract (ERC-721 NFTix)\n- Kuota per Kategori\n- Kunci originalPrice\n- Validasi EIP-712 & Hash NIK"]
+        MarketContract["MarketplaceContract (Resale Resmi)\n- Allowlist Resmi\n- Lock Harga Resale = originalPrice"]
+        SmartAccount["User Smart Account (Kernel v3)"]
+
+        ZeroDev -->|Relay UserOp| SmartAccount
+        SmartAccount -->|Eksekusi Transaksi| TicketContract
+        MarketContract -->|Allowlist Transfer| TicketContract
+        NestServer -->|Query Data On-Chain| TicketContract
+    end
 ```
-Kamu ──► Situs web (Next.js) ──► Server (NestJS) ──► Blockchain Sepolia
-                                     │                 ├─ TicketContract (pabrik tiket)
-                                     │                 └─ MarketplaceContract (loket jual ulang) 🚧
-                                     ├─ Midtrans (kasir, uang mainan)
-                                     ├─ Pinata / IPFS (gudang gambar)
-                                     ├─ ZeroDev (pabrik dompet + sponsor biaya transaksi)
-                                     ├─ Alchemy (jalur telepon ke blockchain)
-                                     └─ Cloudflare Turnstile (satpam pintu web)
-```
 
-Gambar aslinya: `design/desain-arsitektur.png`, `design/desain-api.png`,
-`design/desain-blockchain-2.png`.
+## Pembagian Tanggung Jawab Komponen
 
-## Siapa mengerjakan apa
-
-| Bagian | Tugasnya | Yang TIDAK boleh dilakukannya |
+| Komponen | Tanggung Jawab Utama | Batasan Keamanan |
 |---|---|---|
-| **Situs web** | Menampilkan, menerima klik dan isian, mengarahkan ke kasir | Menyimpan rahasia apa pun; memutuskan sesuatu yang menyangkut keamanan — apa pun yang jalan di peramban bisa diakali |
-| **Server** | Mengecek pembayaran ke Midtrans, membuat "stempel izin" untuk mencetak tiket, bicara ke blockchain, mengurus akun dan database | Mengubah kuota atau harga asli tiket (itu dipatok di blockchain) |
-| **Smart contract** | Mencetak tiket, memaksa kuota, mengunci harga asli, menolak pindah tangan di luar loket resmi, mengecek stempel | Tahu apa pun tentang rupiah, email, atau KTP — dia hanya tahu alamat dompet dan angka |
+| **Frontend (Next.js)** | Menyajikan antarmuka pengguna, menangani input, memicu autentikasi passkey, dan menampilkan Snap Midtrans. | Tidak menyimpan private key atau secret token. Semua validasi bisnis diverifikasi ulang di server. |
+| **Backend (NestJS)** | Mengelola autentikasi pengguna, memverifikasi webhook pembayaran Midtrans, mengunggah metadata ke IPFS, menandatangani stempel EIP-712, dan mencatat transaksi ke MySQL. | Tidak dapat mengubah kuota tiket atau harga asli yang sudah tercatat di blockchain. |
+| **Smart Contract (Solidity)** | Mencetak tiket NFT (`ERC721`), membatasi kuota kategori, mengunci `originalPrice`, membatasi pembelian per dompet (`maxPerWallet`), dan menegakkan jalur transfer via allowlist. | Tidak menyimpan data sensitif seperti nomor identitas mentah, kata sandi, atau data pembayaran fiat. |
 
-## Layanan luar yang dipakai
+## Integrasi Layanan Pihak Ketiga
 
-| Layanan | Perannya, dalam bahasa sehari-hari |
-|---|---|
-| **Midtrans (sandbox)** | Kasir dengan uang mainan. Pembayaran pura-pura, tapi alurnya sama persis dengan yang asli — termasuk "tanda terima" resmi yang dikirim ke server |
-| **Pinata (IPFS)** | Gudang gambar dan keterangan event. Alamat berkasnya adalah sidik jari isinya — kalau isinya diganti diam-diam, alamatnya berubah dan ketahuan |
-| **ZeroDev** | Pabrik dompet otomatis, sekaligus **sponsor** yang membayari "bensin" (gas) setiap transaksi supaya pengguna tidak perlu punya koin |
-| **Alchemy** | Jalur telepon dari server ke blockchain. Belum dipasang |
-| **Cloudflare Turnstile** | Satpam di pintu situs web yang membedakan manusia dari robot. Boleh dipotong kalau waktu habis |
-
-## Data disimpan di mana?
-
-Aturan sederhananya: **kalau harus tidak bisa diakali siapa pun → blockchain.
-Kalau besar, sering berubah, atau rahasia → database biasa.**
-
-| Tempat | Isinya | Sifatnya |
+| Layanan | Peran Sistem | Protokol Komunikasi |
 |---|---|---|
-| **Blockchain** | Siapa pemilik tiket, kuota event, harga asli tiket, status "sudah dipakai", sidik jari identitas pemilik | Permanen, terbuka untuk umum, mahal |
-| **Database MySQL** | Akun, pesanan, penawaran jual ulang, notifikasi, **salinan** data tiket untuk tampilan cepat, data KTP (🔶 bentuknya masih dibahas) | Bisa diubah, murah, rahasia |
-| **IPFS (Pinata)** | Gambar dan keterangan event: nama, tanggal, lokasi | Alamat = sidik jari isi |
+| **Midtrans Sandbox** | Memproses transaksi pembayaran rupiah secara simulasi dan mengirim konfirmasi lunas ke backend. | REST API dan Webhook HTTP dengan validasi signature SHA-512. |
+| **Pinata (IPFS)** | Menyimpan metadata tiket dan berkas gambar secara terdesentralisasi menggunakan content identifier (CID). | HTTP IPFS Pinning API. |
+| **ZeroDev** | Menyediakan infrastruktur Account Abstraction ERC-4337, mengorkestrasi pembuatan smart account, dan mensponsori biaya gas melalui Paymaster. | JSON-RPC ERC-4337 Bundler dan Paymaster RPC. |
+| **Cloudflare Turnstile** | Memvalidasi bahwa permintaan pembelian tiket berasal dari interaksi manusia nyata, bukan bot otomatis. | Client-side widget token dan verifikasi server-side via `/siteverify`. |
 
-**Blockchain adalah sumber kebenaran. Database hanya salinan.** Kalau
-keduanya beda, yang benar blockchain — dan setiap keputusan soal kepemilikan,
-harga, atau kuota wajib membaca blockchain, bukan salinannya.
+## Strategi Distribusi Penyimpanan Data
 
-## Lima aturan inti
+| Lokasi Penyimpanan | Jenis Data yang Disimpan | Karakteristik Penyimpanan |
+|---|---|---|
+| **Blockchain (Sepolia)** | Hak milik tiket (NFT token ID), kuota event, harga beli awal (`originalPrice`), status penggunaan tiket (`used`), dan hash NIK identitas (`bytes32`). | Permanen, immutable, transparan publik, dan menjadi sumber kebenaran utama (single source of truth). |
+| **Database MySQL** | Kredensial akun, data pelanggan, catatan KYC terlindungi, salinan cache tiket untuk query cepat, dan log notifikasi. | Terproteksi off-chain, relasional, memiliki performa baca tinggi, dan bersifat privat. |
+| **IPFS (Pinata)** | Berkas gambar poster acara dan dokumen metadata JSON (nama event, tanggal, deskripsi lokasi). | Terdesentralisasi, beralamat berbasis konten hash (CID), dan tahan perubahan. |
 
-1. **Satu program untuk semua event.** Bukan satu smart contract per konser.
-   Tiap event dibedakan dengan nomor (`eventId`). Lebih murah, lebih gampang
-   diuji.
-2. **Tiket cuma bisa pindah lewat loket resmi.** Program tiket menolak
-   pemindahan yang tidak dijalankan `MarketplaceContract`. Ini yang disebut
-   *allowlist* — daftar pihak yang diizinkan, isinya cuma satu.
-3. **Harga jual ulang terkunci = harga beli awal.** Dicatat permanen saat
-   tiket dicetak (`originalPrice`). Tidak ada kolom "isi harga" di mana pun.
-4. **Stempel digital dari server.** Fungsi penting di smart contract hanya mau
-   jalan kalau disertai tanda tangan digital sah dari server (standar
-   EIP-712). Kenapa perlu? Karena smart contract itu **terbuka** — siapa pun
-   bisa memanggilnya langsung tanpa lewat situs web. Itu sifat blockchain,
-   bukan cacat. Stempel ini lapisan kontrol akses standar industri.
-5. **Dompet dari passkey.** Pengguna tidak pegang 12 kata rahasia. Kunci
-   rahasia lahir dan tinggal di chip perangkatnya. Rinciannya di `04`.
+Prinsip integritas data menetapkan bahwa blockchain adalah sumber kebenaran mutlak. Database lokal bertindak sebagai indeks baca cepat (read-cache). Jika terdapat perbedaan antara status di database lokal dan status on-chain, keputusan sistem selalu mengacu pada data blockchain.
 
-## Dua hal yang sering tertukar
+## Lima Aturan Integritas Sistem
 
-- **Satpam bot (Turnstile) vs stempel smart contract.** Satpam menjaga pintu
-  situs web. Tapi orang bisa lewat "pintu belakang" — memanggil smart
-  contract langsung. Karena itu stempelnya tetap perlu. Dua lapisan, tidak
-  saling menggantikan.
-- **Kata sandi vs passkey.** Kata sandi untuk masuk ke situs. Passkey untuk
-  menandatangani transaksi blockchain. Dua kunci berbeda untuk dua pintu
-  berbeda.
-
-## Keputusan Resmi dari Dokumen Tugas Akhir
-
-Sesuai naskah Bab 1 Proposal TA (20 Agustus 2026) dan Laporan TA:
-- **Skema data KTP & KYC:** Data identitas fisik dan foto KTP disimpan secara terlindungi di database MySQL off-chain, sedangkan yang disimpan secara on-chain pada smart contract **hanya hash satu arah dari NIK (`bytes32`)** pada pemetaan `userIdentities`.
-- **Pengiriman transaksi & Gas:** Transaksi menggunakan abstraksi akun ERC-4337 di mana biaya gas disubsidi oleh sistem melalui mekanisme Paymaster, yang dananya dialokasikan dari biaya administrasi tiket yang dibayarkan pembeli via Midtrans.
-- **Pencatatan jual ulang:** Status listing dan kuota pasar sekunder dicatat on-chain pada smart contract marketplace, dan perpindahan tiket NFT wajib melalui izin allowlist resmi dengan harga yang terkunci mutlak sama dengan harga beli awal (`originalPrice`).
-
+1. **Arsitektur Single Contract multi-event**: Seluruh event dikelola oleh satu instansiasi `TicketContract` dengan pembedaan berbasis nomor unik `eventId`, meminimalkan biaya deployment dan menyederhanakan audit.
+2. **Transfer terproteksi via Allowlist**: Tiket NFT menolak transfer peer-to-peer langsung di luar kontrak resmi. Pemindahan hak milik hanya dapat dieksekusi melalui `MarketplaceContract`.
+3. **Penguncian harga jual kembali**: Parameter `originalPrice` dikunci secara permanen pada memori on-chain saat tiket dicetak, mencegah spekulasi harga dan praktik calo tiket.
+4. **Otorisasi pencetakan berbasis EIP-712**: Fungsi pencetakan on-chain mewajibkan bukti tanda tangan digital terstruktur dari `systemSigner` backend untuk mencegah eksploitasi bypass antarmuka web.
+5. **Autentikasi akun pintar berbasis passkey**: Kunci privat pengguna diamankan pada modul perangkat keras biometrik (Secure Enclave / TPM) melalui standar WebAuthn, mengeliminasi kebutuhan pencatatan manual seed phrase bagi pengguna awam.

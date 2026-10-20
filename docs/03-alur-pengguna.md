@@ -1,159 +1,191 @@
-# 03 — Alur Pengguna
+# 03. Alur Pengguna dan Sequence Diagram
 
-Tiga alur utama: **daftar**, **beli**, **jual ulang**. Dua alur pendukung:
-penukaran tiket di lokasi acara, dan pembuatan event oleh penyelenggara.
-
-Untuk kuesioner 19 September, yang harus jalan mulus hanya **daftar + beli**.
-Jual ulang dan penukaran menyusul untuk uji fungsional Oktober.
-
-Cara baca: tiap langkah ditandai siapa yang mengerjakan —
-`[Kamu]` `[Web]` `[Server]` `[Blockchain]` `[Luar]` (Midtrans, Pinata,
-ZeroDev, Cloudflare). Tanda ⚠ = langkah yang menentukan keamanan; kalau
-urutannya dibalik, ada celah.
+Dokumen ini mendefinisikan alur interaksi pengguna dengan sistem melalui lima proses operasional: pendaftaran akun dan dompet, pembelian tiket primer, penjualan kembali tiket resmi, pemulihan akun, dan validasi tiket di lokasi acara.
 
 ---
 
-## Alur 1 — Daftar akun, dompet, dan identitas
+## 1. Alur Pendaftaran Akun, Pembuatan Dompet, dan KYC
 
-Hasil akhir: kamu punya akun, dompet blockchain, dan identitas terdaftar —
-siap beli tiket.
+Pengguna membuat akun web standar, membangkitkan pasangan kunci passkey melalui antarmuka WebAuthn perangkat, dan meregistrasikan identitas KTP. Kunci privat passkey tetap tersimpan aman di Secure Enclave / TPM perangkat dan tidak pernah dikirim ke jaringan.
 
-**Bagian A — akun (seperti situs biasa)**
-```
-1. [Kamu]   Isi email + kata sandi
-2. [Server] Simpan akun (kata sandi disimpan dalam bentuk hash, bukan asli)
-3. [Server] Kirim tautan verifikasi email  ← boleh dipotong kalau waktu habis
-```
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Pengguna
+    participant Web as Frontend Next.js
+    participant Server as Backend NestJS
+    participant DB as Database MySQL
+    participant Chain as Blockchain Sepolia
 
-**Bagian B — dompet & backup seed phrase (sekali sentuh)**
-```
-4. [Kamu]   Klik "Buat dompet" → peramban minta sidik jari / wajah / PIN perangkat
-5. [Kamu]   Perangkatmu membuat sepasang kunci passkey (P-256). Kunci RAHASIA tinggal di chip
-            perangkat dan tidak pernah keluar — bahkan ke server.                  ⚠
-6. [Web]    Kunci PUBLIK (dua angka: pubX, pubY) dikirim ke server
-7. [Web]    Sistem membangkitkan seed phrase BIP-39 (12 kata) dan menampilkannya SEKALI ke kamu
-            untuk dicatat dan disimpan sendiri.                                    ⚠
-8. [Web]    Dari 12 kata itu, peramban menurunkan sepasang kunci (secp256k1). Hanya public key/
-            address turunannya yang dikirim ke server untuk didaftarkan on-chain sebagai
-            validator cadangan (backup validator). Seed phrase/private key TIDAK PERNAH dikirim. ⚠
-9. [Server] Hitung alamat dompet dari kunci publik passkey (lewat ZeroDev CREATE2). Alamatnya
-            sudah sah menerima tiket meski kontraknya belum dideploy di blockchain
-10.[Server] Simpan alamat dompet + kunci publik passkey + daftarkan backup validator on-chain
-```
-Kenapa ini penting: Dari sudut pandangmu, dompet langsung siap pakai tanpa perlu membeli saldo kripto. Di baliknya, kamu memegang passkey di perangkat sebagai kunci utama dan 12 kata seed phrase mandiri sebagai kunci pemulihan cadangan.
+    Note over User,Web: Tahap A: Pendaftaran Akun Standar
+    User->>Web: Masukkan email dan kata sandi
+    Web->>Server: POST /auth/register (email, password)
+    Server->>DB: Simpan akun baru (kata sandi ter-hash bcrypt)
+    Server-->>Web: Konfirmasi akun terbuat
 
+    Note over User,Web: Tahap B: Pembuatan Dompet Passkey (ERC-4337)
+    User->>Web: Klik "Buat Dompet"
+    Web->>User: Minta otentikasi biometrik WebAuthn
+    User->>Web: Sentuhan sidik jari / Face ID
+    Note right of Web: Perangkat membuat kunci P-256 (Kunci privat aman di chip)
+    Web->>Server: POST /wallet/register-passkey (pubX, pubY, credentialId)
+    Server->>Server: Hitung alamat Smart Account via ZeroDev CREATE2
+    Server->>DB: Simpan relasi customer, passkey credential, dan alamat dompet
+    Server-->>Web: Dompet siap menerima tiket (Gasless Setup)
 
-**Bagian C — verifikasi identitas (KYC)**
-```
-9.  [Kamu]   Unggah foto KTP dan masukkan data diri
-10. [Server] Simpan data KTP dan foto di database MySQL off-chain yang terlindungi
-11. [Server] Hitung hash satu arah dari NIK pengguna (keccak256 / SHA-256)
-12. [Server → Blockchain] Panggil registerIdentity(userWallet, nikHash) di TicketContract
-13. [Blockchain] Catat nikHash ke mapping userIdentities — data KTP mentah tidak pernah masuk ke blockchain
-```
-Hasilnya: satu identitas NIK nyata hanya dapat terikat ke satu dompet smart account on-chain. Tanpa identitas terdaftar, transaksi minting tiket reguler akan otomatis di-revert oleh smart contract.
-
----
-
-## Alur 2 — Beli tiket reguler
-
-Hasil akhir: NFT tiket ada di dompet smart account-mu, tercatat dengan `originalPrice` permanen, metadata deskriptif tersimpan di IPFS Pinata, dan status pembelian terverifikasi.
-
-```
- 1. [Kamu]   Pilih event & kategori tiket reguler di katalog web
- 2. [Web]    Satpam bot (Cloudflare Turnstile) menilai kamu manusia
- 3. [Server] Cek ulang token Turnstile ke endpoint Cloudflare /siteverify (sekali pakai)   ⚠
- 4. [Server] Cek: penjualan buka? kuota sisa? batas per dompet (maxPerWallet)? identitas terdaftar?
- 5. [Server] Buat tagihan di Midtrans sandbox, popup Snap muncul di layar
- 6. [Kamu]   Bayar simulasi fiat di Midtrans (biaya gas disubsidi sistem via Paymaster)
- 7. [Luar]   Midtrans mengirim webhook notifikasi resmi pembayaran lunas ke server
- 8. [Server] Verifikasi keabsahan webhook secara idempoten (cegah cetak ganda)              ⚠
- 9. [Server] Unggah metadata deskriptif tiket (nama event, tanggal, venue, gambar) ke Pinata IPFS → dapat CID  ⚠
-10. [Server] Buat stempel otorisasi EIP-712 dengan systemSigner backend                      ⚠
-11. [Server → Blockchain] Eksekusi minting NFT via bundler/paymaster ERC-4337
-12. [Blockchain] TicketContract verifikasi stempel, kuota, maxPerWallet, identitas → minting NFT,
-             kunci originalPrice permanen, catat used = false
-13. [Server] Tunggu konfirmasi blok Sepolia, simpan salinan ke database MySQL, catat waktu konfirmasi
-14. [Web]    "Tiket Saya" menampilkan e-ticket beserta detail metadata IPFS
+    Note over User,Chain: Tahap C: Verifikasi Identitas (KYC)
+    User->>Web: Unggah foto KTP dan nomor NIK
+    Web->>Server: POST /kyc/submit (data KTP, foto)
+    Server->>DB: Simpan data KTP di penyimpanan terproteksi off-chain
+    Server->>Server: Hitung hash satu arah: keccak256(NIK)
+    Server->>Chain: Eksekusi registerIdentity(walletAddress, nikHash)
+    Chain-->>Server: Event IdentityRegistered tersimpan on-chain
+    Server-->>Web: Status KYC aktif dan terverifikasi
 ```
 
 ---
 
-## Alur 3 — Jual ulang tiket (Resale)
+## 2. Alur Pembelian Tiket Primer (War Tiket dan Minting NFT)
 
-Hasil akhir: Tiketmu berpindah kepemilikan ke pembeli baru melalui kontrak marketplace resmi dengan harga yang terkunci mutlak sama dengan harga pembelian awal (`originalPrice`).
+Proses pembelian tiket memverifikasi status manusia pengguna via Cloudflare Turnstile, memproses pembayaran rupiah melalui Midtrans Snap, menerbitkan metadata ke IPFS, menandatangani stempel EIP-712, dan mengeksekusi pencetakan NFT tiket on-chain secara tersponsori.
 
-```
- 1. [Kamu]   Pilih tiket di antarmuka web → klik "Jual Tiket". TIDAK ADA input harga.     ⚠
- 2. [Kontrak] MarketplaceContract otomatis mengunci harga = TicketContract.originalPrice.   ⚠
- 3. [Kontrak] Listing resale tercatat aktif di smart contract marketplace.
- 4. [Kamu 2] Pembeli lain membuka katalog resale, memilih tiket yang tersedia.
- 5. [Kamu 2] Pembeli membayar harga tiket via gateway pembayaran Midtrans.
- 6. [Server] Verifikasi status pembayaran lunas dari Midtrans.
- 7. [Server → Kontrak] Panggil executeResale() pada MarketplaceContract.                   ⚠
- 8. [Blockchain] TicketContract memverifikasi bahwa transfer dipanggil oleh marketplaceAddress resmi
-             (jalur allowlist). NFT berpindah ke dompet pembeli baru.
-             Transfer P2P langsung antar dompet di luar marketplace DITOLAK MUTLAK.        ⚠
- 9. [Server] Teruskan dana penjualan ke saldo penjual dan kirim notifikasi transaksi berhasil ke kedua pihak.
-```
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Pengguna
+    participant Web as Frontend Next.js
+    participant Turnstile as Cloudflare Turnstile
+    participant Server as Backend NestJS
+    participant Midtrans as Gateway Midtrans
+    participant IPFS as Pinata IPFS
+    participant Chain as TicketContract (Sepolia)
 
-
-Kalau ada yang mencoba memanggil kontrak langsung tanpa situs web — tetap
-ditolak, karena aturan jalur dan harga ada di mesin aturan, bukan di layar.
-
----
-
-## Alur 4 — Pemulihan Akun (Account Recovery — Lupa Password / Kehilangan Perangkat)
-
-Hasil akhir: Perangkat baru berhasil didaftarkan sebagai validator utama smart account menggantikan perangkat lama yang hilang, dan akses akun pulih sepenuhnya.
-
-```
- 1. [Kamu]   Buka halaman "Pemulihan Akun" di perangkat baru (bukan login biasa).
- 2. [Kamu]   Masukkan email akun dan ketik 12 kata seed phrase BIP-39 yang disimpan saat pendaftaran.
- 3. [Web]    Peramban menurunkan kembali private key (secp256k1) secara lokal di memori klien.
-             Seed phrase dan private key TIDAK PERNAH dikirim ke server.                      ⚠
- 4. [Kamu]   Buat passkey baru untuk perangkat baru via WebAuthn (P-256).
- 5. [Web]    Tandatangani pesan otorisasi penggantian validator menggunakan private key tadi.
- 6. [Web]    Kirim HANYA signature dan public key passkey baru ke server (bukan seed phrase). ⚠
- 7. [Server] Verifikasi signature via ECDSA.recover() -> peroleh address penanda tangan.
- 8. [Server] Cocokkan address tersebut dengan backup validator yang terdaftar di smart account.
-             Jika cocok, signature sah. Jika tidak cocok, proses langsung dibatalkan.         ⚠
- 9. [Server] Kirim email verifikasi (2FA) ke alamat email akun terdaftar.                     ⚠
-10. [Kamu]   Buka email dan klik tombol konfirmasi pemulihan akun.
-11. [Server → Blockchain] Eksekusi pendaftaran passkey baru sebagai validator utama smart account.
-12. [Web]    Akses akun dan tiket NFT berhasil dipulihkan di perangkat baru.
+    User->>Web: Pilih event dan kategori tiket
+    Web->>Turnstile: Minta evaluasi bot token
+    Turnstile-->>Web: Token verifikasi manusia lolos
+    Web->>Server: POST /orders/create (eventId, categoryId, turnstileToken)
+    Server->>Turnstile: POST /siteverify (token sekali pakai)
+    Turnstile-->>Server: Token valid (Score > ambang batas aman)
+    Server->>Server: Verifikasi batas kuota, maxPerWallet, dan status KYC
+    Server->>Midtrans: Request Snap Token transaksi
+    Midtrans-->>Server: Snap Token & Payment URL
+    Server-->>Web: Tampilkan Snap Modal Midtrans
+    User->>Midtrans: Selesaikan pembayaran fiat (simulasi)
+    Midtrans->>Server: Webhook HTTP: Pembayaran Lunas (Settlement)
+    Server->>Server: Verifikasi signature Midtrans secara idempoten
+    Server->>IPFS: Unggah berkas metadata tiket JSON -> Dapatkan CID
+    Server->>Server: Buat stempel otorisasi EIP-712 dengan systemSigner
+    Server->>Chain: Eksekusi mintTicket(userWallet, eventId, categoryId, signature)
+    Note over Chain: Validasi stempel, kuota, maxPerWallet, kunci originalPrice
+    Chain-->>Server: Event TicketMinted(tokenId, price, buyer)
+    Server->>Server: Update status order = SUCCESS dan perbarui ticket_cache
+    Server-->>Web: Notifikasi tiket berhasil diterbitkan
+    Web-->>User: Tampilkan E-Ticket di tab "Tiket Saya"
 ```
 
 ---
 
-## Alur pendukung
+## 3. Alur Penjualan Kembali Tiket Resmi (Resale Anti-Calo)
 
+Tiket yang dijual kembali hanya dapat ditawarkan melalui `MarketplaceContract` resmi. Parameter harga dikunci otomatis setara dengan nilai pembelian awal (`originalPrice`), sehingga spekulasi margin keuntungan calo dieliminasi sepenuhnya oleh kode smart contract.
 
-**Penukaran di lokasi acara (Venue Check-In)**
-```
-1. [Pengunjung] Tunjukkan QR Code E-Ticket dari aplikasi web ke petugas pintu masuk
-2. [Petugas]    Pindai KTP fisik pengunjung menggunakan pemindai/kamera untuk membaca NIK
-3. [Server]     Hitung hash NIK pengunjung menggunakan algoritma hash satu arah
-4. [Server]     Cocokkan hash NIK dengan data di database dan pemilik tiket on-chain (userIdentities)
-5. [Server]     Jika NIK cocok dan tiket belum pernah dipakai:
-                Lanjut panggil fungsi on-chain markUsed(tokenId) di TicketContract
-                -> Tiket ditandai "used = true" (tiket tidak bisa dipakai dua kali)
-6. [Petugas]    Pengunjung dipersilakan masuk lokasi acara. Jika data tidak cocok, akses ditolak.
-```
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Seller as Penjual (Pemilik Tiket)
+    actor Buyer as Pembeli Kedua
+    participant Web as Frontend Next.js
+    participant Server as Backend NestJS
+    participant Midtrans as Gateway Midtrans
+    participant Market as MarketplaceContract
+    participant Ticket as TicketContract
 
-**Pembuatan event oleh penyelenggara**
-```
-1. [Penyelenggara] Daftar akun → disetujui admin 🔶
-2. [Penyelenggara] Isi event + kategori tiket (harga, kuota)
-3. [Server → Blockchain] createEvent + addCategory (sudah ada di kontrak ✅)
-4. [Server] Unggah gambar event ke IPFS, simpan CID
+    Note over Seller,Market: Penawaran Tiket (Listing)
+    Seller->>Web: Klik "Jual Tiket" (Tanpa kolom input harga)
+    Web->>Server: POST /resale/list (tokenId)
+    Server->>Market: Eksekusi listTicket(tokenId)
+    Market->>Ticket: Query originalPrice untuk tokenId tersebut
+    Note over Market: Kunci harga jual kembali = originalPrice
+    Market-->>Server: Listing aktif on-chain
+    Server-->>Web: Tiket masuk katalog pasar sekunder
+
+    Note over Buyer,Ticket: Pembelian Tiket Resale
+    Buyer->>Web: Pilih tiket resale di katalog
+    Web->>Server: POST /resale/buy (listingId)
+    Server->>Midtrans: Buat tagihan sesuai harga originalPrice resmi
+    Midtrans-->>Web: Tampilkan popup pembayaran
+    Buyer->>Midtrans: Bayar tagihan via Midtrans
+    Midtrans->>Server: Webhook HTTP: Pembayaran Lunas
+    Server->>Market: Eksekusi executeResale(listingId, buyerWallet)
+    Market->>Ticket: Transfer hak milik NFT dari Penjual ke Pembeli
+    Note over Ticket: Verifikasi pemanggil adalah Marketplace resmi (Allowlist)
+    Ticket-->>Market: Transfer NFT sukses
+    Market-->>Server: Event ResaleCompleted
+    Server->>Server: Alokasikan saldo ke dompet penjual & kirim notifikasi
+    Server-->>Web: Tiket berpindah ke tab "Tiket Saya" Pembeli Baru
 ```
 
 ---
 
-## Yang berubah dari rancangan lama
+## 4. Alur Validasi Tiket di Lokasi Acara (Venue Check-In)
 
-Rancangan awal Agustus menulis "daftar cukup email tanpa kata sandi, dompet
-dibuat server". Itu **tidak berlaku lagi**: sekarang masuk pakai email + kata
-sandi, dan dompet lahir dari passkey di perangkatmu — bukan dibuat server.
-Rincian di `04-dompet-dan-passkey.md`.
+Pemeriksaan tiket fisik di gerbang masuk dilakukan secara real-time dengan membandingkan data hash NIK pengunjung terhadap catatan on-chain dan memvalidasi bahwa tiket belum pernah digunakan sebelumnya.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Visitor as Pengunjung
+    actor Officer as Petugas Pintu Masuk
+    participant Scanner as Aplikasi Gate Scanner
+    participant Server as Backend NestJS
+    participant Chain as TicketContract (Sepolia)
+
+    Visitor->>Officer: Tunjukkan QR Code E-Ticket dari aplikasi
+    Visitor->>Officer: Tunjukkan fisik KTP untuk verifikasi NIK
+    Officer->>Scanner: Pindai QR Code tiket dan baca NIK
+    Scanner->>Server: POST /venue/check-in (tokenId, nikInput)
+    Server->>Server: Hitung hash: keccak256(nikInput)
+    Server->>Chain: Query getTicket(tokenId) & userIdentities(tokenOwner)
+    Note over Chain: Cek tokenId valid dan status used == false
+    alt Jika NIK Tidak Cocok atau Tiket Sudah Pernah Terpakai
+        Chain-->>Server: Data tidak sesuai / TicketAlreadyUsed
+        Server-->>Scanner: Peringatan: Akses Ditolak (Tiket Tidak Sah)
+        Scanner-->>Officer: Indikator Merah: Jangan izinkan masuk
+    else Jika Identitas Cocok dan Tiket Valid
+        Server->>Chain: Eksekusi markUsed(tokenId)
+        Chain-->>Server: Event TicketUsed(tokenId, scannerAddress, timestamp)
+        Server->>Server: Update status cache lokal used = true
+        Server-->>Scanner: Konfirmasi: Akses Diterima (Tiket Sah)
+        Scanner-->>Officer: Indikator Hijau: Pengunjung diizinkan masuk
+    end
+```
+
+---
+
+## 5. Alur Pemulihan Akun (Account Recovery)
+
+Jika perangkat pengguna hilang atau rusak, akses smart account dipulihkan menggunakan 12 kata frasa pemulihan cadangan (BIP-39). Frasa tersebut diproses secara lokal di peramban untuk menandatangani otorisasi rotasi kunci passkey tanpa pernah membocorkan kunci privat ke server.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Pengguna (Perangkat Baru)
+    participant Web as Frontend Next.js
+    participant Server as Backend NestJS
+    participant Mail as Layanan Email (2FA)
+    participant Chain as User Smart Account
+
+    User->>Web: Buka halaman "Pemulihan Akun"
+    User->>Web: Masukkan email terdaftar dan ketik 12 kata pemulihan
+    Note over Web: Turunkan private key cadangan (secp256k1) di memori lokal klien
+    User->>Web: Buat passkey baru pada perangkat baru via biometrik
+    Web->>Web: Tanda tangani pesan rotasi validator dengan private key cadangan
+    Web->>Server: POST /auth/recover (email, passkeyPubX, passkeyPubY, signature)
+    Note over Server: Verifikasi signature via ECDSA.recover() cocok dengan backup validator
+    Server->>Mail: Kirim email tautan konfirmasi pemulihan 2FA
+    User->>Mail: Buka email dan klik tautan verifikasi
+    Mail->>Server: Callback otorisasi email terkonfirmasi
+    Server->>Chain: Daftarkan passkey baru sebagai validator utama smart account
+    Chain-->>Server: Konfirmasi validator berhasil diperbarui
+    Server-->>Web: Sesi akun dan kepemilikan dompet pulih sepenuhnya di perangkat baru
+```

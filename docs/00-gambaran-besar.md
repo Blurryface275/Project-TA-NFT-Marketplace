@@ -1,103 +1,65 @@
-# 00 — Gambaran Besar
+# 00. Gambaran Besar Proyek
 
-## Ceritanya begini
+## Latar Belakang Masalah
 
-Bayangkan tiket konser itu selembar kertas. Kertas bisa difotokopi — jadi ada
-tiket palsu. Kertas juga bisa dijual ke siapa saja — jadi ada calo yang
-memborong lalu menjualnya tiga kali lipat. Penyelenggara tidak dapat apa-apa
-dari selisih itu, penonton yang benar-benar mau nonton yang bayar mahal.
+Pada ekosistem tiket konvensional, tiket digital berbentuk kode QR di basis data terpusat rentan digandakan, dan transaksi pemindahan tiket di luar platform resmi memicu maraknya praktik calo dengan mark-up harga yang tidak wajar. Penyelenggara acara kehilangan kontrol distribusi harga, sedangkan konsumen menanggung beban biaya sekunder yang tinggi.
 
-Proyek ini mengganti "kertas" itu dengan **sertifikat digital yang cuma ada
-satu di dunia** (namanya NFT), dicatat di **buku besar publik yang tidak bisa
-dihapus atau diubah diam-diam** (namanya blockchain). Lalu ditambah dua aturan
-yang dipaksa oleh mesin, bukan oleh peraturan tertulis:
+Proyek ini mentransformasikan tiket menjadi aset digital unik (Non-Fungible Token / NFT ERC-721) yang dicatat pada buku besar terdesentralisasi (Ethereum Sepolia). Integritas sistem ditegakkan langsung oleh logika mesin smart contract melalui dua aturan mutlak:
 
-1. Tiket **hanya bisa dijual ulang lewat satu loket resmi**.
-2. Di loket itu, **harga jual ulang dikunci sama dengan harga beli awal**.
+1. Tiket hanya dapat berpindah kepemilikan melalui satu kontrak pasar sekunder resmi (Allowlist Marketplace).
+2. Nilai transaksi pada pasar sekunder dikunci secara permanen setara dengan harga pembelian awal (`originalPrice`).
 
-Calo boleh saja memborong — tapi tidak bisa untung. Kalau tidak untung, ya
-tidak ada alasan memborong.
+Aturan ini mengeliminasi insentif finansial bagi calo, karena aksi pemborongan tiket tidak lagi menghasilkan keuntungan spekulatif.
 
-## Tiga masalah yang diselesaikan
+---
 
-| Masalah | Kenapa terjadi di sistem tiket biasa | Cara sistem ini menjawab |
+## Tiga Permasalahan Utama dan Pendekatan Solusi
+
+| Masalah | Penyebab pada Sistem Konvensional | Solusi Sistem Tiket NFT |
 |---|---|---|
-| **Tiket palsu** | Tiket cuma kode di database milik satu perusahaan; yang punya akses bisa "mencetak" tiket siluman | Tiket = NFT di blockchain; menerbitkan tiket baru hanya bisa lewat program yang kuotanya sudah dipatok |
-| **Harga dimainkan calo** | Begitu tiket pindah tangan di luar platform, penyelenggara kehilangan kendali | Tiket hanya bisa pindah lewat loket resmi, dan di sana harganya terkunci |
-| **Orang awam tidak bisa pakai blockchain** | Sistem blockchain lain menyuruh pengguna pasang dompet kripto, simpan 12 kata rahasia, dan punya koin buat bayar "bensin" transaksi | Dompet dibuat otomatis dari sidik jari/wajah (passkey), biaya transaksi ditanggung sistem — rasanya seperti belanja di situs biasa |
+| **Tiket Palsu dan Ganda** | Tiket hanya berupa string basis data terpusat yang rentan duplikasi atau kebocoran kredensial pihak internal. | Tiket diterbitkan sebagai NFT di blockchain dengan kuota tetap yang tidak dapat dimanipulasi oleh pengelola. |
+| **Eksploitasi Calo (Scalping)** | Penyelenggara kehilangan kontrol atas pemindahan tiket ketika transaksi sekunder terjadi di media sosial atau pasar gelap. | Fungsi transfer memblokir transaksi P2P langsung dan hanya mengizinkan pemindahan via allowlist resmi dengan harga terkunci. |
+| **Kompleksitas Pengalaman Pengguna (Web3 UX Friction)** | Sistem Web3 umum mewajibkan ekstensi dompet pihak ketiga, penyimpanan seed phrase manual, dan kepemilikan saldo kripto untuk gas fee. | Dompet dioperasikan via Account Abstraction (ERC-4337) dengan kunci biometrik Passkey (WebAuthn P-256) dan transaksi tersubsidi via Paymaster. |
 
-Masalah ketiga bukan tempelan. Sistem yang aman tapi tidak bisa dipakai orang
-biasa tidak menyelesaikan apa-apa — orang akan balik ke calo.
+---
 
-## Bukti dari lapangan
+## Data Analisis Empiris Kebutuhan Pengguna
 
-Angka-angka ini dari tahap analisis proyek: wawancara **4 orang** pelaku "war
-tiket" yang sekaligus penyedia jasa titip, dan kuesioner **30 responden**
-pengguna umum.
+Hasil survei awal terhadap 4 penyedia jasa titip/war tiket dan 30 responden pengguna menunjukkan urgensi pembaruan sistem:
 
-| Yang dirasakan responden | |
+| Indikator Persepsi Responden | Persentase |
 |---|---|
-| Sering lihat tiket dijual lagi dengan harga jauh lebih mahal | 97% |
-| Merasa tiket resmi habis dalam waktu tidak wajar | 93% |
-| Curiga ada bot / pembelian massal saat war tiket | 87% |
-| Pernah dengar orang tertipu tiket palsu | 83% |
-| Terpaksa beli dari calo karena tiket resmi habis | 63% |
-| Merasa aman beli dari calo | 50% |
+| Kerap melihat tiket dijual kembali dengan harga jauh lebih mahal | 97% |
+| Merasakan kuota tiket resmi habis dalam waktu yang tidak wajar | 93% |
+| Menduga adanya penggunaan bot otomatis saat proses war tiket | 87% |
+| Mengetahui korban penipuan tiket palsu | 83% |
+| Terpaksa membeli dari calo karena ketiadaan akses tiket resmi | 63% |
+| Merasa aman bertransaksi dengan calo | 50% |
 
-Baris terakhir yang paling menjelaskan: **63% terpaksa ke calo, tapi cuma 50%
-merasa aman.** Orang tahu itu berisiko, tetap dilakukan karena tidak ada jalan
-lain.
+Data menunjukkan bahwa 63% responden terpaksa menggunakan jasa perantara tidak resmi meskipun 50% di antaranya menyadari tingginya risiko keamanan transaksi. Sebanyak 100% responden mendukung sistem yang menjamin keaslian dan membatasi harga jual kembali, dan 97% bersedia mengadopsi teknologi baru selama antarmuka tidak membebani mereka dengan kerumitan teknis blockchain.
 
-Soal solusinya: **100%** tertarik pada sistem yang menjamin keaslian dan
-mengunci harga jual ulang; **97%** tidak keberatan memakai teknologi yang tidak
-mereka pahami — asal tidak dipaksa mempelajarinya; **93%** bersedia menunjukkan
-KTP saat penukaran tiket.
+---
 
-Konteks industrinya: satu platform saja (Loket) memfasilitasi lebih dari 25.000
-acara sejak 2022 sampai Juli 2025 (JawaPos, 2025). Platform NFT resmi FIFA
-(FIFA Collect) sudah mencatat kepemilikan tiket di blockchain, tapi masih
-menyuruh pengguna pasang dompet luar seperti MetaMask. Penelitian terdahulu
-menyimpulkan hambatan utama adopsi tiket NFT adalah rendahnya pemahaman
-masyarakat terhadap blockchain (Saputro & Lathifah, 2025).
+## Sasaran Teknis Sistem
 
-## Tiga sasaran yang bisa dicek satu-satu
+1. **Verifikasi Keaslian Mandiri**: Pemegang tiket dapat membuktikan keabsahan hak milik secara langsung melalui penjelajah blok (block explorer) tanpa bergantung pada ketersediaan server internal.
+2. **Peniadaan Margin Keuntungan Calo**: Smart contract marketplace menolak transaksi yang mencoba menetapkan harga jual di atas nilai pembelian awal.
+3. **Aksesibilitas Konsumen Awam**: Alur pendaftaran, pembayaran rupiah, dan penyimpanan tiket berjalan layaknya aplikasi web e-commerce standar.
 
-1. **Keaslian tiket bisa dibuktikan sendiri oleh pemiliknya** — tanpa harus
-   percaya pada server siapa pun.
-2. **Untung dari jual ulang tiket dihilangkan** — memborong jadi tidak masuk
-   akal.
-3. **Orang yang tidak paham blockchain tetap bisa pakai** — kalau syaratnya
-   harus paham dulu, tidak akan terpakai.
+---
 
-## Yang sengaja TIDAK dibuat
+## Keputusan Arsitektur Fitur yang Dieliminasi
 
-Beberapa ide dari proposal awal dibuang setelah dibahas dengan dosen. Ditulis
-di sini supaya ketiadaannya terbaca sebagai keputusan, bukan lupa.
-
-| Ide lama | Kenapa dibuang |
+| Gagasan Awal | Alasan Rasional Penghapusan |
 |---|---|
-| Tiket yang sama sekali tidak bisa dipindahkan (*soulbound token*) | Orang yang batal nonton tetap perlu bisa menjual tiketnya secara sah. Yang dikunci harganya, bukan kemampuannya pindah tangan |
-| Pembelian dua tahap (*commit-reveal*) dan *flash sale* | Keduanya untuk mengatasi rebutan cepat. Karena untung calo sudah dimatikan, tidak ada lagi alasan berebut |
-| Pengundian acak (Chainlink VRF) | Persaingan dinilai sudah cukup sehat tanpa undian |
+| Tiket Soulbound (Sama sekali tidak dapat dipindahtangankan) | Pembeli yang berhalangan hadir tetap memiliki hak sah untuk menjual kembali tiketnya. Kontrak mengunci batas harga, bukan melarang pemindahan hak milik yang sah. |
+| Mekanisme Commit-Reveal & Flash Sale Dua Tahap | Dihilangkan karena eliminasi potensi keuntungan spekulatif telah menurunkan insentif kompetisi bot massal. |
+| Pengundian Acak Terdesentralisasi (Chainlink VRF) | Penjualan berbasis kuota tertib dinilai telah memadai tanpa menambah latensi dan biaya komputasi oracle eksternal. |
 
-## Untuk siapa manfaatnya
+---
 
-**Penyelenggara acara:** tidak lagi kehilangan jejak tiket begitu berpindah
-tangan; reputasi tidak rusak oleh tiket palsu; harga jual ulang tidak bisa
-dimainkan.
+## Status Pengembangan Komponen Sistem
 
-**Penonton:** yakin tiketnya asli tanpa percaya siapa pun; kalau batal, bisa
-jual lagi dengan harga wajar; tidak perlu belajar blockchain.
-
-## Keadaan sekarang (2 September 2026)
-
-- Program di blockchain (`TicketContract`) **sudah setengah jadi** — bagian
-  membuat event dan kategori tiket sudah ada, bagian mencetak tiket dan
-  aturan jual ulang belum. Belum ada satu pun tes otomatis (sedang dimulai).
-- Situs web dan server **belum dibuat**.
-- Dompet passkey **sudah dicoba** di kode percobaan; hasil transaksi
-  tersponsori pertama belum tercatat.
-- Beberapa hal penting **masih dibahas dengan dosen** (🔶), terutama cara
-  menyimpan data KTP — lihat `kerja/keputusan.md`.
-- Tenggat terdekat: **19 September** aplikasi harus bisa dipakai orang lain
-  untuk kuesioner. Sidang **17 November**.
+- **Smart Contract (`contracts/src/TicketContract.sol`)**: Mengimplementasikan `createEvent`, `addCategory`, `setSalesOpen`, `setMarketplace`, `setSystemSigner`, `mintTicket` (dengan penegakan kuota dan penguncian `originalPrice`), `markUsed`, dan `getTicket`.
+- **Backend API Server (`backend/`)**: Berjalan di atas NestJS dengan modul TypeORM MySQL (`users`, `customers`, `passkey-credentials`, `events`, `ticket-categories`), autentikasi JWT, dan integrasi stempel EIP-712.
+- **Frontend Klien (`frontend/`)**: Dibangun dengan Next.js App Router, mencakup alur registrasi, login, manajemen password, dan visual design system berbasis token desain.

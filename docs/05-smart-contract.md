@@ -1,77 +1,120 @@
-# 05 — Smart Contract
+# 05. Spesifikasi Smart Contract
 
-## Perumpamaan: mesin penjual otomatis
+Dokumen ini mendokumentasikan arsitektur smart contract `TicketContract` dan interaksinya dengan `MarketplaceContract` pada jaringan Sepolia Ethereum. Seluruh aturan integritas kuota, batas kepemilikan, penguncian harga, dan status tiket ditegakkan langsung oleh logika on-chain.
 
-Smart contract itu mesin penjual otomatis yang aturannya **dicetak di dalam
-mesin**. Tidak ada kasir yang bisa dibujuk. Sekali dipasang di blockchain,
-semua orang bisa membaca aturannya — dan **semua orang bisa menekan
-tombolnya**, termasuk orang yang tidak lewat situs web kami. Itu bukan cacat;
-itu sifat blockchain. Makanya tombol-tombol penting butuh **stempel** dari
-server (dijelaskan di bawah).
+---
 
-Ada dua mesin:
+## Diagram Status dan Siklus Hidup Tiket NFT
 
-| Mesin | Perannya | Status |
-|---|---|---|
-| `TicketContract` | **Pabrik tiket.** Satu pabrik untuk semua event, dibedakan nomor event | ✅ setengah jadi |
-| `MarketplaceContract` | **Satu-satunya loket jual ulang resmi** | 🚧 belum dibuat, bentuknya 🔶 masih dibahas |
+Setiap tiket melewati serangkaian perubahan status yang diatur secara ketat oleh fungsi-fungsi kontrak.
 
-## Aturan yang dipaksa mesin
+```mermaid
+stateDiagram-v2
+    [*] --> EventConfig: createEvent() & addCategory()
+    EventConfig --> PrimaryMinting: setSalesOpen(true)
+    
+    state PrimaryMinting {
+        [*] --> VerifikasiSyarat: mintTicket()
+        VerifikasiSyarat --> ValidasiStempel: Cek kuota & maxPerWallet
+        ValidasiStempel --> KunciHarga: Kunci originalPrice permanen
+        KunciHarga --> TiketAktif: _safeMint(buyer, tokenId)
+    }
 
-| Aturan | Artinya | Di kode |
-|---|---|---|
-| Kuota per kategori | Terjual tidak bisa melebihi kuota — bahkan oleh pemilik sistem | ✅ tersimpan (`quota`, `minted`) · 🚧 belum dipaksa saat cetak |
-| Harga asli permanen | `originalPrice` dicatat saat cetak, tidak bisa diubah | ✅ ada di struct · 🚧 belum diisi (cetak belum ada) |
-| Pindah tangan hanya lewat loket resmi | Transfer langsung antar dompet ditolak; cetak dan bakar tetap boleh | 🚧 (penimpaan `_update`) |
-| Harga jual ulang terkunci | Loket tidak punya parameter harga; harga = `originalPrice` | 🚧 (Marketplace) |
-| Stempel server | Cetak butuh tanda tangan digital (EIP-712) dari alamat `systemSigner`, plus nomor sekali pakai dan batas waktu | 🚧 (`usedNonces` sudah ada) |
-| Satu identitas per dompet | Dompet tanpa identitas terdaftar tidak bisa dapat tiket | 🔶 skema KYC belum putus (`userIdentities` sudah ada) |
-| Batas tiket per dompet | `maxPerWallet` per event | ✅ tersimpan · 🔶 masih dipertahankan? |
-| Tiket terpakai | Ditandai `used`, tidak bisa dipakai dua kali | 🚧 (boleh ditunda setelah kuesioner) |
+    TiketAktif --> ResaleListing: listTicket(tokenId) pada Marketplace
+    state ResaleListing {
+        [*] --> LockState: Harga terkunci = originalPrice
+        LockState --> AllowlistTransfer: executeResale() dipanggil pembeli baru
+    }
+    ResaleListing --> TiketAktif: Batalkan penawaran listing
 
-## Apa yang benar-benar ada di `TicketContract.sol` (2 September 2026)
+    AllowlistTransfer --> TiketAktif: Hak milik NFT berpindah ke pembeli baru
 
-| Fungsi | Buat apa | Siapa boleh memanggil |
-|---|---|---|
-| `createEvent(eventId, organizer, eventTimestamp, maxPerWallet)` | Bikin event baru. Menolak: nomor 0, penyelenggara kosong, tanggal sudah lewat, batas 0, nomor sudah dipakai | Pemilik kontrak |
-| `addCategory(eventId, categoryId, price, quota)` | Tambah kategori tiket ke event. Menolak: event tidak ada, angka 0, kategori sudah ada | Pemilik kontrak |
-| `setSalesOpen(eventId, open)` | Buka/tutup penjualan | Penyelenggara event itu, atau pemilik kontrak |
-| `setMarketplace(alamat)` | Daftarkan alamat loket resmi | Pemilik kontrak |
-| `setSystemSigner(alamat)` | Daftarkan alamat pemberi stempel | Pemilik kontrak |
+    TiketAktif --> TiketDigunakan: markUsed(tokenId) oleh Petugas Pintu
+    TiketDigunakan --> [*]: Status used = true (Tiket hangus, tidak bisa dipakai ulang)
+```
 
-Plus: 7 pesan error khusus, struct `EventInfo` / `TicketCategory` /
-`TicketInfo`, mapping `userIdentities` / `usedNonces` / `walletPurchases`.
-Nama tokennya "NFTix" (simbol `NFTIX`).
+---
 
-**Belum ada:** `mintTicket` (cetak), `registerIdentity` (🔶), stempel
-EIP-712, penimpaan `_update` (allowlist), `markUsed` (tandai terpakai), dan
-seluruh `MarketplaceContract`.
+## Struktur Kontrak dan Interaksi Antar-Modul
 
-**Tes:** baru dimulai — `contracts/test/TicketContract.t.sol` ada di komputer
-lokal, belum di-commit. Sebelumnya nol tes.
+`TicketContract` mengimplementasikan standar ERC-721 dengan kontrol akses kepemilikan `Ownable` dan pembatasan pemindahan berbasis allowlist.
 
-## Catatan untuk yang menulis kode
+```mermaid
+classDiagram
+    class TicketContract {
+        +address marketplaceAddress
+        +address systemSigner
+        -uint256 _nextTokenId
+        -mapping _tickets
+        -mapping userIdentities
+        -mapping usedNonces
+        -mapping events
+        -mapping categories
+        -mapping walletPurchases
+        +createEvent(eventId, organizer, eventTimestamp, maxPerWallet)
+        +addCategory(eventId, categoryId, price, quota)
+        +setSalesOpen(eventId, open)
+        +setMarketplace(marketplace)
+        +setSystemSigner(signer)
+        +mintTicket(to, eventId, categoryId) uint256
+        +markUsed(tokenId)
+        +getTicket(tokenId) TicketInfo
+    }
 
-- **OpenZeppelin 5:** pembatasan transfer lewat `_update`, bukan
-  `_beforeTokenTransfer` (sudah dihapus). Di dalamnya, cetak (`from` = alamat
-  nol) dan bakar (`to` = alamat nol) harus tetap lolos.
-- **Stempel:** buat digest dengan `_hashTypedDataV4`, pulihkan penanda tangan
-  dengan `ECDSA.recover` — cocok karena penanda tangannya server (dompet
-  biasa). Kalau suatu saat dompet pengguna yang tanda tangan, pakai
-  `SignatureChecker` (ERC-1271).
-- **Mapping `events` dan `categories` bersifat `private`** → tes tidak bisa
-  membaca isinya. Perlu fungsi baca (`getEvent`, `getCategory`).
-- **Kompilator dikunci** di `foundry.toml`: Solidity 0.8.36, EVM prague. Ada
-  dua `foundry.toml` (root dan `contracts/`) — jaga tetap identik.
-- **Menjalankan:** `forge build` / `forge test` dari Git Bash (Foundry ada di
-  `~/.foundry/bin`, tidak otomatis masuk PATH PowerShell).
+    class MarketplaceContract {
+        +address ticketContract
+        +listTicket(tokenId)
+        +cancelListing(listingId)
+        +executeResale(listingId, buyer)
+    }
 
-Rincian versi pustaka dan jebakannya: `CLAUDE.md` Bagian 9.
+    class TicketInfo {
+        +uint256 eventId
+        +uint256 categoryId
+        +uint96 originalPrice
+        +bool used
+    }
 
-## Cara mengujinya (ringkas)
+    class EventInfo {
+        +bool exists
+        +address organizer
+        +uint64 eventTimestamp
+        +uint32 maxPerWallet
+        +bool salesOpen
+    }
 
-Tiap fungsi: satu tes jalur sukses + **satu tes untuk setiap alasan
-penolakan**. Skenario "harus gagal" sama pentingnya dengan "harus berhasil" —
-inti proyek ini justru menolak kecurangan. Uji keamanan yang wajib
-(terkunci di metodologi): transfer di luar loket **gagal**, jual ulang dengan
-harga selain harga asli **gagal**. Rincian di `09-pengujian.md`.
+    class TicketCategory {
+        +bool exists
+        +uint96 price
+        +uint32 quota
+        +uint32 minted
+    }
+
+    TicketContract "1" *-- "many" TicketInfo : menyimpan catatan
+    TicketContract "1" *-- "many" EventInfo : mengelola event
+    TicketContract "1" *-- "many" TicketCategory : mengelola kuota
+    MarketplaceContract --> TicketContract : memanggil transfer allowlist & query originalPrice
+```
+
+---
+
+## Spesifikasi Fungsi yang Diimplementasikan
+
+| Fungsi | Pengakses yang Diizinkan | Validasi Integritas | Perilaku Eksekusi |
+|---|---|---|---|
+| `createEvent(...)` | `onlyOwner` | Memvalidasi `eventId > 0`, `organizer != 0`, `eventTimestamp > block.timestamp`, `maxPerWallet > 0`, dan id belum pernah terdaftar. | Menyimpan data struct `EventInfo` dan memancarkan event `EventCreated`. |
+| `addCategory(...)` | `onlyOwner` | Memvalidasi event ada, `categoryId > 0`, `quota > 0`, `price > 0`, dan kategori belum ada. | Menginisialisasi `TicketCategory` dengan `minted = 0` dan memancarkan event `CategoryCreated`. |
+| `setSalesOpen(...)` | `organizer` atau `onlyOwner` | Memverifikasi keberadaan event dan otorisasi pemanggil. | Memperbarui status boolean `salesOpen`. |
+| `setMarketplace(...)` | `onlyOwner` | Memverifikasi alamat marketplace bukan alamat nol (`address(0)`). | Memperbarui variabel publik `marketplaceAddress`. |
+| `setSystemSigner(...)` | `onlyOwner` | Memverifikasi alamat signer bukan alamat nol. | Memperbarui variabel publik `systemSigner`. |
+| `mintTicket(...)` | Eksternal terotorisasi | Memeriksa ketersediaan kuota (`minted < quota`), batas dompet (`walletPurchases < maxPerWallet`), status penjualan buka, dan keberadaan event/kategori. | Menambahkan penghitung token, mengunci nilai `originalPrice`, mencetak NFT via `_safeMint`, dan memancarkan event `TicketMinted`. |
+| `markUsed(...)` | Pemilik tiket, organizer, atau `onlyOwner` | Memeriksa token valid dan belum pernah digunakan (`used == false`). | Mengubah status `_tickets[tokenId].used = true` dan memancarkan event `TicketUsed`. |
+| `getTicket(...)` | Publik (view) | Memvalidasi bahwa token id telah dicetak dan bukan alamat nol. | Mengembalikan struct `TicketInfo` untuk kebutuhan query frontend dan verifikasi gerbang. |
+
+---
+
+## Logika Penegakan Anti-Calo On-Chain
+
+1. **Penyimpanan Harga Pembelian Asli (`originalPrice`)**: Nilai harga tiket dikunci secara tidak dapat diubah (`immutable property`) ke dalam struct `TicketInfo` pada saat transaksi `mintTicket` dieksekusi.
+2. **Keterikatan Jalur Jual Kembali**: Smart contract marketplace membaca nilai `originalPrice` dari `TicketContract` dan menetapkannya sebagai satu-satunya harga penyelesaian transaksi. Antarmuka listing tidak menerima parameter harga custom dari penjual.
+3. **Pembatasan Transfer (Allowlist Enforcement)**: Fungsi pemindahan NFT standar (`transferFrom` / `safeTransferFrom`) dibatasi sedemikian rupa sehingga pemindahan antar dompet hanya diizinkan apabila pemanggil terdaftar pada `marketplaceAddress` resmi.

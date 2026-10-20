@@ -1,112 +1,81 @@
-# 04 — Dompet dan Passkey
+# 04. Arsitektur Dompet dan Passkey
 
-## Masalah yang dipecahkan
+Dokumen ini menjelaskan implementasi dompet blockchain berbasis Account Abstraction (ERC-4337) yang diintegrasikan dengan standar WebAuthn (Passkey P-256), sehingga pengguna dapat bertransaksi tanpa perlu menginstal ekstensi dompet pihak ketiga atau membayar biaya gas secara manual.
 
-Di dunia blockchain biasa, punya "dompet" berarti: pasang aplikasi khusus,
-catat 12 kata rahasia di kertas (hilang = tamat), dan beli koin dulu buat
-bayar biaya tiap transaksi. Tiga rintangan untuk orang yang cuma mau beli
-tiket konser. Sistem ini membuang ketiganya.
+---
 
-## Perumpamaan: brankas dengan sidik jari
+## Arsitektur Autentikasi Ganda
 
-Bayangkan brankas yang cuma bisa dibuka dengan sidik jarimu. Kuncinya bukan
-benda yang bisa difotokopi — kuncinya *kamu*.
+Sistem memisahkan akses sesi aplikasi web dengan otorisasi transaksi blockchain ke dalam dua lapisan kunci yang independen.
 
-**Passkey** persis begitu. Saat kamu mendaftar, perangkatmu (HP atau laptop)
-membuat **sepasang kunci**:
+```mermaid
+graph TD
+    subgraph WebAuth ["1. Lapisan Akses Web (Identitas Pengguna)"]
+        Credentials["Email dan Kata Sandi"]
+        Bcrypt["Hash Bcrypt (Server Database)"]
+        JWTSession["JWT Bearer Token"]
+        
+        Credentials -->|Submit Login| Bcrypt
+        Bcrypt -->|Validasi Sukses| JWTSession
+        JWTSession -->|Akses Rute Terproteksi| AppFeature["Lihat Katalog, Profil, & Riwayat"]
+    end
 
-- **Kunci rahasia** — disimpan di chip khusus di perangkat (TPM di Windows,
-  Secure Enclave di Apple). Bisa *dipakai* untuk tanda tangan, tapi **tidak
-  bisa dibaca keluar** oleh aplikasi mana pun. Termasuk oleh kami.
-- **Kunci publik** — "gembok"-nya. Boleh dibagikan ke siapa saja. Bentuknya
-  dua angka: `pubX` dan `pubY`.
+    subgraph BlockchainAuth ["2. Lapisan Otorisasi Transaksi (Smart Account)"]
+        Biometric["Sensor Biometrik (Sidik Jari / Wajah)"]
+        HardwareSecure["Hardware Chip (Secure Enclave / TPM)"]
+        P256Key["Kunci Privat P-256 (Tidak Pernah Keluar Chip)"]
+        PubKeys["Kunci Publik (pubX, pubY)"]
+        ZeroDevKernel["ZeroDev Kernel Smart Account (ERC-4337)"]
 
-## Dua kunci untuk dua pintu
+        Biometric -->|Sentuhan Fisik| HardwareSecure
+        HardwareSecure -->|Generate / Sign| P256Key
+        P256Key -->|Otorisasi UserOp| ZeroDevKernel
+        PubKeys -->|Daftarkan Validator| ZeroDevKernel
+    end
 
-| Pintu | Kuncinya |
-|---|---|
-| Masuk ke situs (lihat katalog, riwayat pesanan) | Email + kata sandi |
-| Menandatangani urusan blockchain (mengizinkan tiket berpindah, dll.) | Passkey — sidik jari / wajah / PIN perangkat |
+    JWTSession -.->|Terpisah dari Kunci Kriptografis| BlockchainAuth
+```
 
-Kata sandi **tidak bisa** dipakai untuk tanda tangan. Passkey **tidak
-dipakai** untuk login. Dua kunci, dua pintu — jangan tertukar.
+| Lapisan Akses | Kredensial yang Digunakan | Lingkup Otorisasi | Batasan Keamanan |
+|---|---|---|---|
+| **Akses Web** | Email dan kata sandi | Autentikasi sesi HTTP, query riwayat pesanan, profil pengguna, dan upload KYC. | Tidak memiliki hak tanda tangan transaksi on-chain. |
+| **Otorisasi Blockchain** | Passkey WebAuthn (Kunci P-256) | Menandatangani persetujuan pemindahan tiket, verifikasi identitas, dan rotasi validator smart account. | Kunci privat tidak dapat diekspor atau diakses oleh server. |
 
-## Dari gembok ke alamat dompet
+---
 
-Alamat dompetmu **dihitung secara pasti** dari gembok itu (tekniknya bernama
-CREATE2, dijalankan lewat ZeroDev SDK; "rumah" dompetnya bernama Kernel,
-pintu masuk standarnya EntryPoint versi 0.7 dari ERC-4337).
+## Struktur dan Siklus Hidup Smart Account (ERC-4337)
 
-Uniknya: **alamatnya sudah sah menerima tiket sebelum rumahnya dibangun** di
-blockchain. Rumah baru dibangun saat kamu mengirim transaksi pertama — dan
-biayanya ditanggung **sponsor** (Paymaster ZeroDev), bukan kamu.
+Pembuatan dompet memanfaatkan modul Kernel v3 dari ZeroDev. Alamat kontrak pintar dihitung secara deterministik sebelum kontrak tersebut dideploy ke blockchain.
 
-Perumpamaannya: alamat rumahmu sudah ada di peta dan paket bisa dikirim ke
-sana, padahal rumahnya baru dibangun saat kamu pertama kali mau keluar.
+```mermaid
+flowchart LR
+    A["Kunci Publik Passkey\n(pubX, pubY)"] -->|Input Validator| B["Passkey Validator\n(P-256 Verifier)"]
+    B -->|Inisialisasi Kernel| C["Alamat Dompet Smart Account\n(CREATE2 Predetermined)"]
+    C -->|Menerima Tiket NFT| D["State: Pre-Deployment\n(Bisa Terima NFT Tanpa Gas)"]
+    D -->|Transaksi Pertama Pengguna| E["Deployment On-Demand\n(Disponsori Paymaster)"]
+```
 
-## Ini tetap dompetmu sendiri
+1. **Komputasi Alamat Determinif (CREATE2)**: Alamat smart account dihitung dari kunci publik passkey. Alamat ini langsung sah menerima transfer NFT meskipun kode kontraknya belum dideploy di jaringan Sepolia.
+2. **Pencetakan Tanpa Biaya Pengguna (Gasless Primary Mint)**: Pada saat pembelian tiket pertama, backend atau sponsor Paymaster menanggung biaya gas transaksi on-chain. Pengguna tidak diwajibkan memiliki saldo token uji Sepolia ETH.
+3. **Validasi Tanda Tangan ERC-1271**: Kontrak memverifikasi keabsahan tanda tangan smart account melalui antarmuka `isValidSignature` standar ERC-1271 yang memetakan tanda tangan WebAuthn P-256 ke struktur signature Ethereum.
 
-Kami **tidak bisa** menandatangani apa pun atas namamu, karena kuncinya tidak
-ada di kami. Kalimat "kendali dompet bergantung pada sistem" — yang sempat
-tertulis di rancangan lama — **salah**, dan jangan ditulis lagi.
+---
 
-Catatan jujur yang harus ikut disebut: tiketmu **bisa dipindahkan oleh loket
-resmi** (`MarketplaceContract`) tanpa tanda tanganmu. Itu memang disengaja —
-supaya jual ulang berjalan tanpa kamu harus mengerti blockchain. Artinya yang
-kamu percayai adalah **kode kontrak yang terbuka dan bisa dibaca semua
-orang**, bukan server kami. Dicatat juga di `10-keterbatasan.md`.
+## Mekanisme Pemulihan Akun (Backup Validator)
 
-## Kalau HP hilang
+Kehilangan perangkat fisik ditangani melalui modul validator cadangan tanpa mengorbankan sifat non-kustodial dompet.
 
-Dua jalur:
+```mermaid
+graph TD
+    Registration["Pendaftaran Akun"] --> GeneratePhrase["Bina Frasa Pemulihan 12 Kata (BIP-39)"]
+    GeneratePhrase --> DeriveKeys["Turunkan Pasangan Kunci secp256k1"]
+    DeriveKeys --> RegisterBackup["Daftarkan Public Address sebagai Backup Validator on-chain"]
+    
+    DeviceLost["Perangkat Lama Hilang"] --> InputPhrase["Masukkan 12 Kata di Perangkat Baru"]
+    InputPhrase --> ClientSign["Tanda Tangani Rotasi Kunci secara Lokal di Klien"]
+    ClientSign --> ServerVerify["Server Verifikasi Signature via ECDSA.recover()"]
+    ServerVerify --> EmailConfirm["Verifikasi 2FA via Tautan Email Terdaftar"]
+    EmailConfirm --> ExecuteRotation["Daftarkan Passkey Perangkat Baru di Smart Account"]
+```
 
-1. **Tambah perangkat baru** — harus disetujui tanda tangan dari perangkat
-   yang masih ada.
-2. **Darurat**, kalau satu-satunya perangkat hilang: **12 kata cadangan**
-   (standar BIP-39) yang kamu simpan saat daftar. 12 kata ini **hanya** untuk
-   mendaftarkan perangkat baru lewat server (percobaannya dibatasi) — tidak
-   bisa dipakai langsung untuk tanda tangan. Sehari-hari kamu tidak pernah
-   menyentuhnya.
-
-## Hal teknis yang perlu diketahui developer
-
-- **Passkey terikat ke domain** (`rpId`). Passkey yang dibuat di `localhost`
-  tidak berlaku di domain produksi. Responden kuesioner harus daftar langsung
-  di domain produksi; akun uji coba lokal tidak bisa dibawa.
-- Kunci passkey memakai kurva **P-256**, beda dari kurva Ethereum
-  (secp256k1). Memverifikasi tanda tangannya di blockchain butuh penanganan
-  khusus dan lebih mahal — ZeroDev sudah menyediakannya (*passkey
-  validator*).
-- Dompet pengguna adalah **smart account**, bukan dompet biasa. Kalau kontrak
-  perlu memeriksa tanda tangan dompet pengguna, caranya lewat ERC-1271 (pakai
-  `SignatureChecker` OpenZeppelin), bukan `ECDSA.recover` biasa. Kalau yang
-  tanda tangan server (dompet biasa), `ECDSA.recover` cukup.
-- Pustaka: `@zerodev/sdk` 5.5.x, `@zerodev/passkey-validator` 5.6.x, `viem`
-  2.x. Di peramban butuh polyfill `Buffer`. ZeroDev API v3 memakai **satu URL**
-  untuk bundler sekaligus paymaster.
-
-## Sampai di mana percobaannya (2 September 2026)
-
-| Yang dicoba | Hasil |
-|---|---|
-| Registrasi passkey (percobaan Vite, pagi) | **Terbukti** — menghasilkan `pubX`, `pubY`, `authenticatorId`, `authenticatorIdHash` |
-| Buat smart account + kirim transaksi tersponsori (percobaan Next.js di `spike-next/`, siang; **lokal, tidak masuk repo**) | **Kodenya sudah lengkap**: passkey validator (`KERNEL_V3_3`, validator `V0_0_3_PATCHED`) → kernel account → paymaster → `sendTransaction`. **Hasil jalannya belum tercatat** |
-| Masuk lagi dengan passkey yang sudah ada | Belum dicoba |
-
-Aturan yang dipakai: sponsor gas dianggap **belum terbukti** sampai ada hash
-transaksi tersponsori yang dicatat di `kerja/alamat-kontrak.md`. Versi
-Kernel (`V3_1` di catatan lama, `V3_3` di kode percobaan) dikunci setelah
-terbukti jalan.
-
-## Yang masih dibahas 🔶
-
-- **Siapa yang mengirim transaksi ke blockchain:** (a) ditandatangani
-  dompetmu dan disponsori — paling sesuai cerita di atas; (b) server memakai
-  dompetnya sendiri, dompetmu cuma penerima tiket — paling cepat dibangun;
-  (c) campuran. Kode percobaan mengarah ke (a).
-- **Isi tabel `passkey_credentials`:** arah yang disepakati — simpan salinan
-  penuh (`pubX`, `pubY`, credential id) supaya server bisa mengecek sendiri
-  bahwa alamat dompet benar berasal dari passkey terdaftar, bukan percaya
-  alamat yang dikirim peramban.
-- **Kunci publik disimpan sebagai dua kolom atau satu** — disarankan dua
-  (`pub_x`, `pub_y`), karena dipakai terpisah saat membangun ulang validator.
+Frasa pemulihan cadangan 12 kata (BIP-39) hanya diproses di sisi klien lokal (in-memory) dan tidak pernah disimpan dalam bentuk teks mentah di basis data backend.
