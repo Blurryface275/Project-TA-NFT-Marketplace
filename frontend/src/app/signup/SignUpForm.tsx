@@ -1,261 +1,326 @@
 "use client";
 
-import { useState } from "react";
-import { signup, verifyOtpAction, resendOtpAction } from "@/app/signup/actions";
-import { useActionState } from "react";
+import { useState, useActionState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  ShieldCheck,
-  Loader2,
-  ArrowLeft,
-  RefreshCw,
-  CheckCircle2,
-} from "lucide-react";
+import { signup, verifyOtpAction, resendOtpAction } from "./actions";
+import { ArrowRight, RefreshCw, ArrowLeft, Eye, EyeOff } from "lucide-react";
 
-export default function SignUpForm() {
+export function SignUpForm() {
   const router = useRouter();
-  const [state, action, pending] = useActionState(signup, undefined);
+  const [showPassword, setShowPassword] = useState(false);
+  const [signupState, signupAction, signupPending] = useActionState(signup, undefined);
 
-  // State untuk verifikasi OTP
   const [otp, setOtp] = useState("");
-  const [isVerifying, setIsVerifying] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
   const [otpSuccess, setOtpSuccess] = useState<string | null>(null);
   const [isResending, setIsResending] = useState(false);
-  const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const [resendNotice, setResendNotice] = useState<string | null>(null);
+  const [stepOverride, setStepOverride] = useState<"form" | null>(null);
 
-  const registeredEmail = state?.email || "";
+  const registeredEmail = signupState?.email || "";
+  const isOtpStep = signupState?.step === "verify_otp" && stepOverride !== "form";
 
-  // Handler saat user submit kode OTP
-  const handleVerifyOtp = async (e: React.FormEvent) => {
+  const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otp.length !== 6) {
-      setOtpError("Kode OTP harus terdiri dari 6 digit angka.");
+      setOtpError("Masukkan 6 digit kode verifikasi.");
       return;
     }
-
-    setIsVerifying(true);
+    setIsVerifyingOtp(true);
     setOtpError(null);
-
     const res = await verifyOtpAction(registeredEmail, otp);
-    setIsVerifying(false);
+    setIsVerifyingOtp(false);
 
     if (!res.success) {
       setOtpError(res.message);
       return;
     }
 
-    setOtpSuccess(
-      "Email berhasil diverifikasi! Mengalihkan ke halaman login...",
-    );
+    setOtpSuccess("Email terverifikasi. Mengalihkan ke login...");
     setTimeout(() => {
       router.push("/login?verified=true");
-    }, 1500);
+    }, 1200);
   };
 
-  // Handler saat user meminta kirim ulang kode OTP
   const handleResendOtp = async () => {
     setIsResending(true);
-    setResendMessage(null);
+    setResendNotice(null);
     setOtpError(null);
-
     const res = await resendOtpAction(registeredEmail);
     setIsResending(false);
-    setResendMessage(res.message);
+    setResendNotice(res.message);
   };
 
-  // -------------------------------------------------------------
-  // TAMPILAN LANGKAH 2: INPUT KODE OTP 6-DIGIT
-  // -------------------------------------------------------------
-  if (state?.step === "verify_otp") {
-    return (
-      <div className="flex w-full max-w-sm flex-col gap-4 p-6">
-        <div className="text-center">
-          <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-2">
-            <ShieldCheck className="w-6 h-6" />
-          </div>
-          <h2 className="text-xl font-bold">Verifikasi Email Anda</h2>
-          <p className="text-xs text-muted-foreground mt-1">
-            Kode OTP 6 digit telah dikirimkan ke:
-          </p>
-          <p className="text-xs font-semibold text-foreground mt-0.5">
-            {registeredEmail}
-          </p>
+  return (
+    <div className="w-full max-w-[400px] bg-white rounded-3xl p-6 sm:p-8 shadow-[0_4px_30px_rgba(0,0,0,0.03)] border border-slate-100/60 transition-all">
+      {/* Title & Subtitle */}
+      <div className="mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+          {isOtpStep ? "Verifikasi Email" : "Daftar Akun"}
+        </h1>
+        <p className="text-xs text-slate-500 mt-1">
+          {isOtpStep
+            ? `Kode dikirim ke ${registeredEmail}`
+            : "Buat akun baru untuk mulai memesan tiket"}
+        </p>
+      </div>
+
+      {/* Segmented Pill Navigation */}
+      {!isOtpStep && (
+        <div
+          role="tablist"
+          aria-label="Pilihan Autentikasi"
+          className="flex bg-slate-100/70 p-1 rounded-2xl mb-6"
+        >
+          <Link
+            href="/login"
+            role="tab"
+            aria-selected={false}
+            className="flex-1 py-2 text-xs font-semibold rounded-xl text-slate-500 hover:text-slate-800 text-center min-h-[38px] flex items-center justify-center transition-all duration-200"
+          >
+            Masuk
+          </Link>
+          <span
+            role="tab"
+            aria-selected={true}
+            className="flex-1 py-2 text-xs font-semibold rounded-xl bg-white text-slate-900 shadow-sm text-center min-h-[38px] flex items-center justify-center"
+          >
+            Daftar
+          </span>
         </div>
+      )}
 
-        {/* Pesan Sukses Verifikasi */}
-        {otpSuccess && (
-          <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-xs text-center flex items-center justify-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>{otpSuccess}</span>
-          </div>
-        )}
-
-        {/* Pesan Error OTP */}
-        {otpError && (
-          <p className="text-xs text-red-500 text-center font-medium bg-red-500/10 p-2 rounded-md border border-red-500/20">
-            {otpError}
-          </p>
-        )}
-
-        {/* Notifikasi Kirim Ulang */}
-        {resendMessage && (
-          <p className="text-xs text-blue-500 text-center font-medium bg-blue-500/10 p-2 rounded-md">
-            {resendMessage}
-          </p>
-        )}
-
-        <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4 mt-1">
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="otp"
-              className="text-xs font-medium text-center text-muted-foreground"
+      {/* OTP Verification Step */}
+      {isOtpStep ? (
+        <div className="space-y-4">
+          {otpSuccess && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="p-3 rounded-2xl bg-emerald-50 border border-emerald-100 text-xs text-emerald-800 text-center font-medium"
             >
-              Masukkan 6 Digit Kode OTP
+              {otpSuccess}
+            </div>
+          )}
+
+          {otpError && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="p-3 rounded-2xl bg-rose-50 border border-rose-100 text-xs text-rose-600 text-center font-medium"
+            >
+              {otpError}
+            </div>
+          )}
+
+          {resendNotice && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="p-3 rounded-2xl bg-slate-50 border border-slate-100 text-xs text-slate-600 text-center"
+            >
+              {resendNotice}
+            </div>
+          )}
+
+          <form onSubmit={handleOtpSubmit} className="space-y-4" noValidate>
+            <div className="space-y-1.5">
+              <label
+                htmlFor="otp"
+                className="text-xs font-medium text-slate-600 block text-center"
+              >
+                Kode 6 Digit
+              </label>
+              <input
+                type="text"
+                id="otp"
+                name="otp"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                placeholder="••••••"
+                autoFocus
+                aria-required="true"
+                aria-invalid={!!otpError}
+                className="w-full bg-slate-50/70 border border-slate-200/50 rounded-2xl px-4 py-3 text-center text-2xl tracking-[0.35em] font-semibold text-slate-900 outline-none focus:bg-white focus:border-[#FF5A36] focus:ring-1 focus:ring-[#FF5A36] transition-all min-h-[52px]"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isVerifyingOtp || otp.length !== 6 || !!otpSuccess}
+              className="w-full py-3 px-4 bg-[#FF5A36] hover:bg-[#F04824] active:bg-[#E03C18] text-white text-xs font-bold rounded-2xl shadow-sm shadow-[#FF5A36]/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 cursor-pointer border-0 min-h-[46px]"
+            >
+              {isVerifyingOtp ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" aria-hidden="true" />
+                  <span>Memverifikasi...</span>
+                  <span className="sr-only">Sedang memverifikasi kode</span>
+                </>
+              ) : (
+                <span>Verifikasi Akun</span>
+              )}
+            </button>
+          </form>
+
+          <div className="pt-3 border-t border-slate-100/80 flex items-center justify-between text-xs text-slate-500">
+            <button
+              type="button"
+              onClick={handleResendOtp}
+              disabled={isResending || !!otpSuccess}
+              className="hover:text-[#FF5A36] font-medium transition flex items-center gap-1 cursor-pointer disabled:opacity-40 min-h-[36px]"
+            >
+              <RefreshCw
+                className={`w-3 h-3 ${isResending ? "animate-spin" : ""}`}
+                aria-hidden="true"
+              />
+              <span>Kirim Ulang</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStepOverride("form")}
+              className="hover:text-slate-800 transition flex items-center gap-1 cursor-pointer min-h-[36px]"
+            >
+              <ArrowLeft className="w-3 h-3" aria-hidden="true" />
+              <span>Ganti Email</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Signup Form Step */
+        <form action={signupAction} className="space-y-3.5" noValidate>
+          {signupState?.message && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="p-3 rounded-2xl bg-rose-50 border border-rose-100 text-xs text-rose-600 font-medium"
+            >
+              {signupState.message}
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <label htmlFor="signup-name" className="text-xs font-medium text-slate-700 block">
+              Nama Lengkap
             </label>
             <input
+              id="signup-name"
+              name="name"
               type="text"
-              id="otp"
-              name="otp"
-              maxLength={6}
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-              placeholder="••••••"
-              autoFocus
-              className="border border-border rounded-lg px-3 py-2.5 text-center font-mono text-2xl tracking-[0.4em] outline-none focus:ring-2 focus:ring-primary bg-background font-bold shadow-sm"
+              required
+              autoComplete="name"
+              aria-required="true"
+              aria-invalid={!!signupState?.errors?.name}
+              aria-describedby={signupState?.errors?.name ? "signup-name-error" : undefined}
+              placeholder="Nama lengkap sesuai identitas"
+              className="w-full bg-slate-50/70 border border-slate-200/50 rounded-2xl px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-[#FF5A36] focus:ring-1 focus:ring-[#FF5A36] transition-all duration-150 min-h-[44px]"
             />
+            {signupState?.errors?.name && (
+              <p id="signup-name-error" role="alert" className="text-[11px] text-rose-500 mt-1">
+                {signupState.errors.name[0]}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="signup-email" className="text-xs font-medium text-slate-700 block">
+              Email
+            </label>
+            <input
+              id="signup-email"
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              spellCheck={false}
+              aria-required="true"
+              aria-invalid={!!signupState?.errors?.email}
+              aria-describedby={signupState?.errors?.email ? "signup-email-error" : undefined}
+              placeholder="nama@email.com"
+              className="w-full bg-slate-50/70 border border-slate-200/50 rounded-2xl px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-[#FF5A36] focus:ring-1 focus:ring-[#FF5A36] transition-all duration-150 min-h-[44px]"
+            />
+            {signupState?.errors?.email && (
+              <p id="signup-email-error" role="alert" className="text-[11px] text-rose-500 mt-1">
+                {signupState.errors.email[0]}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="signup-password" className="text-xs font-medium text-slate-700 block">
+              Kata Sandi
+            </label>
+            <div className="relative">
+              <input
+                id="signup-password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                required
+                autoComplete="new-password"
+                aria-required="true"
+                aria-invalid={!!signupState?.errors?.password}
+                aria-describedby={signupState?.errors?.password ? "signup-password-error" : undefined}
+                placeholder="Minimal 8 karakter"
+                className="w-full bg-slate-50/70 border border-slate-200/50 rounded-2xl px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-[#FF5A36] focus:ring-1 focus:ring-[#FF5A36] transition-all duration-150 pr-10 min-h-[44px]"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 transition cursor-pointer p-0.5"
+                aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+              >
+                {showPassword ? (
+                  <EyeOff className="w-4 h-4" aria-hidden="true" />
+                ) : (
+                  <Eye className="w-4 h-4" aria-hidden="true" />
+                )}
+              </button>
+            </div>
+            {signupState?.errors?.password && (
+              <p id="signup-password-error" role="alert" className="text-[11px] text-rose-500 mt-1">
+                {signupState.errors.password[0]}
+              </p>
+            )}
           </div>
 
           <button
             type="submit"
-            disabled={isVerifying || otp.length !== 6 || !!otpSuccess}
-            className="w-full bg-primary text-primary-foreground font-medium py-2 rounded-md hover:opacity-90 disabled:opacity-50 transition cursor-pointer flex items-center justify-center gap-2"
+            disabled={signupPending}
+            className="w-full mt-2 py-3 px-4 bg-[#FF5A36] hover:bg-[#F04824] active:bg-[#E03C18] text-white text-xs font-bold rounded-2xl shadow-sm shadow-[#FF5A36]/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5 cursor-pointer border-0 min-h-[46px]"
           >
-            {isVerifying ? (
+            {signupPending ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Memverifikasi...</span>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                <span>Mendaftarkan...</span>
+                <span className="sr-only">Sedang memproses pendaftaran</span>
               </>
             ) : (
-              <span>Verifikasi Akun</span>
+              <>
+                <span>Lanjut ke Verifikasi</span>
+                <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+              </>
             )}
           </button>
         </form>
-
-        {/* Kirim Ulang & Kembali */}
-        <div className="flex flex-col items-center gap-2 mt-2 pt-2 border-t border-border/50 text-xs">
-          <button
-            type="button"
-            onClick={handleResendOtp}
-            disabled={isResending || !!otpSuccess}
-            className="text-primary hover:underline font-medium flex items-center gap-1 cursor-pointer disabled:opacity-50"
-          >
-            <RefreshCw
-              className={`w-3 h-3 ${isResending ? "animate-spin" : ""}`}
-            />
-            <span>Kirim Ulang Kode OTP</span>
-          </button>
-
-          <Link
-            href="/signup"
-            className="text-muted-foreground hover:text-foreground transition flex items-center gap-1"
-          >
-            <ArrowLeft className="w-3 h-3" />
-            <span>Ganti Email / Daftar Ulang</span>
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // -------------------------------------------------------------
-  // TAMPILAN LANGKAH 1: FORM REGISTRASI NAMA, EMAIL & PASSWORD
-  // -------------------------------------------------------------
-  return (
-    <form action={action} className="flex w-full max-w-sm flex-col gap-4 p-6">
-      <div className="text-center">
-        <h2 className="text-xl font-bold">Daftar Akun Baru</h2>
-        <p className="text-xs text-muted-foreground mt-1">
-          Lengkapi data berikut untuk membuat akun
-        </p>
-      </div>
-
-      {state?.message && (
-        <p className="text-sm text-red-500 text-center">{state.message}</p>
       )}
 
-      {/* Input Nama Lengkap */}
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="name" className="text-sm font-medium">
-          Nama Lengkap
-        </label>
-        <input
-          type="text"
-          id="name"
-          name="name"
-          placeholder="Nama Lengkap Anda"
-          required
-          className="border rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
-        />
-        {state?.errors?.name && (
-          <p className="text-xs text-red-500">{state.errors.name[0]}</p>
-        )}
+      {/* Footer Switcher */}
+      <div className="mt-6 pt-4 border-t border-slate-100/60 text-center text-xs text-slate-500">
+        <p>
+          Sudah punya akun?{" "}
+          <Link
+            href="/login"
+            className="text-[#FF5A36] hover:text-[#D43812] font-bold cursor-pointer transition min-h-[32px] inline-flex items-center"
+          >
+            Masuk di sini
+          </Link>
+        </p>
       </div>
-
-      {/* Input Email */}
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="email" className="text-sm font-medium">
-          Email
-        </label>
-        <input
-          type="email"
-          id="email"
-          name="email"
-          placeholder="Email Anda"
-          required
-          className="border rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
-        />
-        {state?.errors?.email && (
-          <p className="text-xs text-red-500">{state.errors.email[0]}</p>
-        )}
-      </div>
-
-      {/* Input Password */}
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="password" className="text-sm font-medium">
-          Password
-        </label>
-        <input
-          type="password"
-          id="password"
-          name="password"
-          placeholder="Minimal 8 karakter"
-          required
-          className="border rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
-        />
-        {state?.errors?.password && (
-          <p className="text-xs text-red-500">{state.errors.password[0]}</p>
-        )}
-      </div>
-
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-full bg-primary text-primary-foreground font-medium py-2 rounded-md hover:opacity-90 disabled:opacity-50 transition mt-2 cursor-pointer disabled:cursor-not-allowed"
-      >
-        {pending ? "Mendaftarkan Akun..." : "Daftar"}
-      </button>
-
-      <p className="text-center text-xs text-muted-foreground mt-1">
-        Sudah punya akun?{" "}
-        <Link
-          href="/login"
-          className="text-primary font-medium hover:underline"
-        >
-          Masuk di sini
-        </Link>
-      </p>
-    </form>
+    </div>
   );
 }
