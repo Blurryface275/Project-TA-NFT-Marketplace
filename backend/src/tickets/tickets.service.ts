@@ -92,7 +92,35 @@ export class TicketsService {
           ` [TicketsService] Mengirim transaksi #${i + 1} dari ${qty} ke Sepolia...`,
         );
 
-        // panggil fungsi 'mintTicket(to, eventId, categoryId)' di smart contract Sepolia
+        // 1. Generate nonce unik untuk mencegah replay attack (waktu + urutan loop)
+        const nonce = BigInt(Date.now() * 1000 + i);
+
+        // 2. Tandatangani data terstruktur EIP-712 menggunakan private key backend (systemSigner)
+        const signature = await this.account.signTypedData({
+          domain: {
+            name: 'NFTix',
+            version: '1',
+            chainId: sepolia.id,
+            verifyingContract: this.contractAddress,
+          },
+          types: {
+            MintAuth: [
+              { name: 'to', type: 'address' },
+              { name: 'eventId', type: 'uint256' },
+              { name: 'categoryId', type: 'uint256' },
+              { name: 'nonce', type: 'uint256' },
+            ],
+          },
+          primaryType: 'MintAuth',
+          message: {
+            to: dto.walletAddress as `0x${string}`,
+            eventId: BigInt(dto.eventId),
+            categoryId: BigInt(dto.categoryId),
+            nonce: nonce,
+          },
+        });
+
+        // 3. Panggil fungsi 'mintTicket(to, eventId, categoryId, nonce, signature)' di smart contract Sepolia
         const hash = await this.walletClient.writeContract({
           address: this.contractAddress,
           abi: TICKET_CONTRACT_ABI,
@@ -102,6 +130,8 @@ export class TicketsService {
             dto.walletAddress as `0x${string}`,
             BigInt(dto.eventId),
             BigInt(dto.categoryId),
+            nonce,
+            signature,
           ],
         });
 

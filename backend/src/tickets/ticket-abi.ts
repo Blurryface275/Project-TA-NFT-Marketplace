@@ -25,14 +25,16 @@ export const TICKET_CONTRACT_ABI = [
   },
   {
     // Reference :
-    // Ada di function mintTicket apda file TicketContract.sol
-    // function mintTicket(address to, uint256 eventId, uint256 categoryId) external returns (uint256)
+    // Ada di function mintTicket pada file TicketContract.sol
+    // function mintTicket(address to, uint256 eventId, uint256 categoryId, uint256 nonce, bytes calldata signature) external returns (uint256)
     type: 'function',
     name: 'mintTicket',
     inputs: [
       { name: 'to', type: 'address' },
       { name: 'eventId', type: 'uint256' },
       { name: 'categoryId', type: 'uint256' },
+      { name: 'nonce', type: 'uint256' },
+      { name: 'signature', type: 'bytes' },
     ],
     outputs: [{ name: '', type: 'uint256' }], // dari returns (uint256)
     stateMutability: 'nonpayable', // nonpayable artinya function ini tdk menerima ETH

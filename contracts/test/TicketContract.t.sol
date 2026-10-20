@@ -12,7 +12,9 @@ contract TicketContractTest is Test {
     address public organizer = makeAddr("organizer");
     address public stranger = makeAddr("stranger");
     address public marketplace = makeAddr("marketplace");
-    address public signer = makeAddr("systemSigner");
+    uint256 public signerPrivateKey = 0xA11CE;
+    address public signer = vm.addr(signerPrivateKey);
+    address public buyer = makeAddr("buyer");
 
     uint256 public constant EVENT_ID = 1;
     uint256 public constant CATEGORY_ID = 1;
@@ -255,5 +257,109 @@ contract TicketContractTest is Test {
         vm.prank(owner);
         vm.expectRevert(TicketContract.ForbiddenZero.selector);
         ticket.setSystemSigner(address(0));
+    }
+
+    // =========================================================================
+    // 7. EIP-712 mintTicket Tests
+    // =========================================================================
+
+    function _getEIP712Digest(address to, uint256 eventId, uint256 categoryId, uint256 nonce) internal view returns (bytes32) {
+        bytes32 structHash = keccak256(
+            abi.encode(ticket.MINT_TYPEHASH(), to, eventId, categoryId, nonce)
+        );
+        bytes32 domainSeparator = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes("NFTix")),
+                keccak256(bytes("1")),
+                block.chainid,
+                address(ticket)
+            )
+        );
+        return keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
+    }
+
+    function _signMint(uint256 pk, address to, uint256 eventId, uint256 categoryId, uint256 nonce) internal view returns (bytes memory) {
+        bytes32 digest = _getEIP712Digest(to, eventId, categoryId, nonce);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, digest);
+        return abi.encodePacked(r, s, v);
+    }
+
+    function _setupEventAndCategory() internal {
+        vm.startPrank(owner);
+        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET);
+        ticket.addCategory(EVENT_ID, CATEGORY_ID, PRICE, QUOTA);
+        ticket.setSystemSigner(signer);
+        vm.stopPrank();
+    }
+
+    function test_MintTicket_Success_WithEIP712Signature() public {
+        _setupEventAndCategory();
+        uint256 nonce = 12345;
+        bytes memory signature = _signMint(signerPrivateKey, buyer, EVENT_ID, CATEGORY_ID, nonce);
+
+        uint256 tokenId = ticket.mintTicket(buyer, EVENT_ID, CATEGORY_ID, nonce, signature);
+
+        assertEq(tokenId, 1);
+        assertEq(ticket.ownerOf(1), buyer);
+        assertTrue(ticket.isNonceUsed(nonce));
+
+        TicketContract.TicketInfo memory info = ticket.getTicket(1);
+        assertEq(info.eventId, EVENT_ID);
+        assertEq(info.categoryId, CATEGORY_ID);
+        assertEq(info.originalPrice, PRICE);
+        assertFalse(info.used);
+    }
+
+    function test_MintTicket_RevertIf_InvalidSignature() public {
+        _setupEventAndCategory();
+        uint256 nonce = 12345;
+        uint256 fakePrivateKey = 0xBAD;
+        bytes memory badSignature = _signMint(fakePrivateKey, buyer, EVENT_ID, CATEGORY_ID, nonce);
+
+        vm.expectRevert(TicketContract.InvalidSignature.selector);
+        ticket.mintTicket(buyer, EVENT_ID, CATEGORY_ID, nonce, badSignature);
+    }
+
+    function test_MintTicket_RevertIf_ReplayNonce() public {
+        _setupEventAndCategory();
+        uint256 nonce = 999;
+        bytes memory signature = _signMint(signerPrivateKey, buyer, EVENT_ID, CATEGORY_ID, nonce);
+
+        // Mint pertama berhasil
+        ticket.mintTicket(buyer, EVENT_ID, CATEGORY_ID, nonce, signature);
+
+        // Mint kedua dengan nonce yang sama wajib revert NonceAlreadyUsed
+        vm.expectRevert(abi.encodeWithSelector(TicketContract.NonceAlreadyUsed.selector, nonce));
+        ticket.mintTicket(buyer, EVENT_ID, CATEGORY_ID, nonce, signature);
+    }
+
+    function test_MintTicket_RevertIf_SystemSignerNotSet() public {
+        vm.startPrank(owner);
+        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET);
+        ticket.addCategory(EVENT_ID, CATEGORY_ID, PRICE, QUOTA);
+        vm.stopPrank();
+
+        uint256 nonce = 1;
+        bytes memory signature = _signMint(signerPrivateKey, buyer, EVENT_ID, CATEGORY_ID, nonce);
+
+        vm.expectRevert(TicketContract.SystemSignerNotSet.selector);
+        ticket.mintTicket(buyer, EVENT_ID, CATEGORY_ID, nonce, signature);
+    }
+
+    function test_MintTicket_RevertIf_MaxPerWalletExceeded() public {
+        _setupEventAndCategory();
+
+        // Mint sebanyak MAX_PER_WALLET (4 tiket)
+        for (uint256 i = 1; i <= MAX_PER_WALLET; i++) {
+            bytes memory sig = _signMint(signerPrivateKey, buyer, EVENT_ID, CATEGORY_ID, i);
+            ticket.mintTicket(buyer, EVENT_ID, CATEGORY_ID, i, sig);
+        }
+
+        // Tiket ke-5 wajib gagal MaxPerWalletExceeded
+        uint256 overNonce = 5;
+        bytes memory sigOver = _signMint(signerPrivateKey, buyer, EVENT_ID, CATEGORY_ID, overNonce);
+        vm.expectRevert(TicketContract.MaxPerWalletExceeded.selector);
+        ticket.mintTicket(buyer, EVENT_ID, CATEGORY_ID, overNonce, sigOver);
     }
 }

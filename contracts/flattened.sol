@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.4.16 >=0.5.0 >=0.6.2 >=0.8.4 ^0.8.20 ^0.8.24 ^0.8.26;
 
-// lib/openzeppelin-contracts/contracts/utils/Context.sol
+// contracts/lib/openzeppelin-contracts/contracts/utils/Context.sol
 
 // OpenZeppelin Contracts (last updated v5.0.1) (utils/Context.sol)
 
@@ -29,7 +29,291 @@ abstract contract Context {
     }
 }
 
-// lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol
+// contracts/lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol
+
+// OpenZeppelin Contracts (last updated v5.7.0) (utils/cryptography/ECDSA.sol)
+
+/**
+ * @dev Elliptic Curve Digital Signature Algorithm (ECDSA) operations.
+ *
+ * These functions can be used to verify that a message was signed by the holder
+ * of the private keys of a given address.
+ */
+library ECDSA {
+    enum RecoverError {
+        NoError,
+        InvalidSignature,
+        InvalidSignatureLength,
+        InvalidSignatureS
+    }
+
+    /**
+     * @dev The signature is invalid.
+     */
+    error ECDSAInvalidSignature();
+
+    /**
+     * @dev The signature has an invalid length.
+     */
+    error ECDSAInvalidSignatureLength(uint256 length);
+
+    /**
+     * @dev The signature has an S value that is in the upper half order.
+     */
+    error ECDSAInvalidSignatureS(bytes32 s);
+
+    /**
+     * @dev Returns the address that signed a hashed message (`hash`) with `signature` or an error. This will not
+     * return address(0) without also returning an error description. Errors are documented using an enum (error type)
+     * and a bytes32 providing additional information about the error.
+     *
+     * If no error is returned, then the address can be used for verification purposes.
+     *
+     * The `ecrecover` EVM precompile allows for malleable (non-unique) signatures:
+     * this function rejects them by requiring the `s` value to be in the lower
+     * half order, and the `v` value to be either 27 or 28.
+     *
+     * NOTE: This function only supports 65-byte signatures. ERC-2098 short signatures are rejected. This restriction
+     * is DEPRECATED and will be removed in v6.0. Developers SHOULD NOT use signatures as unique identifiers; use hash
+     * invalidation or nonces for replay protection.
+     *
+     * IMPORTANT: `hash` _must_ be the result of a hash operation for the
+     * verification to be secure: it is possible to craft signatures that
+     * recover to arbitrary addresses for non-hashed data. A safe way to ensure
+     * this is by receiving a hash of the original message (which may otherwise
+     * be too long), and then calling {MessageHashUtils-toEthSignedMessageHash} on it.
+     *
+     * Documentation for signature generation:
+     *
+     * - with https://web3js.readthedocs.io/en/v1.3.4/web3-eth-accounts.html#sign[Web3.js]
+     * - with https://docs.ethers.io/v5/api/signer/#Signer-signMessage[ethers]
+     */
+    function tryRecover(
+        bytes32 hash,
+        bytes memory signature
+    ) internal pure returns (address recovered, RecoverError err, bytes32 errArg) {
+        if (signature.length == 65) {
+            bytes32 r;
+            bytes32 s;
+            uint8 v;
+            // ecrecover takes the signature parameters, and the only way to get them
+            // currently is to use assembly.
+            assembly ("memory-safe") {
+                r := mload(add(signature, 0x20))
+                s := mload(add(signature, 0x40))
+                v := byte(0, mload(add(signature, 0x60)))
+            }
+            return tryRecover(hash, v, r, s);
+        } else {
+            return (address(0), RecoverError.InvalidSignatureLength, bytes32(signature.length));
+        }
+    }
+
+    /**
+     * @dev Variant of {tryRecover} that takes a signature in calldata
+     */
+    function tryRecoverCalldata(
+        bytes32 hash,
+        bytes calldata signature
+    ) internal pure returns (address recovered, RecoverError err, bytes32 errArg) {
+        if (signature.length == 65) {
+            bytes32 r;
+            bytes32 s;
+            uint8 v;
+            // ecrecover takes the signature parameters, calldata slices would work here, but are
+            // significantly more expensive (length check) than using calldataload in assembly.
+            assembly ("memory-safe") {
+                r := calldataload(signature.offset)
+                s := calldataload(add(signature.offset, 0x20))
+                v := byte(0, calldataload(add(signature.offset, 0x40)))
+            }
+            return tryRecover(hash, v, r, s);
+        } else {
+            return (address(0), RecoverError.InvalidSignatureLength, bytes32(signature.length));
+        }
+    }
+
+    /**
+     * @dev Returns the address that signed a hashed message (`hash`) with
+     * `signature`. This address can then be used for verification purposes.
+     *
+     * The `ecrecover` EVM precompile allows for malleable (non-unique) signatures:
+     * this function rejects them by requiring the `s` value to be in the lower
+     * half order, and the `v` value to be either 27 or 28.
+     *
+     * NOTE: This function only supports 65-byte signatures. ERC-2098 short signatures are rejected. This restriction
+     * is DEPRECATED and will be removed in v6.0. Developers SHOULD NOT use signatures as unique identifiers; use hash
+     * invalidation or nonces for replay protection.
+     *
+     * IMPORTANT: `hash` _must_ be the result of a hash operation for the
+     * verification to be secure: it is possible to craft signatures that
+     * recover to arbitrary addresses for non-hashed data. A safe way to ensure
+     * this is by receiving a hash of the original message (which may otherwise
+     * be too long), and then calling {MessageHashUtils-toEthSignedMessageHash} on it.
+     */
+    function recover(bytes32 hash, bytes memory signature) internal pure returns (address) {
+        (address recovered, RecoverError err, bytes32 errorArg) = tryRecover(hash, signature);
+        _throwError(err, errorArg);
+        return recovered;
+    }
+
+    /**
+     * @dev Variant of {recover} that takes a signature in calldata
+     */
+    function recoverCalldata(bytes32 hash, bytes calldata signature) internal pure returns (address) {
+        (address recovered, RecoverError err, bytes32 errorArg) = tryRecoverCalldata(hash, signature);
+        _throwError(err, errorArg);
+        return recovered;
+    }
+
+    /**
+     * @dev Overload of {ECDSA-tryRecover} that receives the `r` and `vs` short-signature fields separately.
+     *
+     * See https://eips.ethereum.org/EIPS/eip-2098[ERC-2098 short signatures]
+     */
+    function tryRecover(
+        bytes32 hash,
+        bytes32 r,
+        bytes32 vs
+    ) internal pure returns (address recovered, RecoverError err, bytes32 errArg) {
+        unchecked {
+            bytes32 s = vs & bytes32(0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
+            // We do not check for an overflow here since the shift operation results in 0 or 1.
+            uint8 v = uint8((uint256(vs) >> 255) + 27);
+            return tryRecover(hash, v, r, s);
+        }
+    }
+
+    /**
+     * @dev Overload of {ECDSA-recover} that receives the `r` and `vs` short-signature fields separately.
+     */
+    function recover(bytes32 hash, bytes32 r, bytes32 vs) internal pure returns (address) {
+        (address recovered, RecoverError err, bytes32 errorArg) = tryRecover(hash, r, vs);
+        _throwError(err, errorArg);
+        return recovered;
+    }
+
+    /**
+     * @dev Overload of {ECDSA-tryRecover} that receives the `v`,
+     * `r` and `s` signature fields separately.
+     */
+    function tryRecover(
+        bytes32 hash,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) internal pure returns (address recovered, RecoverError err, bytes32 errArg) {
+        // EIP-2 still allows signature malleability for ecrecover(). Remove this possibility and make the signature
+        // unique. Appendix F in the Ethereum Yellow paper (https://ethereum.github.io/yellowpaper/paper.pdf), defines
+        // the valid range for s in (301): 0 < s < secp256k1n ÷ 2 + 1, and for v in (302): v ∈ {27, 28}. Most
+        // signatures from current libraries generate a unique signature with an s-value in the lower half order.
+        //
+        // If your library generates malleable signatures, such as s-values in the upper range, calculate a new s-value
+        // with 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141 - s1 and flip v from 27 to 28 or
+        // vice versa. If your library also generates signatures with 0/1 for v instead 27/28, add 27 to v to accept
+        // these malleable signatures as well.
+        if (uint256(s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) {
+            return (address(0), RecoverError.InvalidSignatureS, s);
+        }
+
+        // If the signature is valid (and not malleable), return the signer address
+        address signer = ecrecover(hash, v, r, s);
+        if (signer == address(0)) {
+            return (address(0), RecoverError.InvalidSignature, bytes32(0));
+        }
+
+        return (signer, RecoverError.NoError, bytes32(0));
+    }
+
+    /**
+     * @dev Overload of {ECDSA-recover} that receives the `v`,
+     * `r` and `s` signature fields separately.
+     */
+    function recover(bytes32 hash, uint8 v, bytes32 r, bytes32 s) internal pure returns (address) {
+        (address recovered, RecoverError err, bytes32 errorArg) = tryRecover(hash, v, r, s);
+        _throwError(err, errorArg);
+        return recovered;
+    }
+
+    /**
+     * @dev Parse a signature into its `v`, `r` and `s` components. Supports 65-byte and 64-byte (ERC-2098)
+     * formats. Returns (0,0,0) for invalid signatures.
+     *
+     * For 64-byte signatures, `v` is automatically normalized to 27 or 28.
+     * For 65-byte signatures, `v` is returned as-is and MUST already be 27 or 28 for use with ecrecover.
+     *
+     * Consider validating the result before use, or use {tryRecover}/{recover} which perform full validation.
+     */
+    function parse(bytes memory signature) internal pure returns (uint8 v, bytes32 r, bytes32 s) {
+        assembly ("memory-safe") {
+            // Check the signature length
+            switch mload(signature)
+            // - case 65: r,s,v signature (standard)
+            case 65 {
+                r := mload(add(signature, 0x20))
+                s := mload(add(signature, 0x40))
+                v := byte(0, mload(add(signature, 0x60)))
+            }
+            // - case 64: r,vs signature (cf https://eips.ethereum.org/EIPS/eip-2098)
+            case 64 {
+                let vs := mload(add(signature, 0x40))
+                r := mload(add(signature, 0x20))
+                s := and(vs, shr(1, not(0)))
+                v := add(shr(255, vs), 27)
+            }
+            default {
+                r := 0
+                s := 0
+                v := 0
+            }
+        }
+    }
+
+    /**
+     * @dev Variant of {parse} that takes a signature in calldata
+     */
+    function parseCalldata(bytes calldata signature) internal pure returns (uint8 v, bytes32 r, bytes32 s) {
+        assembly ("memory-safe") {
+            // Check the signature length
+            switch signature.length
+            // - case 65: r,s,v signature (standard)
+            case 65 {
+                r := calldataload(signature.offset)
+                s := calldataload(add(signature.offset, 0x20))
+                v := byte(0, calldataload(add(signature.offset, 0x40)))
+            }
+            // - case 64: r,vs signature (cf https://eips.ethereum.org/EIPS/eip-2098)
+            case 64 {
+                let vs := calldataload(add(signature.offset, 0x20))
+                r := calldataload(signature.offset)
+                s := and(vs, shr(1, not(0)))
+                v := add(shr(255, vs), 27)
+            }
+            default {
+                r := 0
+                s := 0
+                v := 0
+            }
+        }
+    }
+
+    /**
+     * @dev Optionally reverts with the corresponding custom error according to the `error` argument provided.
+     */
+    function _throwError(RecoverError err, bytes32 errorArg) private pure {
+        if (err == RecoverError.NoError) {
+            return; // no error: do nothing
+        } else if (err == RecoverError.InvalidSignature) {
+            revert ECDSAInvalidSignature();
+        } else if (err == RecoverError.InvalidSignatureLength) {
+            revert ECDSAInvalidSignatureLength(uint256(errorArg));
+        } else if (err == RecoverError.InvalidSignatureS) {
+            revert ECDSAInvalidSignatureS(errorArg);
+        }
+    }
+}
+
+// contracts/lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol
 
 // OpenZeppelin Contracts (last updated v5.4.0) (utils/introspection/IERC165.sol)
 
@@ -54,7 +338,35 @@ interface IERC165 {
     function supportsInterface(bytes4 interfaceId) external view returns (bool);
 }
 
-// lib/openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol
+// contracts/lib/openzeppelin-contracts/contracts/interfaces/IERC5267.sol
+
+// OpenZeppelin Contracts (last updated v5.4.0) (interfaces/IERC5267.sol)
+
+interface IERC5267 {
+    /**
+     * @dev MAY be emitted to signal that the domain could have changed.
+     */
+    event EIP712DomainChanged();
+
+    /**
+     * @dev returns the fields and values that describe the domain separator used by this contract for EIP-712
+     * signature.
+     */
+    function eip712Domain()
+        external
+        view
+        returns (
+            bytes1 fields,
+            string memory name,
+            string memory version,
+            uint256 chainId,
+            address verifyingContract,
+            bytes32 salt,
+            uint256[] memory extensions
+        );
+}
+
+// contracts/lib/openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol
 
 // OpenZeppelin Contracts (last updated v5.4.0) (token/ERC721/IERC721Receiver.sol)
 
@@ -82,7 +394,7 @@ interface IERC721Receiver {
     ) external returns (bytes4);
 }
 
-// lib/openzeppelin-contracts/contracts/utils/Panic.sol
+// contracts/lib/openzeppelin-contracts/contracts/utils/Panic.sol
 
 // OpenZeppelin Contracts (last updated v5.1.0) (utils/Panic.sol)
 
@@ -139,7 +451,7 @@ library Panic {
     }
 }
 
-// lib/openzeppelin-contracts/contracts/utils/math/SafeCast.sol
+// contracts/lib/openzeppelin-contracts/contracts/utils/math/SafeCast.sol
 
 // OpenZeppelin Contracts (last updated v5.6.0) (utils/math/SafeCast.sol)
 // This file was procedurally generated from scripts/generate/templates/SafeCast.js.
@@ -1301,7 +1613,150 @@ library SafeCast {
     }
 }
 
-// lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol
+// contracts/lib/openzeppelin-contracts/contracts/utils/StorageSlot.sol
+
+// OpenZeppelin Contracts (last updated v5.1.0) (utils/StorageSlot.sol)
+// This file was procedurally generated from scripts/generate/templates/StorageSlot.js.
+
+/**
+ * @dev Library for reading and writing primitive types to specific storage slots.
+ *
+ * Storage slots are often used to avoid storage conflict when dealing with upgradeable contracts.
+ * This library helps with reading and writing to such slots without the need for inline assembly.
+ *
+ * The functions in this library return Slot structs that contain a `value` member that can be used to read or write.
+ *
+ * Example usage to set ERC-1967 implementation slot:
+ * ```solidity
+ * contract ERC1967 {
+ *     // Define the slot. Alternatively, use the SlotDerivation library to derive the slot.
+ *     bytes32 internal constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+ *
+ *     function _getImplementation() internal view returns (address) {
+ *         return StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value;
+ *     }
+ *
+ *     function _setImplementation(address newImplementation) internal {
+ *         require(newImplementation.code.length > 0);
+ *         StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = newImplementation;
+ *     }
+ * }
+ * ```
+ *
+ * TIP: Consider using this library along with {SlotDerivation}.
+ */
+library StorageSlot {
+    struct AddressSlot {
+        address value;
+    }
+
+    struct BooleanSlot {
+        bool value;
+    }
+
+    struct Bytes32Slot {
+        bytes32 value;
+    }
+
+    struct Uint256Slot {
+        uint256 value;
+    }
+
+    struct Int256Slot {
+        int256 value;
+    }
+
+    struct StringSlot {
+        string value;
+    }
+
+    struct BytesSlot {
+        bytes value;
+    }
+
+    /**
+     * @dev Returns an `AddressSlot` with member `value` located at `slot`.
+     */
+    function getAddressSlot(bytes32 slot) internal pure returns (AddressSlot storage r) {
+        assembly ("memory-safe") {
+            r.slot := slot
+        }
+    }
+
+    /**
+     * @dev Returns a `BooleanSlot` with member `value` located at `slot`.
+     */
+    function getBooleanSlot(bytes32 slot) internal pure returns (BooleanSlot storage r) {
+        assembly ("memory-safe") {
+            r.slot := slot
+        }
+    }
+
+    /**
+     * @dev Returns a `Bytes32Slot` with member `value` located at `slot`.
+     */
+    function getBytes32Slot(bytes32 slot) internal pure returns (Bytes32Slot storage r) {
+        assembly ("memory-safe") {
+            r.slot := slot
+        }
+    }
+
+    /**
+     * @dev Returns a `Uint256Slot` with member `value` located at `slot`.
+     */
+    function getUint256Slot(bytes32 slot) internal pure returns (Uint256Slot storage r) {
+        assembly ("memory-safe") {
+            r.slot := slot
+        }
+    }
+
+    /**
+     * @dev Returns a `Int256Slot` with member `value` located at `slot`.
+     */
+    function getInt256Slot(bytes32 slot) internal pure returns (Int256Slot storage r) {
+        assembly ("memory-safe") {
+            r.slot := slot
+        }
+    }
+
+    /**
+     * @dev Returns a `StringSlot` with member `value` located at `slot`.
+     */
+    function getStringSlot(bytes32 slot) internal pure returns (StringSlot storage r) {
+        assembly ("memory-safe") {
+            r.slot := slot
+        }
+    }
+
+    /**
+     * @dev Returns an `StringSlot` representation of the string storage pointer `store`.
+     */
+    function getStringSlot(string storage store) internal pure returns (StringSlot storage r) {
+        assembly ("memory-safe") {
+            r.slot := store.slot
+        }
+    }
+
+    /**
+     * @dev Returns a `BytesSlot` with member `value` located at `slot`.
+     */
+    function getBytesSlot(bytes32 slot) internal pure returns (BytesSlot storage r) {
+        assembly ("memory-safe") {
+            r.slot := slot
+        }
+    }
+
+    /**
+     * @dev Returns an `BytesSlot` representation of the bytes storage pointer `store`.
+     */
+    function getBytesSlot(bytes storage store) internal pure returns (BytesSlot storage r) {
+        assembly ("memory-safe") {
+            r.slot := store.slot
+        }
+    }
+}
+
+// contracts/lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol
 
 // OpenZeppelin Contracts (last updated v5.5.0) (interfaces/draft-IERC6093.sol)
 
@@ -1463,7 +1918,7 @@ interface IERC1155Errors {
     error ERC1155InvalidArrayLength(uint256 idsLength, uint256 valuesLength);
 }
 
-// lib/openzeppelin-contracts/contracts/utils/introspection/ERC165.sol
+// contracts/lib/openzeppelin-contracts/contracts/utils/introspection/ERC165.sol
 
 // OpenZeppelin Contracts (last updated v5.4.0) (utils/introspection/ERC165.sol)
 
@@ -1486,7 +1941,7 @@ abstract contract ERC165 is IERC165 {
     }
 }
 
-// lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol
+// contracts/lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol
 
 // OpenZeppelin Contracts (last updated v5.4.0) (token/ERC721/IERC721.sol)
 
@@ -1619,7 +2074,7 @@ interface IERC721 is IERC165 {
     function isApprovedForAll(address owner, address operator) external view returns (bool);
 }
 
-// lib/openzeppelin-contracts/contracts/access/Ownable.sol
+// contracts/lib/openzeppelin-contracts/contracts/access/Ownable.sol
 
 // OpenZeppelin Contracts (last updated v5.0.0) (access/Ownable.sol)
 
@@ -1717,7 +2172,127 @@ abstract contract Ownable is Context {
     }
 }
 
-// lib/openzeppelin-contracts/contracts/utils/math/SignedMath.sol
+// contracts/lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol
+
+// OpenZeppelin Contracts (last updated v5.7.0) (utils/ShortStrings.sol)
+
+// | string  | 0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA   |
+// | length  | 0x                                                              BB |
+type ShortString is bytes32;
+
+/**
+ * @dev This library provides functions to convert short memory strings
+ * into a `ShortString` type that can be used as an immutable variable.
+ *
+ * Strings of arbitrary length can be optimized using this library if
+ * they are short enough (up to 31 bytes) by packing them with their
+ * length (1 byte) in a single EVM word (32 bytes). Additionally, a
+ * fallback mechanism can be used for every other case.
+ *
+ * Usage example:
+ *
+ * ```solidity
+ * contract Named {
+ *     using ShortStrings for *;
+ *
+ *     ShortString private immutable _name;
+ *     string private _nameFallback;
+ *
+ *     constructor(string memory contractName) {
+ *         _name = contractName.toShortStringWithFallback(_nameFallback);
+ *     }
+ *
+ *     function name() external view returns (string memory) {
+ *         return _name.toStringWithFallback(_nameFallback);
+ *     }
+ * }
+ * ```
+ */
+library ShortStrings {
+    // Used as an identifier for strings longer than 31 bytes.
+    bytes32 private constant FALLBACK_SENTINEL = 0x00000000000000000000000000000000000000000000000000000000000000FF;
+
+    error StringTooLong(string str);
+    error InvalidShortString();
+
+    /**
+     * @dev Encode a string of at most 31 chars into a `ShortString`.
+     *
+     * This will trigger a `StringTooLong` error if the input string is too long.
+     */
+    function toShortString(string memory str) internal pure returns (ShortString) {
+        bytes memory bstr = bytes(str);
+        if (bstr.length > 0x1f) {
+            revert StringTooLong(str);
+        }
+        return ShortString.wrap(bytes32(uint256(bytes32(bstr)) | bstr.length));
+    }
+
+    /**
+     * @dev Decode a `ShortString` back to a "normal" string.
+     */
+    function toString(ShortString sstr) internal pure returns (string memory) {
+        uint256 len = byteLength(sstr);
+        // using `new string(len)` would work locally but is not memory safe.
+        string memory str = new string(0x20);
+        assembly ("memory-safe") {
+            mstore(str, len)
+            mstore(add(str, 0x20), sstr)
+        }
+        return str;
+    }
+
+    /**
+     * @dev Return the length of a `ShortString`.
+     */
+    function byteLength(ShortString sstr) internal pure returns (uint256) {
+        uint256 result = uint256(ShortString.unwrap(sstr)) & 0xFF;
+        if (result > 0x1f) {
+            revert InvalidShortString();
+        }
+        return result;
+    }
+
+    /**
+     * @dev Encode a string into a `ShortString`, or write it to storage if it is too long.
+     */
+    function toShortStringWithFallback(string memory value, string storage store) internal returns (ShortString) {
+        if (bytes(value).length < 0x20) {
+            return toShortString(value);
+        } else {
+            StorageSlot.getStringSlot(store).value = value;
+            return ShortString.wrap(FALLBACK_SENTINEL);
+        }
+    }
+
+    /**
+     * @dev Decode a string that was encoded to `ShortString` or written to storage using {toShortStringWithFallback}.
+     */
+    function toStringWithFallback(ShortString value, string storage store) internal pure returns (string memory) {
+        if (ShortString.unwrap(value) != FALLBACK_SENTINEL) {
+            return toString(value);
+        } else {
+            return store;
+        }
+    }
+
+    /**
+     * @dev Return the length of a string that was encoded to `ShortString` or written to storage using
+     * {toShortStringWithFallback}.
+     *
+     * WARNING: This will return the "byte length" of the string. This may not reflect the actual length in terms of
+     * actual characters as the UTF-8 encoding of a single character can span over multiple bytes.
+     */
+    function byteLengthWithFallback(ShortString value, string storage store) internal view returns (uint256) {
+        if (ShortString.unwrap(value) != FALLBACK_SENTINEL) {
+            return byteLength(value);
+        } else {
+            return bytes(store).length;
+        }
+    }
+}
+
+// contracts/lib/openzeppelin-contracts/contracts/utils/math/SignedMath.sol
 
 // OpenZeppelin Contracts (last updated v5.1.0) (utils/math/SignedMath.sol)
 
@@ -1783,7 +2358,7 @@ library SignedMath {
     }
 }
 
-// lib/openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Utils.sol
+// contracts/lib/openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Utils.sol
 
 // OpenZeppelin Contracts (last updated v5.5.0) (token/ERC721/utils/ERC721Utils.sol)
 
@@ -1830,7 +2405,7 @@ library ERC721Utils {
     }
 }
 
-// lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Metadata.sol
+// contracts/lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Metadata.sol
 
 // OpenZeppelin Contracts (last updated v5.4.0) (token/ERC721/extensions/IERC721Metadata.sol)
 
@@ -1855,7 +2430,7 @@ interface IERC721Metadata is IERC721 {
     function tokenURI(uint256 tokenId) external view returns (string memory);
 }
 
-// lib/openzeppelin-contracts/contracts/utils/math/Math.sol
+// contracts/lib/openzeppelin-contracts/contracts/utils/math/Math.sol
 
 // OpenZeppelin Contracts (last updated v5.6.0) (utils/math/Math.sol)
 
@@ -2615,7 +3190,7 @@ library Math {
     }
 }
 
-// lib/openzeppelin-contracts/contracts/utils/Bytes.sol
+// contracts/lib/openzeppelin-contracts/contracts/utils/Bytes.sol
 
 // OpenZeppelin Contracts (last updated v5.7.0) (utils/Bytes.sol)
 
@@ -2942,7 +3517,7 @@ library Bytes {
     }
 }
 
-// lib/openzeppelin-contracts/contracts/utils/Strings.sol
+// contracts/lib/openzeppelin-contracts/contracts/utils/Strings.sol
 
 // OpenZeppelin Contracts (last updated v5.6.0) (utils/Strings.sol)
 
@@ -3469,7 +4044,397 @@ library Strings {
     }
 }
 
-// lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol
+// contracts/lib/openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol
+
+// OpenZeppelin Contracts (last updated v5.6.0) (utils/cryptography/MessageHashUtils.sol)
+
+/**
+ * @dev Signature message hash utilities for producing digests to be consumed by {ECDSA} recovery or signing.
+ *
+ * The library provides methods for generating a hash of a message that conforms to the
+ * https://eips.ethereum.org/EIPS/eip-191[ERC-191] and https://eips.ethereum.org/EIPS/eip-712[EIP 712]
+ * specifications.
+ */
+library MessageHashUtils {
+    error ERC5267ExtensionsNotSupported();
+
+    /**
+     * @dev Returns the keccak256 digest of an ERC-191 signed data with version
+     * `0x45` (`personal_sign` messages).
+     *
+     * The digest is calculated by prefixing a bytes32 `messageHash` with
+     * `"\x19Ethereum Signed Message:\n32"` and hashing the result. It corresponds with the
+     * hash signed when using the https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_sign[`eth_sign`] JSON-RPC method.
+     *
+     * NOTE: The `messageHash` parameter is intended to be the result of hashing a raw message with
+     * keccak256, although any bytes32 value can be safely used because the final digest will
+     * be re-hashed.
+     *
+     * See {ECDSA-recover}.
+     */
+    function toEthSignedMessageHash(bytes32 messageHash) internal pure returns (bytes32 digest) {
+        assembly ("memory-safe") {
+            mstore(0x00, "\x19Ethereum Signed Message:\n32") // 32 is the bytes-length of messageHash
+            mstore(0x1c, messageHash) // 0x1c (28) is the length of the prefix
+            digest := keccak256(0x00, 0x3c) // 0x3c is the length of the prefix (0x1c) + messageHash (0x20)
+        }
+    }
+
+    /**
+     * @dev Returns the keccak256 digest of an ERC-191 signed data with version
+     * `0x45` (`personal_sign` messages).
+     *
+     * The digest is calculated by prefixing an arbitrary `message` with
+     * `"\x19Ethereum Signed Message:\n" + len(message)` and hashing the result. It corresponds with the
+     * hash signed when using the https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_sign[`eth_sign`] JSON-RPC method.
+     *
+     * See {ECDSA-recover}.
+     */
+    function toEthSignedMessageHash(bytes memory message) internal pure returns (bytes32) {
+        return
+            keccak256(bytes.concat("\x19Ethereum Signed Message:\n", bytes(Strings.toString(message.length)), message));
+    }
+
+    /**
+     * @dev Returns the keccak256 digest of an ERC-191 signed data with version
+     * `0x00` (data with intended validator).
+     *
+     * The digest is calculated by prefixing an arbitrary `data` with `"\x19\x00"` and the intended
+     * `validator` address. Then hashing the result.
+     *
+     * See {ECDSA-recover}.
+     */
+    function toDataWithIntendedValidatorHash(address validator, bytes memory data) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(hex"19_00", validator, data));
+    }
+
+    /**
+     * @dev Variant of {toDataWithIntendedValidatorHash-address-bytes} optimized for cases where `data` is a bytes32.
+     */
+    function toDataWithIntendedValidatorHash(
+        address validator,
+        bytes32 messageHash
+    ) internal pure returns (bytes32 digest) {
+        assembly ("memory-safe") {
+            mstore(0x00, hex"19_00")
+            mstore(0x02, shl(96, validator))
+            mstore(0x16, messageHash)
+            digest := keccak256(0x00, 0x36)
+        }
+    }
+
+    /**
+     * @dev Returns the keccak256 digest of an EIP-712 typed data (ERC-191 version `0x01`).
+     *
+     * The digest is calculated from a `domainSeparator` and a `structHash`, by prefixing them with
+     * `\x19\x01` and hashing the result. It corresponds to the hash signed by the
+     * https://eips.ethereum.org/EIPS/eip-712[`eth_signTypedData`] JSON-RPC method as part of EIP-712.
+     *
+     * See {ECDSA-recover}.
+     */
+    function toTypedDataHash(bytes32 domainSeparator, bytes32 structHash) internal pure returns (bytes32 digest) {
+        assembly ("memory-safe") {
+            let ptr := mload(0x40)
+            mstore(ptr, hex"19_01")
+            mstore(add(ptr, 0x02), domainSeparator)
+            mstore(add(ptr, 0x22), structHash)
+            digest := keccak256(ptr, 0x42)
+        }
+    }
+
+    /**
+     * @dev Returns the EIP-712 domain separator constructed from an `eip712Domain`. See {IERC5267-eip712Domain}
+     *
+     * This function dynamically constructs the domain separator based on which fields are present in the
+     * `fields` parameter. It contains flags that indicate which domain fields are present:
+     *
+     * * Bit 0 (0x01): name
+     * * Bit 1 (0x02): version
+     * * Bit 2 (0x04): chainId
+     * * Bit 3 (0x08): verifyingContract
+     * * Bit 4 (0x10): salt
+     *
+     * Arguments that correspond to fields which are not present in `fields` are ignored. For example, if `fields` is
+     * `0x0f` (`0b01111`), then the `salt` parameter is ignored.
+     */
+    function toDomainSeparator(
+        bytes1 fields,
+        string memory name,
+        string memory version,
+        uint256 chainId,
+        address verifyingContract,
+        bytes32 salt
+    ) internal pure returns (bytes32 hash) {
+        return
+            toDomainSeparator(
+                fields,
+                keccak256(bytes(name)),
+                keccak256(bytes(version)),
+                chainId,
+                verifyingContract,
+                salt
+            );
+    }
+
+    /// @dev Variant of {toDomainSeparator-bytes1-string-string-uint256-address-bytes32} that uses hashed name and version.
+    function toDomainSeparator(
+        bytes1 fields,
+        bytes32 nameHash,
+        bytes32 versionHash,
+        uint256 chainId,
+        address verifyingContract,
+        bytes32 salt
+    ) internal pure returns (bytes32 hash) {
+        bytes32 domainTypeHash = toDomainTypeHash(fields);
+
+        assembly ("memory-safe") {
+            // align fields to the right for easy processing
+            fields := shr(248, fields)
+
+            // FMP used as scratch space
+            let fmp := mload(0x40)
+            mstore(fmp, domainTypeHash)
+
+            let ptr := add(fmp, 0x20)
+            if and(fields, 0x01) {
+                mstore(ptr, nameHash)
+                ptr := add(ptr, 0x20)
+            }
+            if and(fields, 0x02) {
+                mstore(ptr, versionHash)
+                ptr := add(ptr, 0x20)
+            }
+            if and(fields, 0x04) {
+                mstore(ptr, chainId)
+                ptr := add(ptr, 0x20)
+            }
+            if and(fields, 0x08) {
+                mstore(ptr, verifyingContract)
+                ptr := add(ptr, 0x20)
+            }
+            if and(fields, 0x10) {
+                mstore(ptr, salt)
+                ptr := add(ptr, 0x20)
+            }
+
+            hash := keccak256(fmp, sub(ptr, fmp))
+        }
+    }
+
+    /// @dev Builds an EIP-712 domain type hash depending on the `fields` provided, following https://eips.ethereum.org/EIPS/eip-5267[ERC-5267]
+    function toDomainTypeHash(bytes1 fields) internal pure returns (bytes32 hash) {
+        if (fields & 0x20 == 0x20) revert ERC5267ExtensionsNotSupported();
+
+        assembly ("memory-safe") {
+            // align fields to the right for easy processing
+            fields := shr(248, fields)
+
+            // FMP used as scratch space
+            let fmp := mload(0x40)
+            mstore(fmp, "EIP712Domain(")
+
+            let ptr := add(fmp, 0x0d)
+            // name field
+            if and(fields, 0x01) {
+                mstore(ptr, "string name,")
+                ptr := add(ptr, 0x0c)
+            }
+            // version field
+            if and(fields, 0x02) {
+                mstore(ptr, "string version,")
+                ptr := add(ptr, 0x0f)
+            }
+            // chainId field
+            if and(fields, 0x04) {
+                mstore(ptr, "uint256 chainId,")
+                ptr := add(ptr, 0x10)
+            }
+            // verifyingContract field
+            if and(fields, 0x08) {
+                mstore(ptr, "address verifyingContract,")
+                ptr := add(ptr, 0x1a)
+            }
+            // salt field
+            if and(fields, 0x10) {
+                mstore(ptr, "bytes32 salt,")
+                ptr := add(ptr, 0x0d)
+            }
+            // if any field is enabled, remove the trailing comma
+            ptr := sub(ptr, iszero(iszero(and(fields, 0x1f))))
+            // add the closing brace
+            mstore8(ptr, 0x29) // add closing brace
+            ptr := add(ptr, 1)
+
+            hash := keccak256(fmp, sub(ptr, fmp))
+        }
+    }
+}
+
+// contracts/lib/openzeppelin-contracts/contracts/utils/cryptography/EIP712.sol
+
+// OpenZeppelin Contracts (last updated v5.7.0) (utils/cryptography/EIP712.sol)
+
+/**
+ * @dev https://eips.ethereum.org/EIPS/eip-712[EIP-712] is a standard for hashing and signing of typed structured data.
+ *
+ * The encoding scheme specified in the EIP requires a domain separator and a hash of the typed structured data, whose
+ * encoding is very generic and therefore its implementation in Solidity is not feasible, thus this contract
+ * does not implement the encoding itself. Protocols need to implement the type-specific encoding they need in order to
+ * produce the hash of their typed data using a combination of `abi.encode` and `keccak256`.
+ *
+ * This contract implements the EIP-712 domain separator ({_domainSeparatorV4}) that is used as part of the encoding
+ * scheme, and the final step of the encoding to obtain the message digest that is then signed via ECDSA
+ * ({_hashTypedDataV4}).
+ *
+ * The implementation of the domain separator was designed to be as efficient as possible while still properly updating
+ * the chain id to protect against replay attacks on an eventual fork of the chain.
+ *
+ * NOTE: This contract implements the version of the encoding known as "v4", as implemented by the JSON RPC method
+ * https://docs.metamask.io/guide/signing-data.html[`eth_signTypedDataV4` in MetaMask].
+ *
+ * NOTE: In the upgradeable version of this contract, the cached values will correspond to the address, and the domain
+ * separator of the implementation contract. This will cause the {_domainSeparatorV4} function to always rebuild the
+ * separator from the immutable values, which is cheaper than accessing a cached version in cold storage.
+ *
+ * IMPORTANT: The `name` and `version` must each fit in a `ShortString` (at most 31 bytes). Longer values cause the
+ * constructor to revert with a `ShortStrings.StringTooLong` error. Because the values are stored exclusively in
+ * immutables, the domain is preserved when the contract is used behind a proxy or clone without an initializer.
+ *
+ * @custom:oz-upgrades-unsafe-allow state-variable-immutable
+ */
+abstract contract EIP712 is IERC5267 {
+    using ShortStrings for *;
+
+    bytes32 private constant TYPE_HASH =
+        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+
+    // Cache the domain separator as an immutable value, but also store the chain id that it corresponds to, in order to
+    // invalidate the cached domain separator if the chain id changes.
+    bytes32 private immutable _cachedDomainSeparator;
+    uint256 private immutable _cachedChainId;
+    address private immutable _cachedThis;
+
+    bytes32 private immutable _hashedName;
+    bytes32 private immutable _hashedVersion;
+
+    ShortString private immutable _name;
+    ShortString private immutable _version;
+
+    // IMPORTANT: Deprecated. Kept to preserve the storage layout of inheriting contracts used as an
+    // implementation behind a proxy.
+    // slither-disable-next-line constable-states
+    string private _nameFallback;
+
+    // IMPORTANT: Deprecated. Kept to preserve the storage layout of inheriting contracts used as an
+    // implementation behind a proxy.
+    // slither-disable-next-line constable-states
+    string private _versionFallback;
+
+    /**
+     * @dev Initializes the domain separator and parameter caches.
+     *
+     * The meaning of `name` and `version` is specified in
+     * https://eips.ethereum.org/EIPS/eip-712#definition-of-domainseparator[EIP-712]:
+     *
+     * - `name`: the user readable name of the signing domain, i.e. the name of the DApp or the protocol.
+     * - `version`: the current major version of the signing domain.
+     *
+     * NOTE: These parameters cannot be changed except through a xref:learn::upgrading-smart-contracts.adoc[smart
+     * contract upgrade].
+     */
+    constructor(string memory name, string memory version) {
+        _name = name.toShortString();
+        _version = version.toShortString();
+        _hashedName = keccak256(bytes(name));
+        _hashedVersion = keccak256(bytes(version));
+
+        _cachedChainId = block.chainid;
+        _cachedDomainSeparator = _buildDomainSeparator();
+        _cachedThis = address(this);
+    }
+
+    /**
+     * @dev Returns the domain separator for the current chain.
+     */
+    function _domainSeparatorV4() internal view returns (bytes32) {
+        if (address(this) == _cachedThis && block.chainid == _cachedChainId) {
+            return _cachedDomainSeparator;
+        } else {
+            return _buildDomainSeparator();
+        }
+    }
+
+    function _buildDomainSeparator() private view returns (bytes32) {
+        return keccak256(abi.encode(TYPE_HASH, _hashedName, _hashedVersion, block.chainid, address(this)));
+    }
+
+    /**
+     * @dev Given an already https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct[hashed struct], this
+     * function returns the hash of the fully encoded EIP712 message for this domain.
+     *
+     * This hash can be used together with {ECDSA-recover} to obtain the signer of a message. For example:
+     *
+     * ```solidity
+     * bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
+     *     keccak256("Mail(address to,string contents)"),
+     *     mailTo,
+     *     keccak256(bytes(mailContents))
+     * )));
+     * address signer = ECDSA.recover(digest, signature);
+     * ```
+     */
+    function _hashTypedDataV4(bytes32 structHash) internal view virtual returns (bytes32) {
+        return MessageHashUtils.toTypedDataHash(_domainSeparatorV4(), structHash);
+    }
+
+    /// @inheritdoc IERC5267
+    function eip712Domain()
+        public
+        view
+        virtual
+        returns (
+            bytes1 fields,
+            string memory name,
+            string memory version,
+            uint256 chainId,
+            address verifyingContract,
+            bytes32 salt,
+            uint256[] memory extensions
+        )
+    {
+        return (
+            hex"0f", // 01111
+            _EIP712Name(),
+            _EIP712Version(),
+            block.chainid,
+            address(this),
+            bytes32(0),
+            new uint256[](0)
+        );
+    }
+
+    /**
+     * @dev The name parameter for the EIP712 domain.
+     *
+     * NOTE: This function reads `_name`, which is an immutable value.
+     */
+    // solhint-disable-next-line func-name-mixedcase
+    function _EIP712Name() internal view returns (string memory) {
+        return _name.toString();
+    }
+
+    /**
+     * @dev The version parameter for the EIP712 domain.
+     *
+     * NOTE: This function reads `_version`, which is an immutable value.
+     */
+    // solhint-disable-next-line func-name-mixedcase
+    function _EIP712Version() internal view returns (string memory) {
+        return _version.toString();
+    }
+}
+
+// contracts/lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol
 
 // OpenZeppelin Contracts (last updated v5.6.0) (token/ERC721/ERC721.sol)
 
@@ -3894,9 +4859,9 @@ abstract contract ERC721 is Context, ERC165, IERC721, IERC721Metadata, IERC721Er
     }
 }
 
-// src/TicketContract.sol
+// contracts/src/TicketContract.sol
 
-contract TicketContract is ERC721, Ownable{
+contract TicketContract is ERC721, Ownable, EIP712 {
 
     // Custom Error -> untuk menunjukkan pesan error jika kondis error terpenuhi
     error EventAlreadyExists(uint256 eventId); // error jika event yang sama sudah pernah dibuat
@@ -3913,6 +4878,9 @@ contract TicketContract is ERC721, Ownable{
     error MaxPerWalletExceeded();
     error TicketNotFound(uint256 tokenId);
     error TicketAlreadyUsed(uint256 tokenId);
+    error InvalidSignature();
+    error NonceAlreadyUsed(uint256 nonce);
+    error SystemSignerNotSet();
     
 
     // Struct 
@@ -3942,6 +4910,9 @@ contract TicketContract is ERC721, Ownable{
     address public marketplaceAddress; // alamat kontrak marketplace resmi
     address public systemSigner; // address signer backend yang merilis signature
     uint256 private _nextTokenId; // penghitung ID token NFT
+    bytes32 public constant MINT_TYPEHASH = keccak256(
+        "MintAuth(address to,uint256 eventId,uint256 categoryId,uint256 nonce)"
+    );
     mapping(uint256 => TicketInfo) private _tickets; // mapping untuk menyimpan data ticket berdasarkan tokenid
     mapping(address => bytes32) private userIdentities; // data hash KYC KTP (wallet siap, milik identity hash yang mana)
     mapping(uint256 => bool) private usedNonces; // mekanisme anti replay attack signature, jadi nandain kalau nonce ini sudah eprnah dipakai   
@@ -3958,7 +4929,7 @@ contract TicketContract is ERC721, Ownable{
 
     // Constructor
     // constructor akan berisi apa nama dari token ERC 721 (NFT) yang dibuat
-    constructor() ERC721("NFTix", "NFTIX") Ownable(msg.sender) {
+    constructor() ERC721("NFTix", "NFTIX") Ownable(msg.sender) EIP712("NFTix", "1") {
         
     }
 
@@ -4051,10 +5022,34 @@ contract TicketContract is ERC721, Ownable{
         systemSigner = _signer;
     }
 
-    function mintTicket(address to, uint256 eventId, uint256 categoryId) external returns (uint256){
+    function mintTicket(
+        address to,
+        uint256 eventId,
+        uint256 categoryId,
+        uint256 nonce,
+        bytes calldata signature
+    ) external returns (uint256){
         if (to == address(0)){ // cek apakah alamat penerima adalah address kosong
             revert ForbiddenZero();
         }
+        if (systemSigner == address(0)){
+            revert SystemSignerNotSet();
+        }
+        if (usedNonces[nonce]){
+            revert NonceAlreadyUsed(nonce);
+        }
+
+        // Verifikasi tanda tangan digital EIP-712 dari systemSigner backend
+        bytes32 structHash = keccak256(
+            abi.encode(MINT_TYPEHASH, to, eventId, categoryId, nonce)
+        );
+        bytes32 digest = _hashTypedDataV4(structHash);
+        address signer = ECDSA.recover(digest, signature);
+        if (signer != systemSigner){
+            revert InvalidSignature();
+        }
+        usedNonces[nonce] = true;
+
         if(!events[eventId].exists){ // cek apakah event sudah dibuat
             revert EventNotFound(eventId);
         }
@@ -4089,13 +5084,17 @@ contract TicketContract is ERC721, Ownable{
             used: false
         });
 
-        
         // Mint NFT (ERC721)
         _safeMint(to, tokenId); // mint ke alamat 'to'
 
         emit TicketMinted(tokenId, eventId, categoryId, to, price);
         
         return tokenId;
+    }
+
+    // helper untuk memeriksa apakah nonce tertentu sudah pernah digunakan
+    function isNonceUsed(uint256 nonce) external view returns (bool) {
+        return usedNonces[nonce];
     }
 
     function markUsed(uint256 tokenId) external{

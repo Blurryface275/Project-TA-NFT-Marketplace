@@ -3,8 +3,10 @@ pragma solidity ^0.8.26;
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-contract TicketContract is ERC721, Ownable{
+contract TicketContract is ERC721, Ownable, EIP712 {
 
     // Custom Error -> untuk menunjukkan pesan error jika kondis error terpenuhi
     error EventAlreadyExists(uint256 eventId); // error jika event yang sama sudah pernah dibuat
@@ -21,6 +23,9 @@ contract TicketContract is ERC721, Ownable{
     error MaxPerWalletExceeded();
     error TicketNotFound(uint256 tokenId);
     error TicketAlreadyUsed(uint256 tokenId);
+    error InvalidSignature();
+    error NonceAlreadyUsed(uint256 nonce);
+    error SystemSignerNotSet();
     
 
     // Struct 
@@ -50,6 +55,9 @@ contract TicketContract is ERC721, Ownable{
     address public marketplaceAddress; // alamat kontrak marketplace resmi
     address public systemSigner; // address signer backend yang merilis signature
     uint256 private _nextTokenId; // penghitung ID token NFT
+    bytes32 public constant MINT_TYPEHASH = keccak256(
+        "MintAuth(address to,uint256 eventId,uint256 categoryId,uint256 nonce)"
+    );
     mapping(uint256 => TicketInfo) private _tickets; // mapping untuk menyimpan data ticket berdasarkan tokenid
     mapping(address => bytes32) private userIdentities; // data hash KYC KTP (wallet siap, milik identity hash yang mana)
     mapping(uint256 => bool) private usedNonces; // mekanisme anti replay attack signature, jadi nandain kalau nonce ini sudah eprnah dipakai   
@@ -67,7 +75,7 @@ contract TicketContract is ERC721, Ownable{
 
     // Constructor
     // constructor akan berisi apa nama dari token ERC 721 (NFT) yang dibuat
-    constructor() ERC721("NFTix", "NFTIX") Ownable(msg.sender) {
+    constructor() ERC721("NFTix", "NFTIX") Ownable(msg.sender) EIP712("NFTix", "1") {
         
     }
 
@@ -160,10 +168,34 @@ contract TicketContract is ERC721, Ownable{
         systemSigner = _signer;
     }
 
-    function mintTicket(address to, uint256 eventId, uint256 categoryId) external returns (uint256){
+    function mintTicket(
+        address to,
+        uint256 eventId,
+        uint256 categoryId,
+        uint256 nonce,
+        bytes calldata signature
+    ) external returns (uint256){
         if (to == address(0)){ // cek apakah alamat penerima adalah address kosong
             revert ForbiddenZero();
         }
+        if (systemSigner == address(0)){
+            revert SystemSignerNotSet();
+        }
+        if (usedNonces[nonce]){
+            revert NonceAlreadyUsed(nonce);
+        }
+
+        // Verifikasi tanda tangan digital EIP-712 dari systemSigner backend
+        bytes32 structHash = keccak256(
+            abi.encode(MINT_TYPEHASH, to, eventId, categoryId, nonce)
+        );
+        bytes32 digest = _hashTypedDataV4(structHash);
+        address signer = ECDSA.recover(digest, signature);
+        if (signer != systemSigner){
+            revert InvalidSignature();
+        }
+        usedNonces[nonce] = true;
+
         if(!events[eventId].exists){ // cek apakah event sudah dibuat
             revert EventNotFound(eventId);
         }
@@ -190,7 +222,6 @@ contract TicketContract is ERC721, Ownable{
         // Kunci harga asli saat minting (anti markup / calo)
         uint96 price = cat.price;
 
-
         // simpan data ticket
         _tickets[tokenId] = TicketInfo({
             eventId: eventId,
@@ -199,13 +230,17 @@ contract TicketContract is ERC721, Ownable{
             used: false
         });
 
-        
         // Mint NFT (ERC721)
         _safeMint(to, tokenId); // mint ke alamat 'to'
 
         emit TicketMinted(tokenId, eventId, categoryId, to, price);
         
         return tokenId;
+    }
+
+    // helper untuk memeriksa apakah nonce tertentu sudah pernah digunakan
+    function isNonceUsed(uint256 nonce) external view returns (bool) {
+        return usedNonces[nonce];
     }
 
     function markUsed(uint256 tokenId) external{
