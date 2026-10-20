@@ -24,7 +24,6 @@ export type FormState =
     }
   | undefined;
 
-let resData;
 // Login Action Handler
 export async function login(
   prevState: FormState,
@@ -66,18 +65,19 @@ export async function login(
     };
   }
 
-  // ambil response JSON
-  resData = await response.json();
-  console.log(
-    "✅ [Action] Kredensial valid, membuat session untuk userId:",
-    resData.id,
-  );
+  // ambil response JSON secara lokal
+  const resData = await response.json();
 
   if (!response.ok) {
     return {
       message: resData.message || "Gagal login!",
     };
   }
+
+  console.log(
+    "✅ [Action] Kredensial valid, membuat session untuk userId:",
+    resData.id,
+  );
 
   // Buat session cookie via helper session yang tadi kamu buat
   await createSession(

@@ -4,11 +4,11 @@ import { useState, useActionState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signup, verifyOtpAction, resendOtpAction } from "./actions";
-import { ArrowRight, RefreshCw, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { PasswordInput } from "@/components/ui/PasswordInput";
+import { ArrowRight, RefreshCw, ArrowLeft } from "lucide-react";
 
 export function SignUpForm() {
   const router = useRouter();
-  const [showPassword, setShowPassword] = useState(false);
   const [signupState, signupAction, signupPending] = useActionState(signup, undefined);
 
   const [otp, setOtp] = useState("");
@@ -40,7 +40,7 @@ export function SignUpForm() {
 
     setOtpSuccess("Email terverifikasi. Mengalihkan ke login...");
     setTimeout(() => {
-      router.push("/login?verified=true");
+      router.push(`/login?verified=true&email=${encodeURIComponent(registeredEmail)}`);
     }, 1200);
   };
 
@@ -255,32 +255,14 @@ export function SignUpForm() {
             <label htmlFor="signup-password" className="text-xs font-medium text-slate-700 block">
               Kata Sandi
             </label>
-            <div className="relative">
-              <input
-                id="signup-password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                required
-                autoComplete="new-password"
-                aria-required="true"
-                aria-invalid={!!signupState?.errors?.password}
-                aria-describedby={signupState?.errors?.password ? "signup-password-error" : undefined}
-                placeholder="Minimal 8 karakter"
-                className="w-full bg-slate-50/70 border border-slate-200/50 rounded-2xl px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-[#FF5A36] focus:ring-1 focus:ring-[#FF5A36] transition-all duration-150 pr-10 min-h-[44px]"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 transition cursor-pointer p-0.5"
-                aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
-              >
-                {showPassword ? (
-                  <EyeOff className="w-4 h-4" aria-hidden="true" />
-                ) : (
-                  <Eye className="w-4 h-4" aria-hidden="true" />
-                )}
-              </button>
-            </div>
+            <PasswordInput
+              id="signup-password"
+              name="password"
+              autoComplete="new-password"
+              aria-required="true"
+              aria-invalid={!!signupState?.errors?.password}
+              aria-describedby={signupState?.errors?.password ? "signup-password-error" : undefined}
+            />
             {signupState?.errors?.password && (
               <p id="signup-password-error" role="alert" className="text-[11px] text-rose-500 mt-1">
                 {signupState.errors.password[0]}

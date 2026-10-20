@@ -1,17 +1,18 @@
 "use client";
 
-import { useState, useActionState } from "react";
+import { useActionState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { login } from "./actions";
-import { ArrowRight, RefreshCw, Check, Eye, EyeOff } from "lucide-react";
+import { PasswordInput } from "@/components/ui/PasswordInput";
+import { ArrowRight, RefreshCw, Check } from "lucide-react";
 
 export function LoginForm() {
   const searchParams = useSearchParams();
-  const [showPassword, setShowPassword] = useState(false);
   const [loginState, loginAction, loginPending] = useActionState(login, undefined);
 
   const verifiedNotice = searchParams.get("verified") === "true";
+  const defaultEmail = searchParams.get("email") || "";
 
   return (
     <div className="w-full max-w-[400px] bg-white rounded-3xl p-6 sm:p-8 shadow-[0_4px_30px_rgba(0,0,0,0.03)] border border-slate-100/60 transition-all">
@@ -82,6 +83,7 @@ export function LoginForm() {
             type="email"
             required
             autoComplete="email"
+            defaultValue={defaultEmail}
             spellCheck={false}
             aria-required="true"
             aria-invalid={!!loginState?.errors?.email}
@@ -108,32 +110,13 @@ export function LoginForm() {
               Lupa sandi?
             </a>
           </div>
-          <div className="relative">
-            <input
-              id="login-password"
-              name="password"
-              type={showPassword ? "text" : "password"}
-              required
-              autoComplete="current-password"
-              aria-required="true"
-              aria-invalid={!!loginState?.errors?.password}
-              aria-describedby={loginState?.errors?.password ? "login-password-error" : undefined}
-              placeholder="Minimal 8 karakter"
-              className="w-full bg-slate-50/70 border border-slate-200/50 rounded-2xl px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-[#FF5A36] focus:ring-1 focus:ring-[#FF5A36] transition-all duration-150 pr-10 min-h-[44px]"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 transition cursor-pointer p-0.5"
-              aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
-            >
-              {showPassword ? (
-                <EyeOff className="w-4 h-4" aria-hidden="true" />
-              ) : (
-                <Eye className="w-4 h-4" aria-hidden="true" />
-              )}
-            </button>
-          </div>
+          <PasswordInput
+            id="login-password"
+            name="password"
+            aria-required="true"
+            aria-invalid={!!loginState?.errors?.password}
+            aria-describedby={loginState?.errors?.password ? "login-password-error" : undefined}
+          />
           {loginState?.errors?.password && (
             <p id="login-password-error" role="alert" className="text-[11px] text-rose-500 mt-1">
               {loginState.errors.password[0]}
