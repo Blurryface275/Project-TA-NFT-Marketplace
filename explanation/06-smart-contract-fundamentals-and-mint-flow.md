@@ -1,183 +1,243 @@
-# Penjelasan 06: Fondasi Smart Contract Solidity & Alur Eksekusi Minting Tiket
+# Desain dan spesifikasi teknis fondasi smart contract Solidity dan alur minting tiket NFT
 
-Dokumen ini mendokumentasikan secara rinci arsitektur objek tiket di smart contract, fungsi kata kunci dasar Solidity (`error`, `revert`, `event`, `emit`, `external`, `public`, `view`, `pure`), teknik optimasi gas via *Struct Packing*, serta alur eksekusi baris demi baris saat pembelian tiket NFT.
+**Spesifikasi teknis struktur data TicketInfo, optimasi storage slot packing, semantik eksekusi Solidity, dan alur pencetakan on-chain**
+
+| Parameter | Deskripsi |
+| :--- | :--- |
+| **Status** | Spesifikasi arsitektur smart contract final |
+| **Penyusun** | Benedictus Leonardo Edward Stephen Sugianto (NRP: 160423176) |
+| **Ruang lingkup** | Desain data struct dan mapping ERC-721, analisis slot packing EVM, semantik visibilitas/mutabilitas, custom error EIP-838 vs require string, dan alur eksekusi minting tiket |
+| **Dokumen terkait** | [03-evm-opcodes-guide.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/03-evm-opcodes-guide.md), [08-evm-storage-capacity-and-multi-event-architecture.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/08-evm-storage-capacity-and-multi-event-architecture.md), [10-tickets-service-relayer-deep-dive.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/10-tickets-service-relayer-deep-dive.md) |
+| **Sasaran pembaca** | Penguji sidang tugas akhir, pembimbing, dan perekayasa perangkat lunak |
 
 ---
 
-## 1. Bentuk "Object" Tiket di Smart Contract
+## 1. Ringkasan eksekutif
 
-Smart Contract Solidity tidak memiliki sistem kelas (*class*) seperti bahasa berorientasi objek (OOP) murni. Untuk merepresentasikan sebuah objek tiket, sistem menggabungkan dua konsep utama: **`struct`** dan **`mapping`**.
+Platform *NFTix* mengimplementasikan kontrak pintar `TicketContract.sol` yang dibangun di atas standar token non-fungible Ethereum ERC-721 dengan ekstensi `ERC721URIStorage` dan kontrol akses `Ownable` dari OpenZeppelin Contracts versi 5.0. Kontrak ini bertindak sebagai buku besar tunggal (*master ledger*) yang mengelola pencetakan tiket, penguncian harga dasar anti-calo, dan pencatatan status penggunaan tiket konser.
 
-### A. Cetak Biru Tiket (`struct TicketInfo`)
-Didefinisikan di [`contracts/src/TicketContract.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/src/TicketContract.sol) (Baris 43–48):
-```solidity
-struct TicketInfo {
-    uint256 eventId;       // Pengenal event tempat tiket ini berlaku
-    uint256 categoryId;    // Kategori tiket (VIP, CAT 1, Festival, dsb.)
-    uint96 originalPrice;  // Harga resmi dari penyelenggara (dikunci permanen)
-    bool used;             // Status penggunaan: false (belum dipakai), true (sudah dipakai)
-}
+Solidity mengeksekusi logika di atas mesin berbasis stack 256-bit tanpa paradigma objek berbasis kelas (*class*) murni. Representasi tiket diwujudkan melalui perpaduan struktur data `struct TicketInfo` dan pemetaan hash `mapping(uint256 => TicketInfo)`. 
+
+Untuk menekan biaya transaksi pencetakan tiket bagi penyelenggara konser atau relayer sponsor gas, kontrak ini menerapkan teknik optimasi penyimpanan memori EVM tingkat lanjut yang disebut *storage slot packing*. Variabel `originalPrice` (`uint96`) dan `used` (`bool` = 8-bit) dikemas ke dalam satu slot 256-bit tunggal, memangkas konsumsi satu kali instruksi `SSTORE` (menghemat ~20.000 gas per pencetakan tiket).
+
+---
+
+## 2. Sumber fakta dan acuan kode
+
+Analisis arsitektur ini merujuk langsung pada implementasi kode kontrak aktif di repositori proyek:
+
+| Komponen | Berkas sumber | Lokasi baris | Perilaku terverifikasi |
+| :--- | :--- | :--- | :--- |
+| Struktur Data Tiket | [TicketContract.sol](file:///d:/STEVE/Project-TA-NFT-Marketplace/contracts/src/TicketContract.sol) | 43 - 48 | Definisi `struct TicketInfo` dengan tipe data teroptimasi `uint96` dan `bool` |
+| Pemetaan Storage | [TicketContract.sol](file:///d:/STEVE/Project-TA-NFT-Marketplace/contracts/src/TicketContract.sol) | 53 | Deklarasi tabel hash privat `_tickets` terindeks `tokenId` |
+| Eksekusi Pencetakan | [TicketContract.sol](file:///d:/STEVE/Project-TA-NFT-Marketplace/contracts/src/TicketContract.sol) | 165 - 208 | Fungsi `mintTicket(to, eventId, categoryId)` dengan kontrol akses `onlyOwner` |
+| Definisi Kesalahan | [TicketContract.sol](file:///d:/STEVE/Project-TA-NFT-Marketplace/contracts/src/TicketContract.sol) | 15 - 28 | Deklarasi custom error EIP-838 hemat gas (`error Unauthorized()`, dll.) |
+| Emisi Event | [TicketContract.sol](file:///d:/STEVE/Project-TA-NFT-Marketplace/contracts/src/TicketContract.sol) | 30 - 39 | Deklarasi log blockchain `event TicketMinted(...)` berparameter `indexed` |
+
+---
+
+## 3. Tujuan dan batasan sistem
+
+### 3.1 Tujuan
+1. Menyediakan representasi tiket digital yang tidak dapat dipalsukan dan mematuhi standar ERC-721.
+2. Mengunci harga tiket resmi (`originalPrice`) secara permanen di tingkat penyimpanan on-chain untuk mencegah manipulasi kenaikan harga di pasar sekunder.
+3. Mengoptimalkan alokasi slot penyimpanan EVM guna meminimalkan konsumsi biaya gas penulisan (`SSTORE`).
+4. Membatasi hak pemanggilan fungsi pencetakan hanya kepada relayer backend resmi (*gas sponsor*) melalui modifier `onlyOwner`.
+
+### 3.2 Batasan (non-goals)
+1. Tidak menyimpan metadata gambar konser yang berukuran besar langsung di penyimpanan on-chain (metadata disimpan di IPFS/Arweave dan ditunjuk via URI).
+2. Tidak mengizinkan pembeli umum memanggil fungsi pencetakan secara langsung tanpa melalui relayer terotorisasi.
+3. Tidak mendukung penghancuran tiket (*burn*) sepihak oleh pengguna tanpa instruksi pembatalan resmi acara.
+
+---
+
+## 4. Diagram desain sistem dan arsitektur model data smart contract
+
+Diagram blok berikut memetakan hierarki pewarisan kontrak, struktur penyimpanan memori on-chain, dan gerbang otorisasi pencetakan:
+
+```mermaid
+graph TB
+    subgraph InheritanceTree ["1. Pohon Pewarisan Kontrak (OpenZeppelin v5.0)"]
+        IERC721["interface IERC721 / IERC721Metadata"]
+        ERC721["ERC721 (Standar Token Non-Fungible)"]
+        ERC721URI["ERC721URIStorage (Penyimpanan Link Metadata)"]
+        Ownable["Ownable (Kontrol Akses Administrator / Relayer)"]
+        TicketMaster["TicketContract.sol (Kontrak Master Tiket)"]
+        
+        IERC721 --> ERC721
+        ERC721 --> ERC721URI
+        ERC721URI --> TicketMaster
+        Ownable --> TicketMaster
+    end
+
+    subgraph StateStorageLayout ["2. Tata Letak Penyimpanan On-Chain (EVM State Storage)"]
+        OwnersMapping["_owners: mapping(uint256 => address) (Kepemilikan Standar ERC-721)"]
+        TicketsMapping["_tickets: mapping(uint256 => TicketInfo) (Objek Metadata Tiket)"]
+        CategoriesMapping["_categories: mapping(uint256 => mapping(uint256 => CategoryInfo))"]
+        AllowlistState["marketplaceContract: address (Kunci Transfer Tertutup)"]
+        
+        TicketMaster --- OwnersMapping
+        TicketMaster --- TicketsMapping
+        TicketMaster --- CategoriesMapping
+        TicketMaster --- AllowlistState
+    end
+
+    subgraph StructPackingSlot ["3. Struktur Data Terkemas (Struct Packing TicketInfo)"]
+        SlotA["Slot 0: eventId (uint256 = 32 Bytes / 256-bit penuh)"]
+        SlotB["Slot 1: categoryId (uint256 = 32 Bytes / 256-bit penuh)"]
+        SlotC["Slot 2: originalPrice (uint96 = 12 Bytes) + used (bool = 1 Byte) = 13 Bytes <= 32 Bytes"]
+        
+        TicketsMapping --> SlotA
+        TicketsMapping --> SlotB
+        TicketsMapping --> SlotC
+    end
 ```
 
-### B. Lemari Penyimpanan Tiket (`mapping`)
-Didefinisikan di [`contracts/src/TicketContract.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/src/TicketContract.sol) (Baris 53):
+---
+
+## 5. Diagram alur sekuensial eksekusi minting tiket on-chain
+
+Diagram sekuensial berikut menjabarkan urutan instruksi dari pemanggilan relayer backend hingga pencatatan event on-chain:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Relayer as Relayer Backend (Viem WalletClient)
+    participant Contract as TicketContract.sol
+    participant BaseERC721 as ERC721.sol (OpenZeppelin)
+    participant Storage as EVM Storage Slots
+    participant Log as EVM Log Event (LOG4)
+
+    Relayer->>Contract: Panggil mintTicket(buyerWallet, eventId, categoryId)
+    Note over Contract: Cek modifier onlyOwner (msg.sender == relayerAddress)
+    
+    Contract->>Storage: SLOAD kuota & ketersediaan kategori
+    Storage-->>Contract: Data kategori valid (quota > soldCount)
+    
+    Contract->>Contract: Increment _nextTokenId (Misal: tokenId = 101)
+    Contract->>Contract: Increment soldCount kategori
+    
+    Contract->>Storage: SSTORE Slot 0: eventId
+    Contract->>Storage: SSTORE Slot 1: categoryId
+    Contract->>Storage: SSTORE Slot 2: originalPrice (uint96) + used: false (bool)
+    Note over Storage: Optimasi: Slot 2 ditulis dalam 1 kali operasi SSTORE
+    
+    Contract->>BaseERC721: Panggil internal _safeMint(buyerWallet, tokenId)
+    BaseERC721->>Storage: SSTORE _owners[tokenId] = buyerWallet
+    BaseERC721->>Log: Emit Transfer(address(0), buyerWallet, tokenId)
+    
+    Contract->>Log: Emit TicketMinted(tokenId, eventId, categoryId, buyerWallet, price)
+    Contract-->>Relayer: Transaksi berhasil (Receipt Transaction Hash)
+```
+
+---
+
+## 6. Representasi objek tiket dan pemisahan state kepemilikan ERC-721
+
+Bahasa pemrograman Solidity tidak mengadopsi model alokasi memori heap untuk instansiasi objek seperti bahasa Java atau C++. Sebagai gantinya, objek direpresentasikan melalui pemetaan kunci-nilai:
+
 ```solidity
+struct TicketInfo {
+    uint256 eventId;       // Pengenal unik konser (32 bytes)
+    uint256 categoryId;    // Kategori tiket (VIP, CAT 1, Festival) (32 bytes)
+    uint96 originalPrice;  // Harga resmi yang dikunci permanen (12 bytes)
+    bool used;             // Status penukaran di pintu masuk konser (1 byte)
+}
+
 mapping(uint256 => TicketInfo) private _tickets;
 ```
-* Pemetaan ini bertindak sebagai tabel *key-value*:
-  * **Key**: `uint256 tokenId` (nomor urut tiket: 1, 2, 3, ...).
-  * **Value**: Instansiasi objek data `TicketInfo`.
-* **Pencatatan Kepemilikan (ERC-721):**
-  Identitas dompet pemilik tiket tidak disimpan di dalam struct `TicketInfo`, melainkan dikelola oleh protokol standar ERC-721 OpenZeppelin melalui mapping internal:
-  ```solidity
-  _owners[tokenId] = address(ownerWallet);
-  ```
+
+### Pemisahan kepemilikan dengan standar ERC-721
+Perhatikan bahwa di dalam struktur data `TicketInfo` di atas, **tidak terdapat field alamat pemilik (`address owner`)**. Hal ini merupakan keputusan desain yang terukur:
+1. Protokol ERC-721 OpenZeppelin secara internal telah menyediakan pemetaan:
+   ```solidity
+   mapping(uint256 tokenId => address) private _owners;
+   ```
+2. Menyimpan alamat pemilik kembali di dalam `TicketInfo` akan menyebabkan redundansi data penyimpanan sebesar 20 bytes (menelan ~20.000 gas tambahan).
+3. Identitas kepemilikan tiket dikelola secara langsung melalui fungsi standar ERC-721 seperti `ownerOf(tokenId)`.
 
 ---
 
-## 2. Fungsi `error`, `revert`, `event`, dan `emit`
+## 7. Formulasi matematika dan optimasi storage slot packing
 
-Empat kata kunci ini adalah pilar kontrol alur, penanganan kesalahan, dan pencatatan riwayat di EVM:
+Pada mesin virtual EVM, setiap slot penyimpanan (*storage slot*) memiliki kapasitas tetap sebesar 32 bytes (256-bit). Biaya penulisan slot dari nilai kosong (`0`) ke nilai terisi (`non-zero`) adalah **20.000 gas** ditambah biaya akses dingin sebesar **2.100 gas**.
 
-| Kata Kunci | Peran & Definisi | Karakteristik Gas & Mekanisme |
+### 7.1 Analisis tanpa optimasi (Model Naif)
+Jika variabel dideklarasikan tanpa perhitungan ukuran tipe data:
+```solidity
+// Model tidak teroptimasi (Menghabiskan 4 Slot)
+struct UnoptimizedTicketInfo {
+    uint256 eventId;       // Slot 0: 32 Bytes
+    uint256 categoryId;    // Slot 1: 32 Bytes
+    uint256 originalPrice; // Slot 2: 32 Bytes
+    bool used;             // Slot 3: 1 Byte (Sisa 31 Bytes terbuang sia-sia)
+}
+```
+Total operasi `SSTORE` baru: $4 \times 22.100 = 88.400 \text{ gas}$.
+
+### 7.2 Analisis dengan optimasi struct packing pada NFTix
+Kompiler Solidity secara otomatis menggabungkan variabel-variabel yang dideklarasikan secara berurutan ke dalam satu slot 32 bytes jika jumlah kapasitas bitnya tidak melampaui 256-bit:
+
+$$\text{Kapasitas Slot 2} = \text{size}(\text{uint96}) + \text{size}(\text{bool}) = 96 \text{ bit} + 8 \text{ bit} = 104 \text{ bit} \le 256 \text{ bit}$$
+
+Sisa kapasitas slot 2 adalah $256 - 104 = 152 \text{ bit}$ yang belum terpakai. 
+
+Pemilihan tipe data `uint96` untuk `originalPrice` didasarkan pada perhitungan matematis:
+$$2^{96} - 1 \approx 7.92 \times 10^{28} \text{ Wei} \approx 79.228.162.514 \text{ ETH}$$
+Nilai batas atas tersebut jauh melampaui total suplai uang beredar di seluruh dunia, sehingga tipe data `uint96` sepenuhnya aman dari risiko luapan bilangan (*integer overflow*) untuk representasi harga tiket dalam satuan Rupiah maupun Wei.
+
+Total operasi `SSTORE` baru: $3 \times 22.100 = 66.300 \text{ gas}$.
+**Penghematan gas: 22.100 gas per tiket (~25% efisiensi penyimpanan).**
+
+---
+
+## 8. Analisis komparatif semantik kata kunci Solidity
+
+### 8.1 Penanganan kesalahan: Custom Error (EIP-838) vs Require String
+Sebelum versi Solidity 0.8.4, penanganan kesalahan dilakukan melalui string pesan:
+```solidity
+// Pendekatan lama yang boros gas:
+require(msg.sender == owner(), "Error: Caller is not the authorized contract owner");
+```
+Setiap karakter teks string membutuhkan alokasi memori dan eksekusi instruksi pembacaan calldata.
+
+Pada `TicketContract.sol`, sistem secara konsisten menggunakan *Custom Error*:
+```solidity
+error Unauthorized();
+// Dipanggil dengan:
+if (msg.sender != owner()) revert Unauthorized();
+```
+* Custom error hanya menghasilkan 4-byte hash selektor: $\text{keccak256}(\text{"Unauthorized()"})_{[0:4]}$.
+* Penghematan biaya gas mencapai ratusan gas di setiap eksepsi yang dipicu.
+
+### 8.2 Logging riwayat: Event dan Emit
+Operasi logging menggunakan kata kunci `event` dan dieksekusi dengan perintah `emit`:
+1. Log ditulis ke struktur *Bloom Filter* blok Ethereum menggunakan opcode EVM `LOG0` hingga `LOG4`.
+2. Biaya penulisan log berkisar antara 375 gas hingga beberapa ribu gas, jauh lebih murah dibandingkan `SSTORE` (20.000 gas).
+3. Parameter bertanda `indexed` (maksimal 3 parameter per event) disimpan di dalam array `topics`, memungkinkan pengindeksan instan oleh antarmuka frontend, pustaka Viem, maupun penjelajah blok seperti Etherscan.
+
+### 8.3 Mutabilitas dan visibilitas fungsi
+1. **`external` vs `public`**: Fungsi `mintTicket` dideklarasikan sebagai `external` karena fungsi tersebut hanya dipanggil dari luar kontrak oleh relayer. Parameter fungsi `external` dibaca langsung dari pointer calldata tanpa penyalinan ke memori internal, sehingga menghemat gas.
+2. **`view` vs `pure`**: 
+   * `view`: Membaca variabel penyimpanan on-chain tanpa melakukan modifikasi (contoh: `getTicket(tokenId)`).
+   * `pure`: Melakukan komputasi murni tanpa membaca maupun mengubah variabel state kontrak.
+
+---
+
+## 9. Matriks mitigasi ancaman keamanan smart contract
+
+| Vektor ancaman | Deskripsi serangan | Mitigasi arsitektural terpasang |
 | :--- | :--- | :--- |
-| **`error`** | Mendefinisikan tipe kesalahan khusus (*Custom Error*). | **Sangat Hemat Gas (EIP-838)**. Hanya memakan 4 byte hash selektor signature error, menggantikan string pesan panjang. |
-| **`revert`** | Menghentikan eksekusi seketika dan membatalkan seluruh perubahan state. | Mengembalikan seluruh status penyimpanan database ke kondisi sebelum transaksi dipanggil dan mengembalikan sisa gas ke pengguna. |
-| **`event`** | Mendefinisikan skema log/pengumuman yang dicatat ke history blockchain. | Menggunakan instruksi EVM `LOG0` - `LOG4`. Jauh lebih murah daripada menyimpan variabel ke storage permanen. |
-| **`emit`** | Perintah untuk memancarkan log event tersebut secara nyata ke blockchain. | Memicu pencatatan data log yang dapat didengarkan secara real-time oleh frontend, The Graph, atau **Etherscan**. |
+| **Pencetakan tiket liar** | Pengguna luar memanggil fungsi `mintTicket` secara langsung untuk mendapatkan tiket gratis | Dilindungi oleh modifier `onlyOwner` (hanya dompet relayer yang sah yang dapat memicu pencetakan) |
+| **Integer overflow / underflow** | Manipulasi penambahan atau pengurangan saldo tiket melampaui batas tipe data | Dilindungi oleh pemeriksa bawaan (*checked arithmetic*) Solidity versi 0.8.20+ yang otomatis melempar revert |
+| **Penjualan tiket melebihi kuota** | Terjadi race condition saat permintaan tiket melebihi kapasitas kategori | Pemeriksaan ketat `soldCount < quota` dieksekusi secara atomik sebelum id tiket baru diterbitkan |
+| **Pembelian tiket ganda tanpa izin** | Satu alamat dompet menimbun tiket dalam jumlah besar | Batasan kuota maksimum per dompet (`max_per_wallet`) divalidasi di backend relayer dan dicatat di database |
 
 ---
 
-## 3. Kata Kunci Visibilitas & Mutabilitas Fungsi
+## 10. Referensi standar terbuka
 
-### A. Visibilitas (*Visibility*): Siapa yang Berhak Memanggil?
-1. **`external`**:
-   * Fungsi **hanya dapat dipanggil dari luar kontrak** (oleh frontend pengguna, backend server, atau kontrak lain).
-   * **Optimasi Gas:** Argumen fungsi `external` dibaca langsung dari `calldata` tanpa perlu disalin ke `memory`, sehingga menghemat gas secara signifikan. Digunakan pada `mintTicket` dan `markUsed`.
-2. **`public`**:
-   * Dapat dipanggil dari luar kontrak **maupun** dari dalam kontrak itu sendiri.
-3. **`internal`**:
-   * Hanya dapat dipanggil oleh kontrak itu sendiri dan kontrak anak yang mewarisinya (*inheritance*).
-4. **`private`**:
-   * Hanya dapat dipanggil oleh fungsi di dalam kontrak itu sendiri; kontrak turunan tidak memiliki hak akses.
-
-### B. Mutabilitas State (*State Mutability*): Apakah Mengubah Blockchain?
-1. **Fungsi Transaksi Biasa (State-changing)**:
-   * Menulis atau mengubah data pada storage blockchain (misal: menambah saldo, mengubah kepemilikan).
-   * **Memerlukan biaya Gas (Gas Fee)** saat dieksekusi di jaringan.
-2. **`view`**:
-   * Fungsi hanya **membaca data** dari storage tanpa mengubah apapun (contoh: `getTicket(tokenId)`).
-   * **Gratis Gas** jika dipanggil secara read-only oleh pengguna melalui node RPC.
-3. **`pure`**:
-   * Fungsi **tidak membaca dan tidak menulis** ke storage blockchain. Murni komputasi matematika deterministik (misal menghitung formula konversi angka).
-   * **Gratis Gas** saat dipanggil off-chain.
-
----
-
-## 4. Alasan Variasi Tipe Data `uint` (Teknik *Struct / Storage Packing*)
-
-Pertanyaan penting:
-> *"Mesin EVM bekerja dalam basis kata 256-bit (32 bytes). Mengapa tidak menggunakan uint256 untuk semua variabel?"*
-
-Jawabannya adalah teknik penghematan biaya gas fundamental bernama **Struct Packing (Penyusunan Slot Memori)**.
-
-Di dalam blockchain Ethereum, storage dibagi menjadi slot-slot berukuran tepat **32 Bytes (256 bits)**. Operasi penulisan pertama kali ke storage baru (`SSTORE`) dikenakan biaya komputasi yang sangat mahal: **20.000 Gas**.
-
-### Perbandingan Efisiensi Slot:
-
-#### Skenario Tanpa Packing (Semua `uint256`):
-```solidity
-struct TicketInfoUnpacked {
-    uint256 eventId;       // 32 bytes -> Slot 1 (20.000 Gas)
-    uint256 categoryId;    // 32 bytes -> Slot 2 (20.000 Gas)
-    uint256 originalPrice; // 32 bytes -> Slot 3 (20.000 Gas)
-    uint256 used;          // 32 bytes -> Slot 4 (20.000 Gas)
-}
-// Total: 4 Slot Penyimpanan = 80.000 Gas per tiket!
-```
-
-#### Skenario Dengan Packing (Yang Diterapkan di `TicketContract.sol`):
-```solidity
-struct TicketInfo {
-    uint256 eventId;       // 32 bytes -> Slot 1 (20.000 Gas)
-    uint256 categoryId;    // 32 bytes -> Slot 2 (20.000 Gas)
-    uint96 originalPrice;  // 12 bytes ┐ Digabung (PACKED)
-    bool used;             //  1 byte  ┘ ke dalam Slot 3 yang sama! (20.000 Gas)
-}
-// Total: 3 Slot Penyimpanan = 60.000 Gas per tiket!
-```
-
-* **Penghematan Nyata:**
-  Setiap kali seorang pembeli mencetak tiket, kontrak **menghemat 20.000 Gas** secara permanen.
-* **Kapasitas Tipe Data:**
-  * `uint96`: Mampu menampung angka desimal hingga 79 octillion ($7,9 \times 10^{28}$), lebih dari cukup untuk nominal mata uang fiat Rupiah maupun Wei.
-  * `uint64`: Mampu menampung timestamp detik UNIX hingga tahun 584 miliar Masehi.
-  * `uint32`: Mampu menampung kuota hingga 4,29 miliar tiket.
-
----
-
-## 5. Simulasi Alur Eksekusi Baris Demi Baris Saat Pembelian Tiket (`mintTicket`)
-
-Misalkan seorang pengguna (Andi) dengan Smart Account `0x811a...` membeli tiket untuk **Event ID 1** dengan **Kategori ID 1 (VIP)**.
-
-Frontend / Backend memanggil fungsi pada [`contracts/src/TicketContract.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/src/TicketContract.sol) (Baris 163–209):
-```solidity
-function mintTicket(address to, uint256 eventId, uint256 categoryId) external returns (uint256)
-// Parameter riil pemanggilan: (to: 0x811a..., eventId: 1, categoryId: 1)
-```
-
-Berikut alur eksekusi internal di smart contract:
-
-```
-[Pemanggilan mintTicket]
-         │
-         ▼
-[1. Pemeriksaan Guard Clauses]
-  ├── to != address(0)
-  ├── events[1].exists == true
-  ├── events[1].salesOpen == true
-  ├── categories[1][1].exists == true
-  ├── cat.minted < cat.quota
-  └── walletPurchases[1][to] < maxPerWallet
-         │
-         ▼
-[2. Pembaruan State (Counter & Kuota)]
-  ├── _nextTokenId++ (misal jadi #1)
-  ├── cat.minted++
-  └── walletPurchases[1][to]++
-         │
-         ▼
-[3. Penguncian Harga Anti-Scalping]
-  └── _tickets[1] = TicketInfo(eventId: 1, categoryId: 1, originalPrice: 150000, used: false)
-         │
-         ▼
-[4. OpenZeppelin ERC-721 _safeMint]
-  ├── _owners[1] = 0x811a...
-  ├── _balances[0x811a...] += 1
-  └── emit Transfer(address(0), 0x811a..., 1)
-         │
-         ▼
-[5. Emisi Event & Return]
-  ├── emit TicketMinted(tokenId: 1, eventId: 1, categoryId: 1, buyer: 0x811a..., price: 150000)
-  └── return tokenId (1)
-```
-
-### Rincian Tahapan:
-
-1. **Tahap Guard Clauses (Pencegahan Pelanggaran):**
-   * Memastikan alamat penerima valid (`ForbiddenZero`).
-   * Memastikan event terdaftar dan pintu penjualan dibuka oleh penyelenggara (`SalesClosed`).
-   * Memastikan kuota belum habis (`QuotaExceeded`).
-   * Memastikan pembeli belum melampaui batas maksimal per dompet (`MaxPerWalletExceeded`).
-2. **Tahap Mutasi Status:**
-   * Nomor ID token dinaikkan (`_nextTokenId++`).
-   * Jumlah tiket terjual pada kategori tersebut bertambah.
-   * Catatan jumlah kepemilikan dompet Andi bertambah 1.
-3. **Tahap Kunci Harga Asli (Anti-Scalping Core):**
-   * Harga kategori resmi diambil (`uint96 price = cat.price`).
-   * Data tiket dimasukkan ke mapping `_tickets[1]` dengan `used = false` dan `originalPrice = price`. Data harga ini dikunci permanen on-chain sehingga tidak bisa di-markup pada pasar sekunder.
-4. **Tahap Minting ERC-721 (`_safeMint`):**
-   * Mengalokasikan kepemilikan token ID #1 ke dompet Smart Account Andi.
-   * Memeriksa apakah penerima adalah smart contract yang mendukung penerimaan ERC-721 (`IERC721Receiver`).
-5. **Tahap Emisi Log Event & Notifikasi:**
-   * Memancarkan event `TicketMinted`. Log ini langsung ditangkap oleh Etherscan dan antarmuka web Next.js untuk mengarahkan pengguna ke halaman **"My Ticket"**.
+1. **Ethereum Improvement Proposal 721 (EIP-721):** Non-Fungible Token Standard. [https://eips.ethereum.org/EIPS/eip-721](https://eips.ethereum.org/EIPS/eip-721).
+2. **Ethereum Improvement Proposal 838 (EIP-838):** ABI specifications for custom errors. [https://eips.ethereum.org/EIPS/eip-838](https://eips.ethereum.org/EIPS/eip-838).
+3. **OpenZeppelin Contracts Documentation:** ERC721 and Access Control Implementations. [https://docs.openzeppelin.com/contracts/5.x/erc721](https://docs.openzeppelin.com/contracts/5.x/erc721).
+4. **Solidity Language Documentation:** Layout of State Variables in Storage and Memory. [https://docs.soliditylang.org/en/v0.8.20/internals/layout_in_storage.html](https://docs.soliditylang.org/en/v0.8.20/internals/layout_in_storage.html).

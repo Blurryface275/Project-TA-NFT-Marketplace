@@ -1,184 +1,96 @@
-# Index Penjelasan & Dokumentasi Teknis Tugas Akhir (TA)
+# Indeks dokumentasi teknis dan arsitektur sistem tugas akhir
 
-Folder ini berisi rangkuman teknis, kajian teori, dan pemecahan masalah (*troubleshooting*) dari perdebatan serta diskusi pengembangan sistem **NFT Marketplace Berbasis ERC-4337 Account Abstraction & Passkey Biometrik**.
+Dokumentasi ini memuat spesifikasi teknis, analisis arsitektur, dan justifikasi rekayasa sistem untuk platform **NFTix: Marketplace Tiket Konser Berbasis ERC-4337 Account Abstraction, Passkey Biometrik, dan Midtrans Payment Gateway**.
 
-Semua penjelasan disusun secara sistematis dan dilengkapi referensi standar resmi (Ethereum EIPs, W3C WebAuthn, FIDO Alliance, NestJS, Next.js).
-
----
-
-## Daftar Dokumen Penjelasan
-
-### 📄 [01. Struktur initCode ERC-4337, Hubungan dengan ERC-1967, & ZeroDev Kernel](./01-erc4337-initcode-and-erc1967.md)
-* **Topik Utama:**
-  * Penjelasan 3 kontrak: `KernelFactory`, `Kernel Implementation`, dan `ERC-1967 Proxy`.
-  * Mitos vs Fakta struktur byte `initCode` (Bukan bytecode akun, melainkan `[factory address] + [calldata]`).
-  * Alasan ERC-4337 tidak menyebut ERC-1967, serta alasan penghematan gas 95% via minimal proxy.
-  * Formula slot memori implementasi ERC-1967 (`0x3608...`).
-
-### 📄 [02. Kriptografi Passkey (WebAuthn) & Perhitungan Alamat Smart Account (Data Riil)](./02-passkey-cryptography-and-address-derivation.md)
-* **Topik Utama:**
-  * Karakteristik kurva eliptik P-256 / secp256r1.
-  * Struktur 96 bytes `enableData` (`pubX` 32B + `pubY` 32B + `authenticatorIdHash` 32B).
-  * Perhitungan bertahap menggunakan data riil akun pengujian (Andi):
-    * Konversi nilai koordinat ke hexadecimal.
-    * Hashing `keccak256` pada byte `authenticatorId`.
-    * Penggabungan 96 bytes data.
-    * Penurunan alamat counterfactual wallet: `0x811aed8154d90B9454AFbe246f167106eF4361Eb`.
-
-### 📄 [03. Panduan Lengkap EVM Opcodes (Operation Codes)](./03-evm-opcodes-guide.md)
-* **Topik Utama:**
-  * Penjelasan fundamental arsitektur EVM sebagai *Stack-based Virtual Machine*.
-  * Apa itu Opcode (instruksi 1 byte `0x00` - `0xFF`) dan bagaimana gas dihitung.
-  * Analisis mendalam opcode penting dalam ERC-4337:
-    * `CREATE2` (`0xF5`) untuk deployment alamat deterministik.
-    * `DELEGATECALL` (`0xF4`) untuk eksekusi logika proxy dan modular validator.
-    * `STATICCALL` (`0xFA`) untuk simulasi validasi UserOperation tanpa modifikasi state.
-    * `SSTORE` / `SLOAD` untuk penyimpanan permanen.
-
-### 📄 [04. Siklus Hidup WebAuthn Passkey (Registrasi vs Login & Perubahan Credential ID)](./04-webauthn-lifecycle-register-vs-login.md)
-* **Topik Utama:**
-  * Menjawab pertanyaan: *"Kenapa credentialId selalu berbeda setiap kali registrasi meskipun emailnya sama?"*.
-  * Perbedaan upacara Registrasi (`navigator.credentials.create`) vs Autentikasi (`navigator.credentials.get`).
-  * Peran chip keamanan hardware (TPM / Secure Enclave) dalam menghasilkan entropi acak baru (*anti-tracking* & *privacy* standar FIDO2).
-  * Penelusuran alur eksekusi baris kode (*call stack trace*) dari UI form Next.js hingga pemanggilan native Web API.
-
-### 📄 [05. Arsitektur Autentikasi Fullstack & Troubleshooting Server Actions](./05-fullstack-auth-architecture-and-troubleshooting.md)
-* **Topik Utama:**
-  * Arsitektur integrasi Next.js 15+ Server Action + NestJS 11 + TypeORM + MySQL.
-  * Alur perjalanan pesan error (Error 409 Conflict & Error 401 Unauthorized) dari backend ke UI via `useActionState`.
-  * Analisis bug teknis Next.js: Kenapa `redirect()` di dalam `try...catch` memicu `catch` (`NEXT_REDIRECT` error exception).
-  * Penjelasan aturan JavaScript Block Scope (`let response` vs `const response`).
-
-### 📄 [06. Fondasi Smart Contract Solidity & Alur Eksekusi Minting Tiket](./06-smart-contract-fundamentals-and-mint-flow.md)
-* **Topik Utama:**
-  * Bentuk objek tiket di smart contract via kombinasi `struct TicketInfo` dan `mapping`.
-  * Peran dan fungsi kata kunci: `error`, `revert`, `event`, `emit`.
-  * Aturan visibilitas (`external`, `public`, `internal`, `private`) dan mutabilitas (`view`, `pure`).
-  * Optimasi Gas: Alasan variasi tipe data `uint` (Teknik *Struct / Storage Packing* menghemat 20.000 gas).
-  * Simulasi alur eksekusi baris demi baris saat pengguna membeli tiket (`mintTicket`).
-
-### 📄 [07. Mekanisme Deployment Smart Contract via Foundry & Analisis Script Deploy](./07-foundry-deployment-mechanism-and-scripting.md)
-* **Topik Utama:**
-  * Cara kerja deployment di balik layar: peran `vm.startBroadcast`, kata kunci `new TicketContract()`, dan transaksi `to: null`.
-  * Bagaimana EVM mengeksekusi opcode `CREATE` dan menghitung alamat kontrak via `keccak256(rlp.encode([sender, nonce]))`.
-  * Perbedaan simulasi lokal (*dry-run*) vs transmisi publik (`--broadcast`).
-  * Asal-usul data dan parameter di `Deploy.s.sol` (`eventId`, `eventTimestamp`, `maxPerWallet`, `price`, `quota`).
-
-### 📄 [08. Arsitektur Multi-Event dalam 1 Kontrak & Kapasitas Penyimpanan Storage EVM](./08-evm-storage-capacity-and-multi-event-architecture.md)
-* **Topik Utama:**
-  * Arsitektur pasangan 1 `MarketplaceContract` resmi dengan 1 `TicketContract` master multi-event.
-  * Mekanisme penguncian transfer allowlist dan pembacaan `originalPrice` on-chain (Anti-Scalping).
-  * Analisis kapasitas matematis ruang alamat 256-bit EVM (`2^256 ≈ 1,15 x 10^77` slot storage unik).
-  * Batasan fisik dunia nyata: biaya gas `SSTORE` (20.000 gas), batasan gas per blok, dan kapasitas tipe data struct.
-  * Tabel perbandingan komprehensif antara Database Relasional (MySQL) vs Storage Smart Contract EVM.
-
-### 📄 [09. Integrasi Viem di NestJS, Validasi DTO, dan Standar ABI Smart Contract](./09-viem-integration-dto-validation-and-contract-abi.md)
-* **Topik Utama:**
-  * Arsitektur Relayer: Menghubungkan HTTP API NestJS dengan node blockchain Sepolia.
-  * Peran validasi DTO (`class-validator`) dalam mencegah transaksi gagal dan pemborosan gas fee.
-  * Konsep ABI (Application Binary Interface) sebagai kamus JSON antara runtime JS dan EVM Bytecode.
-  * Mengapa Viem mewajibkan `as const` (TypeScript Const Assertion & ABIType Static Type Inference).
-  * Perbedaan peran `PublicClient` (Read-Only) vs `WalletClient` (Signing & Transacting).
-
-### 📄 [10. Panduan Lengkap & Mudah Memahami TicketsService (Relayer Transaksi Blockchain)](./10-tickets-service-relayer-deep-dive.md)
-* **Topik Utama:**
-  * Analogi loket konser: Bagaimana pengguna awam (Asep) mendapatkan tiket NFT tanpa perlu membeli koin kripto/gas fee (*Gasless User Experience*).
-  * Konsep "Dua Tangan" Viem: Pemisahan peran `publicClient` (Mata Pengawas, read-only gratis) dan `walletClient` (Tangan Eksekutor, bayar gas admin).
-  * Bedah anatomi baris demi baris: Constructor, `mintTicket`, `redeemTicket`, dan `getTicket`.
-  * Penjelasan teknis: Kenapa wajib `BigInt()`, beda `txHash` vs `receipt`, dan manfaat `error?.shortMessage`.
-  * Mekanisme on-chain penolakan tiket ganda (*Anti-Double-Spend*) dan pembacaan gratis `ownerOf`.
-  * Kumpulan tanya-jawab (FAQ) kritis seputar Relayer untuk persiapan sidang Tugas Akhir.
-
-### 📄 [11. Arsitektur HTTP Controller, Modul NestJS, dan Dependency Injection Wiring](./11-tickets-controller-module-and-app-wiring.md)
-* **Topik Utama:**
-  * Analogi restoran: Peran `TicketsController` sebagai pelayan penerima pesanan dan `TicketsModule` sebagai pembatas departemen.
-  * Diagram alur perjalanan HTTP Request dari tombol web Next.js ke method smart contract Sepolia.
-  * Bedah anatomi baris demi baris `tickets.controller.ts` (38 baris) & peran satpam `ParseIntPipe`.
-  * Bedah anatomi baris demi baris `tickets.module.ts` (11 baris): Peran `controllers`, `providers`, dan `exports`.
-  * Bedah anatomi `app.module.ts` (39 baris) & analisa teknis mendalam: Mengapa `TypeOrmModule.forRootAsync` hanya mengimpor `ConfigModule` & `ConfigService` (mencegah bencana *Circular Dependency*).
-  * Tanya-jawab (FAQ) ujian sidang TA seputar alasan pemilihan framework modular NestJS vs Express.js.
-
-### 📄 [12. Arsitektur Frontend Navbar, Server Component Session, dan Layouting Next.js](./12-frontend-navbar-layout-and-session.md)
-* **Topik Utama:**
-  * Alasan teknis Navbar dirancang sebagai Server Component (Zero Bundle Size & No Layout Shift).
-  * Bedah baris demi baris `session.ts`: Penyimpanan `name` & `walletAddress` di cookie JWT untuk menghindari waterfall fetch.
-  * Bedah baris demi baris `Navbar.tsx`: Helper pemotong dompet `formatAddress`, Optional Chaining `?.`, dan styling Tailwind CSS (sticky, glassmorphism).
-  * Analisis troubleshooting: Mengapa Navbar belum muncul di layar (tag flexbox kosong vs penempatan di dalam container centered).
-  * Tanya-jawab (FAQ) ujian sidang TA terkait UX Web3 truncation alamat dompet dan progressive enhancement Server Action.
-
-### 📄 [13. Alur Lengkap End-to-End Transaksi Pembelian Tiket NFT](./13-end-to-end-ticket-purchase-flow.md)
-* **Topik Utama:**
-  * Studi kasus konkret menggunakan data riil akun Andi (`name: "Andi Setiawan"`, `walletAddress: "0x811a...61Eb"`).
-  * Diagram alur sekuensial (Sequence Diagram) dari klik tombol "Beli Tiket" di UI hingga penambangan blok Sepolia.
-  * Analisis mendalam arsitektur data: Data apa yang diambil saat load (`EventData`, `TicketCategoryData`), data apa yang dikirim saat checkout (`eventId`, `categoryId`, `qty`), dan data apa yang dikembalikan backend (`txHash`, `blockNumber`).
-  * Taksonomi penyimpanan Hybrid Storage: Data apa yang disimpan On-Chain (hak milik, `originalPrice` anti-scalping, `used` anti-double-spend, kuota) vs. Off-Chain di MySQL (nama acara, banner poster, venue) beserta justifikasi optimasi biaya gas.
-  * Penelusuran baris kode aktif di setiap file (`BuyTicketCard.tsx` $\rightarrow$ `buy/actions.ts` $\rightarrow$ `session.ts` $\rightarrow$ `mint-ticket.dto.ts` $\rightarrow$ `tickets.controller.ts` $\rightarrow$ `tickets.service.ts` $\rightarrow$ `TicketContract.sol`).
-  * Jawaban ilmiah ujian sidang TA seputar pencegahan spam klik ganda dan peran penguncian harga `originalPrice` untuk Anti-Scalping.
-
-### 📄 [14. Pola Komunikasi API, Arsitektur RESTful, dan Pola BFF (Backend-for-Frontend)](./14-api-communication-patterns-and-bff-architecture.md)
-* **Topik Utama:**
-  * Arsitektur komunikasi 3 lapis: Server Actions (RPC/BFF) $\rightarrow$ REST API (NestJS) $\rightarrow$ Ethereum JSON-RPC (Sepolia).
-  * Karakteristik REST API murni pada rute `/api/tickets/mint` (Stateless, Resource-based URI, HTTP verbs, JSON representation).
-  * Mengapa browser dilarang langsung memanggil REST API backend: Analisis ancaman *Wallet Spoofing Attack*, kebocoran secret `BACKEND_URL`, dan perlindungan XSS HttpOnly Cookie.
-  * Perbedaan mendasar arsitektur REST API vs Ethereum JSON-RPC 2.0 (`eth_sendRawTransaction`).
-  * Tabel komparasi 3 pola komunikasi dan tanya-jawab kritis (FAQ) ujian sidang skripsi.
-
-### 📄 [15. Verifikasi Smart Contract di Etherscan dan Mekanisme Kerja Block Explorer](./15-smart-contract-verification-and-block-explorer-internals.md)
-* **Topik Utama:**
-  * Misteri Etherscan: Mengapa hanya terbaca "1 NFTIX" dan mengapa tab Read/Write Contract awalnya tidak ada.
-  * Mengapa Backend NestJS (`/api/tickets/1`) bisa langsung membaca data tiket sebelum verifikasi (peran `ticket-abi.ts`).
-  * Bedah mendalam setiap kolom form verifikasi Etherscan: Single file vs multi-part, versi compiler commit hash, license SPDX, optimization runs 200, EVM cancun, dan constructor arguments.
-  * Cara kerja algoritma pencocokan bytecode (*Bytecode Matching*) dan pemisahan metadata CBOR IPFS hash.
-  * Standar `tokenURI` (JSON metadata) untuk visualisasi poster gambar tiket di OpenSea dan MetaMask.
-  * Tanya-jawab kritis (FAQ) sidang skripsi seputar prinsip *Trustless Environment* di Web3.
-
-### 📄 [16. Integritas Data, Single Source of Truth, dan Mekanisme Anti-Fraud pada Arsitektur Hybrid Web2.5](./16-data-integrity-single-source-of-truth-and-anti-fraud.md)
-* **Topik Utama:**
-  * Pemisahan kasta data: Kasta Kritis On-Chain (`ownerOf`, `eventId`, `categoryId`, `originalPrice`, `used`) vs Kasta Visual Off-Chain (MySQL/IPFS).
-  * Simulasi penyerangan nyata 1: Manipulasi database kepemilikan oleh admin nakal dan mengapa selalu gagal di hadapan smart contract.
-  * Simulasi penyerangan nyata 2: *Visual Event Spoofing* (mengubah nama tiket murah menjadi konser VIP mahal) dan mekanisme pertahanan ganda scanner gerbang + `markUsed` on-chain revert.
-  * Diagram sekuensial verifikasi gerbang masuk (Gate Access Control Sequence Diagram).
-  * Strategi penguncian metadata lanjutan via IPFS CID Hashing (`ipfs://Qm...`).
-  * Tabel ketahanan sistem terhadap 5 vektor serangan dunia nyata & FAQ sidang skripsi.
-
-### 📄 [17. Dynamic QR Code Berbasis Tanda Tangan WebAuthn Passkey, Timer Kedaluwarsa, dan Protokol Verifikasi Gerbang Masuk](./17-dynamic-qr-webauthn-signature-and-gate-redemption.md)
-* **Topik Utama:**
-  * Bahaya tiket statis: Analisis kerentanan *Screenshot Fraud*, *Replay Attack*, dan manipulasi HTML di browser.
-  * Arsitektur Dynamic QR Code: Kombinasi Token ID, wallet address, Nonce CSPRNG, Timestamp ISO, dan Hardware Passkey Signature.
-  * Diagram alur Swimlane (BPMN) Gate Access Control dari penekanan tombol, chip TPM/Secure Enclave, scanner gerbang, hingga Sepolia.
-  * Penelusuran variabel baris demi baris (Traceability Matrix) pada `TicketCard.tsx` dengan contoh data konkret Tiket #1.
-  * Alasan teknis konversi string ke `ArrayBuffer` biner untuk WebAuthn dan konversi signature biner ke string Hexadecimal `0x...`.
-  * Siklus hidup countdown timer 60 detik (*Anti-Screenshot Defense*) dan pembersihan memori (*cleanup function*).
-  * Alur eksekusi on-chain `markUsed` via Relayer dan pembuktian matematis *Anti-Double-Spend*.
-  * Kumpulan tanya-jawab kritis (FAQ) sidang Tugas Akhir seputar batas waktu 60 detik dan multi-modal Passkey.
-
-### 📄 [18. Arsitektur Smart Contract (Multi-Tenant vs. Factory Pattern), Analisis Pemilihan Atribut Entitas, dan Teori TypeORM](./18-orm-typeorm-architecture-and-multi-event-vs-factory.md)
-* **Topik Utama:**
-  * Perbandingan teknis Multi-Tenant Single Contract (`TicketContract.sol`) vs. Factory Pattern (`TicketFactory.sol`) dari sudut pandang gas optimization (hemat 98%) dan integrasi Paymaster ERC-4337.
-  * Analisis fungsi arsitektural `on_chain_event_id` sebagai namespace isolation kuota anti-scalping per wallet.
-  * Schema design rationale dan pemilihan tipe data MySQL (`events` & `ticket_categories`).
-  * Teori Object-Relational Mapping (ORM), Data Mapper Pattern vs. Active Record, serta arsitektur TypeORM pada NestJS.
-  * Rujukan dokumentasi resmi dan sitasi akademik (Ethereum Yellow Paper, EIP-4337, EIP-7562, Martin Fowler, NestJS, TypeORM).
-
-### 📄 [19. Arsitektur Multi-Event Ticket Purchase, Dynamic Anti-Scalping Quota, dan Sequential Seat Assignment](./19-multi-event-ticket-purchase-and-dynamic-quota.md)
-* **Topik Utama:**
-  * Transisi dari pembelian single-event statis (`/api/events/2`) ke ekosistem dinamis Multi-Event (`/api/events`).
-  * Pemenuhan rekomendasi dosen pembimbing: Penyelenggara (organizer) menentukan batas maksimal kuota dompet (`max_per_wallet`) secara dinamis.
-  * Pemecahan bug akumulasi kuota global: Penggantian ERC-721 `balanceOf` dengan filter kepemilikan spesifik per-event (`t.eventId === dto.eventId`).
-  * Implementasi *Sequential Auto-Assignment* nomor kursi otomatis (`VIP-01`, `VIP-02`) yang patuh pada Batasan Masalah #5 proposal skripsi UBAYA (tanpa denah SVG 2D/3D).
-### 📄 [20. Progressive Onboarding & Pemisahan Dua Tahap (Autentikasi Akun vs Aktivasi Dompet Tiket)](./20-progressive-onboarding-and-two-stage-wallet-provisioning.md)
-* **Topik Utama:**
-  * Latar belakang friksi UX Web3: Menghilangkan kendala *high bounce rate* akibat pemaksaan sensor biometrik di halaman pendaftaran awal.
-  * Prinsip *Progressive Profiling* & *Just-In-Time (JIT) Wallet Provisioning*: Pemisahan subsistem Autentikasi Pengguna (Web2) dan subsistem Kesiapan Dompet Blockchain (Web3).
-  * Solusi kendala hardware: Bagaimana pengguna tanpa webcam Windows Hello atau sensor sidik jari tetap dapat menggunakan PIN lokal Windows (TPM 2.0), FIDO2 Cross-Device Hybrid QR Code, atau Google Password Manager.
-  * Skema database `customers.wallet_address` (nullable), pemisahan endpoint `POST /api/auth/register` vs `POST /api/auth/setup-wallet`, dan pembaruan session cookie transparan (`updateSessionWallet`).
-  * Panduan argumentasi akademis untuk ujian sidang skripsi Bab 4 dan Bab 5.
+Seluruh dokumen disusun berstandar akademik dan rekayasa perangkat lunak (siap digunakan untuk naskah Buku Tugas Akhir Bab 4 dan Bab 5 serta materi argumentasi sidang skripsi), lengkap dengan diagram desain sistem Mermaid, analisis alur sekuensial, dan rujukan standar terbuka resmi (Ethereum EIPs, W3C WebAuthn, FIDO Alliance, IETF RFC).
 
 ---
 
-## Panduan Penggunaan untuk Tugas Akhir (TA)
+## Daftar dokumen spesifikasi modul
 
-Dokumen-dokumen ini dapat langsung kamu gunakan sebagai bahan rujukan dan argumentasi untuk:
-1. **Bab 2 (Landasan Teori):** Penjelasan ERC-4337, ERC-1967, EVM Opcodes, dan kurva secp256r1 WebAuthn.
-2. **Bab 3 / 4 (Perancangan & Implementasi Sistem):** Skema 96 bytes `enableData`, penurunan counterfactual address, dan arsitektur autentikasi ganda (Passkey + Session Cookie).
-3. **Persiapan Sidang / Tanya Jawab Dosen Penguji:** Jawaban ilmiah atas pertanyaan kritis mengenai alasan pemilihan arsitektur proxy, cara kerja chip TPM hardware, dan alur eksekusi transaksi.
+### 1. Modul abstraksi akun dan kriptografi WebAuthn
+
+* [01-erc4337-initcode-and-erc1967.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/01-erc4337-initcode-and-erc1967.md)
+  * **Judul:** Desain dan spesifikasi teknis initCode ERC-4337, proxy ERC-1967, dan ZeroDev Kernel.
+  * **Topik inti:** Arsitektur deployment counterfactual, struktur calldata `createAccount`, formula slot implementasi ERC-1967 (`0x3608...bbc`), penghematan gas 93% via minimal proxy, dan isolasi eksekusi `DELEGATECALL`.
+
+* [02-passkey-cryptography-and-address-derivation.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/02-passkey-cryptography-and-address-derivation.md)
+  * **Judul:** Desain dan spesifikasi teknis kriptografi passkey dan derivasi alamat counterfactual.
+  * **Topik inti:** Kurva eliptik NIST P-256 (secp256r1), struktur data 96-byte `enableData` (`pubX` 32B + `pubY` 32B + `authenticatorIdHash` 32B), formula matematis EIP-1014 `CREATE2`, studi kasus data uji riil akun Andi di Windows Hello, dan mitigasi isolasi chip TPM hardware.
+
+* [03-evm-opcodes-guide.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/03-evm-opcodes-guide.md)
+  * **Judul:** Desain dan spesifikasi teknis eksekusi opcode EVM pada smart contract dan ERC-4337.
+  * **Topik inti:** Arsitektur mesin stack 256-bit, empat domain memori EVM (Stack, Memory, Storage, Calldata), semantik opcode `CREATE2` (0xF5), `DELEGATECALL` (0xF4), `STATICCALL` (0xFA), `SSTORE` (0x55), dan dinamika biaya gas EIP-2200/EIP-2929.
+
+* [04-webauthn-lifecycle-register-vs-login.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/04-webauthn-lifecycle-register-vs-login.md)
+  * **Judul:** Desain dan spesifikasi teknis siklus hidup WebAuthn passkey (upacara registrasi vs autentikasi).
+  * **Topik inti:** Perbedaan upacara registrasi (`create`) dan autentikasi (`get`), penyebab matematis mutasi `credentialId` baru pada pendaftaran ulang, entropi TRNG chip TPM 2.0 / Apple Secure Enclave, dan arsitektur progressive onboarding.
+
+---
+
+### 2. Modul fullstack autentikasi dan komunikasi sistem
+
+* [05-fullstack-auth-architecture-and-troubleshooting.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/05-fullstack-auth-architecture-and-troubleshooting.md)
+  * **Judul:** Desain dan spesifikasi teknis arsitektur autentikasi fullstack dan penanganan kesalahan server actions.
+  * **Topik inti:** Pola arsitektur BFF Next.js ke REST API NestJS, siklus hidup cookie HttpOnly JWT, propagasi status HTTP 409 Conflict dan 401 Unauthorized, serta investigasi teknis penanganan eksepsi internal Next.js `NEXT_REDIRECT`.
+
+* [09-viem-integration-dto-validation-and-contract-abi.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/09-viem-integration-dto-validation-and-contract-abi.md)
+  * **Judul:** Desain dan spesifikasi teknis integrasi Viem pada NestJS, validasi DTO, dan standar ABI smart contract.
+  * **Topik inti:** Jembatan Web2 ke Web3 via Viem, gerbang validasi DTO `class-validator`, konversi JSON ABI ke selektor calldata 4-byte, urgensi asersi tipe statis `as const`, dan penanganan topik event log `indexed`.
+
+---
+
+### 3. Modul smart contract dan infrastruktur blockchain
+
+* [06-smart-contract-fundamentals-and-mint-flow.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/06-smart-contract-fundamentals-and-mint-flow.md)
+  * **Judul:** Desain dan spesifikasi teknis fondasi smart contract Solidity dan alur minting tiket NFT.
+  * **Topik inti:** Representasi objek tiket via `struct TicketInfo` dan `mapping`, pemisahan kepemilikan ERC-721 OpenZeppelin, optimasi gas storage slot packing (`uint96` + `bool` menghemat 22.100 gas), custom error EIP-838, dan alur eksekusi `mintTicket`.
+
+* [07-foundry-deployment-mechanism-and-scripting.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/07-foundry-deployment-mechanism-and-scripting.md)
+  * **Judul:** Desain dan spesifikasi teknis mekanisme deployment smart contract via Foundry dan analisis script broadcast.
+  * **Topik inti:** Otomasi deployment Solidity script, semantik cheatcode `vm.startBroadcast`, transaksi creation bytecode `to: null`, formula deterministik alamat kontrak RLP `CREATE`, dan flag CLI `--broadcast`.
+
+* [08-evm-storage-capacity-and-multi-event-architecture.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/08-evm-storage-capacity-and-multi-event-architecture.md)
+  * **Judul:** Desain dan spesifikasi teknis arsitektur multi-event dan kapasitas storage Ethereum Virtual Machine.
+  * **Topik inti:** Arsitektur pasangan master contract tiket dengan marketplace sekunder resmi, mekanisme pertahanan anti-calo (allowlist guard dan resale price-lock), bukti matematis kapasitas $2^{256}$ slot storage EVM, dan komparasi dengan MySQL.
+
+---
+
+### 4. Modul relayer dan integrasi pembayaran
+
+* [10-tickets-service-relayer-deep-dive.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/10-tickets-service-relayer-deep-dive.md)
+  * **Judul:** Desain dan spesifikasi teknis TicketsService relayer transaksi blockchain gasless.
+  * **Topik inti:** Pengalaman pengguna gasless onboarding, pemisahan arsitektur dua klien Viem (`publicClient` read-only gratis vs `walletClient` mutasi state on-chain), pre-flight gas guard kepemilikan dan flag `used` pada `redeemTicket`, dan pelacakan indeks kursi sequential.
+
+* [21-midtrans-payment-gateway-integration.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/21-midtrans-payment-gateway-integration.md)
+  * **Judul:** Desain dan spesifikasi integrasi Midtrans Snap API.
+  * **Topik inti:** Alur pembayaran mata uang Rupiah via Virtual Account dan QRIS, otentikasi Basic Auth RFC 7617, validasi harga server-side di MySQL, pengembalian Snap Token ke modal peramban, dan penanganan webhook status pelunasan.
+
+* [22-eip712-structured-data-signatures.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/22-eip712-structured-data-signatures.md)
+  * **Judul:** Desain dan spesifikasi teknis tanda tangan data terstruktur EIP-712 pada relayer smart contract.
+  * **Topik inti:** Penutupan celah keamanan panggilan kontrak langsung (*direct contract call*), penurunan matematis Domain Separator dan StructHash, verifikasi tanda tangan kriptografis ECDSA on-chain, proteksi nonces anti-replay, dan matriks mitigasi 4 vektor serangan.
+
+---
+
+### 5. Modul transaksi kilat (flash sale) dan audit keamanan backend
+
+* [23-flash-sale-architecture-and-backend-security-audit.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/23-flash-sale-architecture-and-backend-security-audit.md)
+  * **Judul:** Arsitektur flash sale (war tiket) passkey fast-pass dan audit keamanan backend skala besar.
+  * **Topik inti:** Keputusan Opsi B (Passkey Fast-Pass) berbasis FIDO2 WebAuthn & UU PDP No. 27/2022, audit 5 pilar backend (kunci idempotensi, pessimistic locking ORM, state machine pemesanan, background job timeout reservasi, dan validasi input parameter), serta panduan implementasi teknis.
+
+---
+
+## Panduan penggunaan dokumen dalam naskah tugas akhir
+
+Dokumen-dokumen di atas dirancang secara modular dan dapat langsung disitasi atau dialihbahasakan ke dalam naskah Tugas Akhir:
+
+1. **Bab 2 (Landasan Teori):**
+   * Rujuk Dokumen 01, 02, 03, dan 04 untuk pembahasan standar ERC-4337, kurva kriptografi P-256, opcodes EVM, dan protokol W3C WebAuthn.
+   * Rujuk Dokumen 06, 08, dan 22 untuk teori ERC-721, struktur penyimpanan EVM, dan standar EIP-712.
+2. **Bab 3 dan 4 (Perancangan dan Implementasi Sistem):**
+   * Gunakan diagram blok arsitektur Mermaid (Bab 4 di masing-masing dokumen) sebagai dasar gambar diagram arsitektur sistem.
+   * Gunakan diagram sekuensial (Bab 5 di masing-masing dokumen) untuk menjelaskan alur pertukaran pesan antar-komponen.
+   * Gunakan tabel sumber fakta dan acuan kode untuk menjelaskan keterlacakan baris implementasi nyata pada repositori proyek.
+3. **Bab 5 (Pengujian dan Evaluasi):**
+   * Gunakan studi kasus data uji riil pada Dokumen 02 untuk membuktikan derivasi alamat deterministik.
+   * Gunakan matriks analisis mitigasi ancaman keamanan pada seluruh dokumen untuk bab evaluasi keamanan sistem.

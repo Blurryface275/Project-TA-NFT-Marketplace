@@ -25,13 +25,20 @@ docs/
 # Uploads statis (gambar tiket yang diunggah saat runtime)
 backend/uploads/
 uploads/
-scratch/*.png
+scratch/
 
-# Explanation
+# Explanation & Video Assets
 explanation/
+video_assets/
+media/
+openmontage/
 
 # Rekaman Konsultasi Media
 KONSULTASI RM*/
 
 # Agent configs, skills, & prompt instructions
 .agents/
+.claude/
+.superpowers/
+skills-lock.json
+skills/

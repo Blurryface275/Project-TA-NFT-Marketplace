@@ -53,7 +53,7 @@ Data menunjukkan bahwa 63% responden terpaksa menggunakan jasa perantara tidak r
 | Gagasan Awal | Alasan Rasional Penghapusan |
 |---|---|
 | Tiket Soulbound (Sama sekali tidak dapat dipindahtangankan) | Pembeli yang berhalangan hadir tetap memiliki hak sah untuk menjual kembali tiketnya. Kontrak mengunci batas harga, bukan melarang pemindahan hak milik yang sah. |
-| Mekanisme Commit-Reveal & Flash Sale Dua Tahap | Dihilangkan karena eliminasi potensi keuntungan spekulatif telah menurunkan insentif kompetisi bot massal. |
+| Mekanisme Commit-Reveal Dua Tahap | Dihilangkan karena latensi tinggi dan kompleksitas UX. Sebagai gantinya, proteksi bot pada flash sale menggunakan Cloudflare Turnstile, batas kuota per dompet, dan autentikasi passkey cepat. |
 | Pengundian Acak Terdesentralisasi (Chainlink VRF) | Penjualan berbasis kuota tertib dinilai telah memadai tanpa menambah latensi dan biaya komputasi oracle eksternal. |
 
 ---

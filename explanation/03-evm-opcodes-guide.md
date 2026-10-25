@@ -1,122 +1,199 @@
-# Penjelasan 03: Panduan Lengkap EVM Opcodes (Operation Codes)
+# Desain dan spesifikasi teknis eksekusi opcode EVM pada smart contract dan ERC-4337
 
-Dokumen ini disusun untuk menjawab topik to-do list: **"Apa itu Opcode EVM?"** dan menjelaskan relevansinya terhadap ekosistem ERC-4337 Account Abstraction serta Smart Contract.
+**Analisis komputasi mesin stack 256-bit, alokasi memori, opcode kunci (CREATE2, DELEGATECALL, STATICCALL, SSTORE), dan dinamika konsumsi gas**
 
----
-
-## 1. Apa itu Opcode EVM?
-
-**EVM (Ethereum Virtual Machine)** adalah mesin virtual terdesentralisasi yang mengeksekusi kode smart contract di seluruh node jaringan Ethereum.
-
-EVM adalah sebuah **Mesin Berbasis Stack (*Stack-based Machine*)** dengan ukuran kata 256-bit (32 bytes). Komputer/node Ethereum tidak memahami bahasa tingkat tinggi seperti Solidity secara langsung. Kode Solidity harus di-compile terlebih dahulu menjadi **Bytecode**.
-
-Di dalam bytecode tersebut, setiap instruksi dasar berukuran **1 byte (8 bit)** yang memiliki nilai heksadesimal antara `0x00` hingga `0xFF`. Instruksi 1 byte inilah yang disebut **Opcode (Operation Code)**.
-
-Contoh sederhana:
-* `0x01` adalah opcode untuk `ADD` (menjumlahkan 2 angka di atas stack).
-* `0x60` adalah opcode untuk `PUSH1` (memasukkan 1 byte data ke dalam stack).
-* `0x55` adalah opcode untuk `SSTORE` (menyimpan data ke storage permanen blockchain).
-
-Setiap kali sebuah opcode dieksekusi, node Ethereum memotong sejumlah **Gas** sebagai biaya komputasi.
+| Parameter | Deskripsi |
+| :--- | :--- |
+| **Status** | Spesifikasi analisis eksekusi mesin virtual EVM final |
+| **Penyusun** | Benedictus Leonardo Edward Stephen Sugianto (NRP: 160423176) |
+| **Ruang lingkup** | Karakteristik eksekusi mesin stack 256-bit, empat domain memori EVM (Stack, Memory, Storage, Calldata), semantik opcode deployment dan delegasi, serta optimasi biaya gas |
+| **Dokumen terkait** | [01-erc4337-initcode-and-erc1967.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/01-erc4337-initcode-and-erc1967.md), [02-passkey-cryptography-and-address-derivation.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/02-passkey-cryptography-and-address-derivation.md), [06-smart-contract-fundamentals-and-mint-flow.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/06-smart-contract-fundamentals-and-mint-flow.md) |
+| **Sasaran pembaca** | Penguji sidang tugas akhir, pembimbing, dan perekayasa perangkat lunak |
 
 ---
 
-## 2. Model Memori EVM
+## 1. Ringkasan eksekutif
 
-Ketika EVM mengeksekusi opcodes, terdapat 4 area penyimpanan data:
-1. **Stack**: Struktur LIFO (Last In First Out) dengan kedalaman maksimal 1024 elemen, masing-masing 256-bit. Sangat murah gas.
-2. **Memory**: Ruang memori sementara (*volatile*) yang bertahan hanya selama transaksi berlangsung. Biaya gas meningkat kuadratis seiring ukurannya bertambah.
-3. **Storage**: Penyimpanan persisten (*non-volatile*) di mana variabel state kontrak disimpan di hard disk node. Sangat mahal gas.
-4. **Calldata**: Ruang memori read-only yang berisi argumen data yang dikirimkan saat memanggil fungsi kontrak.
+Ethereum Virtual Machine (EVM) adalah mesin virtual deterministik berbasis stack (*stack-based virtual machine*) dengan ukuran kata (*word size*) 256-bit (32 bytes). Komputer atau node validator dalam jaringan Ethereum tidak mengeksekusi bahasa pemrograman tingkat tinggi seperti Solidity secara langsung, melainkan mengeksekusi kumpulan instruksi mesin satu byte yang disebut *Operation Codes* (Opcodes), yang memiliki rentang nilai dari `0x00` hingga `0xFF`.
 
----
+Pada platform *NFTix*, pemahaman mendalam mengenai perilaku opcode menjadi landasan arsitektur dalam perancangan smart contract `TicketContract.sol`, sistem relayer transaksi gasless, dan abstraksi akun ERC-4337. 
 
-## 3. Opcodes Kunci dalam ERC-4337 Account Abstraction
-
-Dalam Tugas Akhir tentang Account Abstraction ini, terdapat beberapa opcode krusial yang menjadi tulang punggung sistem:
-
-### A. Opcode `CREATE2` (`0xF5`)
-* **Fungsi:** Membuat smart contract baru di blockchain dengan alamat yang **deterministik (pasti)** sebelum kontrak tersebut dideploy secara fisik.
-* **Perbedaan dengan `CREATE` (`0xF0`):**
-  * `CREATE`: Alamat dihitung dari `hash(sender, nonce)`. Jika urutan transaksi berubah, alamat wallet berubah.
-  * `CREATE2`: Alamat dihitung dari formula:
-    ```
-    address = keccak256( 0xff ++ factoryAddress ++ salt ++ keccak256(initCode) )[12:]
-    ```
-* **Relevansi ERC-4337:**
-  Memungkinkan user (seperti Andi) mendapatkan alamat walletnya secara instan di frontend tanpa perlu membayar gas deploy saat pertama kali registrasi (*counterfactual address*). Akun baru benar-benar dideploy oleh `KernelFactory` via `CREATE2` ketika transaksi pertama dilakukan.
+Instruksi seperti `CREATE2` memungkinkan derivasi alamat akun pengguna secara deterministik sebelum kompilasi fisik on-chain. Instruksi `DELEGATECALL` memungkinkan kontrak proxy ERC-1967 mengeksekusi logika ZeroDev Kernel dan PasskeyValidator dalam konteks penyimpanan proxy milik pengguna. Sementara itu, instruksi `STATICCALL` dan `SSTORE` menjamin integritas pembacaan data tiket tanpa efek samping serta pencatatan hak milik token secara permanen dan hemat gas.
 
 ---
 
-### B. Opcode `DELEGATECALL` (`0xF4`)
-* **Fungsi:** Memanggil kode dari kontrak lain, namun **dieksekusi dalam konteks penyimpanan (storage) kontrak pemanggil**.
-* **Cara Kerja:**
-  Jika Akun A melakukan `DELEGATECALL` ke Kontrak B:
-  * Logika kode yang berjalan adalah kode milik Kontrak B.
-  * Namun jika kode tersebut mengubah variabel, yang berubah adalah **Storage milik Akun A**.
-  * `msg.sender` dan `msg.value` tetap dipertahankan seperti pemanggil asli Akun A.
-* **Relevansi ERC-4337 & ZeroDev Kernel:**
-  1. **ERC-1967 Proxy:** Wallet user (Proxy) melakukan `DELEGATECALL` ke `Kernel Implementation`.
-  2. **Modular Plugins:** Kernel Account user meminjam logika verifikasi tanda tangan dari `PasskeyValidator` menggunakan `DELEGATECALL`.
+## 2. Sumber fakta dan acuan kode
 
----
+Analisis teknis dalam dokumen ini berpedoman pada implementasi kode kontrak pintar pada repositori dan spesifikasi resmi Ethereum:
 
-### C. Opcode `STATICCALL` (`0xFA`)
-* **Fungsi:** Mirip seperti `CALL`, tetapi bersifat **Read-Only**.
-* **Keamanan:** Jika kontrak target mencoba melakukan perubahan state (seperti menjalankan `SSTORE`, `CREATE`, atau mentransfer ETH), EVM akan langsung membatalkan eksekusi (*revert*).
-* **Relevansi ERC-4337:**
-  Bundler ERC-4337 menggunakan simulasi `STATICCALL` untuk memeriksa validitas `UserOperation` di fase simulasi lokal agar terhindar dari spam transaksi palsu tanpa mengeluarkan biaya gas di jaringan asli.
-
----
-
-### D. Opcode `SSTORE` (`0x55`) & `SLOAD` (`0x54`)
-* **Fungsi:** Menulis (`SSTORE`) dan membaca (`SLOAD`) ke slot storage 256-bit di blockchain.
-* **Relevansi ERC-1967:**
-  Standar ERC-1967 menggunakan `SLOAD` dan `SSTORE` pada slot khusus:
-  `0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc`
-  untuk membaca alamat logika implementasi kontrak tanpa menimpa variabel milik user.
-
----
-
-## 4. Tabel Ringkasan Opcode Penting
-
-| Opcode | Hex | Gas Minimum | Deskripsi Singkat | Peran di TA |
-| :--- | :--- | :--- | :--- | :--- |
-| **STOP** | `0x00` | 0 | Menghentikan eksekusi secara normal | Akhir eksekusi kontrak |
-| **ADD** | `0x01` | 3 | Penjumlahan stack | Operasi matematika umum |
-| **KECCAK256** | `0x20` | 30 + gas data | Menghitung hash Keccak-256 | Menghitung hash ID passkey & alamat CREATE2 |
-| **SLOAD** | `0x54` | 100 - 2100 | Membaca dari storage permanen | Membaca data proxy & konfigurasi validator |
-| **SSTORE** | `0x55` | 100 - 22100 | Menulis ke storage permanen | Menyimpan status tiket NFT & plugin akun |
-| **CALL** | `0xF1` | 100 - 2600 | Memanggil akun/kontrak lain | Eksekusi transfer tiket NFT atau pembayaran |
-| **DELEGATECALL** | `0xF4` | 100 - 2600 | Menjalankan kode pihak ketiga di storage sendiri | Proxy ERC-1967 & Plugin Passkey Validator |
-| **CREATE2** | `0xF5` | 32000 | Deploy kontrak dengan alamat deterministik | Pembuatan akun baru oleh KernelFactory |
-| **STATICCALL** | `0xFA` | 100 - 2600 | Panggilan aman tanpa modifikasi state | Simulasi validasi UserOp oleh Bundler |
-| **REVERT** | `0xFD` | 0 + gas data | Membatalkan eksekusi dan mengembalikan sisa gas | Menolak transaksi jika passkey tidak sah |
-
----
-
-## 5. Pemetaan Implementasi Opcode Nyata pada Repositori Skripsi
-
-Setiap instruksi opcode di atas diimplementasikan secara nyata pada baris kode proyek ini:
-
-| Opcode | Contoh Baris Kode Nyata | File Sumber & Nomor Baris | Keterangan Eksekusi |
+| Komponen | Berkas sumber | Lokasi baris | Perilaku terverifikasi |
 | :--- | :--- | :--- | :--- |
-| **`CREATE` (`0xF0`)** | `TicketContract ticket = new TicketContract();` | [`contracts/script/Deploy.s.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/script/Deploy.s.sol) (Baris 17) | Foundry men-deploy bytecode kontrak ke Sepolia via transaksi `to: null`. |
-| **`CREATE2` (`0xF5`)** | `KernelFactory.createAccount(...)` | `ZeroDev KernelFactory.sol` | Menghitung alamat dompet Smart Account pengguna secara deterministik (*counterfactual*). |
-| **`SSTORE` (`0x55`)** | `_tickets[tokenId] = TicketInfo(...)`<br>`_tickets[tokenId].used = true;` | [`contracts/src/TicketContract.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/src/TicketContract.sol) (Baris 195–200 & 225) | Menulis data struct tiket NFT baru dan mengubah status check-in ke penyimpanan permanen blockchain. |
-| **`SLOAD` (`0x54`)** | `if (_tickets[tokenId].used)` | [`contracts/src/TicketContract.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/src/TicketContract.sol) (Baris 216) | Membaca status penggunaan tiket dari storage node sebelum mengizinkan penukaran. |
-| **`STATICCALL` (`0xFA`)** | `this.publicClient.readContract({ ... })` | [`backend/src/tickets/tickets.service.ts`](file:///d:/STEVE/Project%20NFT%20Marketplace/backend/src/tickets/tickets.service.ts) (Baris 128 & 136) | Panggilan membaca `getTicket` dan `ownerOf` tanpa bayar gas (read-only). |
-| **`REVERT` (`0xFD`)** | `revert TicketAlreadyUsed(tokenId);` | [`contracts/src/TicketContract.sol`](file:///d:/STEVE/Project%20NFT%20Marketplace/contracts/src/TicketContract.sol) (Baris 217) | Membatalkan eksekusi secara instan jika tiket sudah pernah dipakai masuk. |
+| Smart contract tiket | [TicketContract.sol](file:///d:/STEVE/Project-TA-NFT-Marketplace/contracts/src/TicketContract.sol) | 165 - 208 | Penggunaan `_safeMint`, `error`, `emit`, dan operasi penulisan storage `_tickets` |
+| Kontrak marketplace | [MarketplaceContract.sol](file:///d:/STEVE/Project-TA-NFT-Marketplace/contracts/src/MarketplaceContract.sol) | 45 - 85 | Eksekusi `STATICCALL` untuk membaca harga tiket dan transfer aman ERC-721 |
+| Library ZeroDev | `@zerodev/sdk` | Modul factory | Pemanfaatan opcode `CREATE2` (0xF5) untuk pembentukan akun counterfactual |
+| Spesifikasi formal | Ethereum Yellow Paper | Bagian 9 & Lampiran H | Definisi formal eksekusi instruksi EVM dan biaya gas dasar |
 
 ---
 
-## 6. Sumber & Referensi Resmi
+## 3. Tujuan dan batasan sistem
 
-1. **Ethereum Yellow Paper (Gavin Wood):**
-   * Link: https://ethereum.github.io/yellowpaper/paper.pdf
-   * Bagian: *Appendix H: Virtual Machine Specification* (Daftar matematis seluruh opcode EVM).
-2. **EVM Codes (Interactive EVM Reference):**
-   * Link: https://www.evm.codes/
-   * Referensi interaktif untuk mengecek biaya gas, input/output stack, dan contoh eksekusi seluruh opcode.
-3. **Dokumentasi Resmi Solidity - Inline Assembly & Yul:**
-   * Link: https://docs.soliditylang.org/en/latest/assembly.html
+### 3.1 Tujuan
+1. Memetakan empat domain ruang memori EVM dan implikasinya terhadap biaya gas eksekusi kontrak tiket.
+2. Menganalisis perbedaan semantik opcode eksekusi (`CALL`, `DELEGATECALL`, `STATICCALL`) dalam relasi proxy akun dan marketplace.
+3. Memberikan landasan pembuktian ilmiah mengapa teknik *struct packing* pada `TicketContract.sol` mampu menghemat biaya instruksi `SSTORE`.
+4. Mengidentifikasi batas-batas keamanan eksekusi opcode guna mencegah serangan manipulasi reentrancy dan delegasi liar.
+
+### 3.2 Batasan (non-goals)
+1. Tidak merancang mesin virtual alternatif di luar spesifikasi EVM London/Shanghai/Cancun.
+2. Tidak mengubah skema pembebanan gas dasar yang telah ditetapkan oleh protokol konsensus Ethereum.
+
+---
+
+## 4. Diagram desain sistem dan arsitektur model memori EVM
+
+Diagram blok berikut menggambarkan arsitektur pemrosesan instruksi EVM dan pembagian domain memori selama transaksi berlangsung:
+
+```mermaid
+graph TB
+    subgraph ExecutionEngine ["EVM Execution Engine (Node Validator)"]
+        PC["Program Counter (Penunjuk Baris Opcode)"]
+        Decoder["Opcode Decoder & Dispatcher"]
+        GasMeter["Gas Metering Controller (Pengurang Gas per Opcode)"]
+        PC --> Decoder
+        Decoder --> GasMeter
+    end
+
+    subgraph TransientDomain ["Domain Memori Sementara (Transient / Non-Persistent)"]
+        Stack["1. Stack (LIFO, Max 1024 Elemen, Ukuran Kata 256-bit, Sangat Murah)"]
+        Memory["2. Memory (Byte-Array Volatile, Linear Expansion Cost Kuadratis)"]
+        Calldata["3. Calldata (Byte-Array Read-Only, Dikirim Inisiator Transaksi)"]
+    end
+
+    subgraph PersistentDomain ["Domain Memori Permanen (Persistent On-Chain)"]
+        Storage["4. State Storage (Tabel Hash 256-bit ke 256-bit di Disk Node, Sangat Mahal)"]
+        StorageSlot0["Slot 0: Owner / Proxy Implementation"]
+        StorageSlotN["Slot keccak256(tokenId, slot): Struct TicketInfo"]
+        Storage --- StorageSlot0
+        Storage --- StorageSlotN
+    end
+
+    Decoder -->|Operasi Aritmatika & Kontrol Alur| Stack
+    Decoder -->|Alokasi Struktur Sementara| Memory
+    Decoder -->|Baca Argumen Fungsi (external)| Calldata
+    Decoder -->|Instruksi SLOAD / SSTORE| Storage
+```
+
+---
+
+## 5. Diagram alur sekuensial eksekusi DELEGATECALL pada arsitektur proxy
+
+Diagram sekuensial berikut menjabarkan mekanisme isolasi memori saat sebuah kontrak proxy mengeksekusi instruksi `DELEGATECALL` ke kontrak implementasi:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Caller as Pemanggil (EntryPoint / Relayer)
+    participant Proxy as Proxy Account (0x811aed...)
+    participant Impl as Logic Contract (Kernel Implementation)
+    participant Storage as Storage Proxy (Slot Milik 0x811aed...)
+
+    Caller->>Proxy: Panggil fungsi execute(dest, value, data)
+    Note over Proxy: Baca implementasi dari Slot 0x3608...
+    Proxy->>Impl: Eksekusi DELEGATECALL dengan calldata pemanggil
+    
+    Note over Impl: Logika berjalan di CPU menggunakan kode Impl
+    Impl->>Storage: Eksekusi SLOAD / SSTORE (Baca/Tulis)
+    Note over Storage: Perubahan nilai terjadi di storage Proxy, BUKAN storage Impl
+    Storage-->>Impl: Data storage terbaca
+    
+    Impl-->>Proxy: Return status eksekusi (Success / Revert)
+    Proxy-->>Caller: Kembalikan hasil eksekusi ke pemanggil
+```
+
+---
+
+## 6. Taksonomi dan spesifikasi teknis opcode kunci
+
+### 6.1 Opcode `CREATE2` (`0xF5`)
+* **Fungsi:** Menciptakan kontrak pintar baru dengan penentuan alamat yang bersifat deterministik tanpa bergantung pada nonce akun pembuat.
+* **Perbandingan matematis:**
+  * Opcode konvensional `CREATE` (`0xF0`):
+    $$\text{Address} = \text{keccak256}(\text{RLP.encode}([\text{sender}, \text{nonce}]))_{[12:]}$$
+  * Opcode deterministik `CREATE2` (`0xF5`):
+    $$\text{Address} = \text{keccak256}(\text{0xff} \parallel \text{sender} \parallel \text{salt} \parallel \text{keccak256}(\text{initCode}))_{[12:]}$$
+* **Relevansi sistem *NFTix*:**
+  Memungkinkan pembeli tiket memperoleh alamat dompet smart account sebelum membayar biaya deployment. Kontrak fisik baru dibuat secara otomatis ketika tiket pertama dikirimkan.
+
+---
+
+### 6.2 Opcode `DELEGATECALL` (`0xF4`)
+* **Fungsi:** Memanggil kode pada kontrak target, namun eksekusi komputasi dilakukan secara penuh di dalam konteks penyimpanan (*storage*) kontrak pemanggil.
+* **Karakteristik konteks eksekusi:**
+  * Konteks penyimpanan: Menggunakan storage milik kontrak pemanggil (`Proxy`).
+  * Nilai `msg.sender`: Tetap bernilai inisiator asli pemanggil proxy.
+  * Nilai `msg.value`: Mempertahankan saldo transfer asli yang diterima proxy.
+* **Relevansi sistem *NFTix*:**
+  Mendasari seluruh arsitektur modular ZeroDev Kernel, di mana akun proxy pengguna mendelegasikan logika validasi tanda tangan biometrik ke `PasskeyValidator` tanpa menduplikasi bytecode validator ke setiap dompet pengguna.
+
+---
+
+### 6.3 Opcode `STATICCALL` (`0xFA`)
+* **Fungsi:** Memanggil kontrak target dengan jaminan deterministik bahwa pemanggilan tersebut **tidak akan mengubah status penyimpanan apapun (*state modification restriction*)**.
+* **Proteksi mesin:**
+  Jika di dalam sub-eksekusi `STATICCALL` terdapat opcode modifikasi state seperti `SSTORE`, `CREATE`, `CREATE2`, `SELFDESTRUCT`, atau `LOG0`-`LOG4`, EVM akan langsung melempar eksepsi *state violation* dan membatalkan transaksi.
+* **Relevansi sistem *NFTix*:**
+  Digunakan oleh `MarketplaceContract.sol` saat membaca fungsi `getTicket(tokenId)` pada `TicketContract.sol` untuk memastikan harga tiket asli tidak dapat dimodifikasi selama proses kalkulasi royalti dan verifikasi kepemilikan berlangsung.
+
+---
+
+### 6.4 Opcode `SSTORE` (`0x55`) dan `SLOAD` (`0x54`)
+* **Fungsi:** Mengambil (`SLOAD`) dan menulis (`SSTORE`) data 32 bytes pada storage persisten blockchain.
+* **Karakteristik dinamika gas (EIP-2200 & EIP-2929):**
+  * Penulisan slot kosong (nilai awal `0` menjadi `non-zero`): Menelan biaya dasar sebesar **20.000 gas** ditambah biaya slot dingin (*cold storage access*) sebesar **2.100 gas**.
+  * Pembaruan slot yang sudah terisi (*dirty slot*): Menelan biaya sekitar **2.900 gas** (atau 5.000 gas pada perubahan tertentu).
+  * Pembacaan slot dingin: **2.100 gas**, sedangkan pembacaan slot hangat (*warm slot*): **100 gas**.
+* **Relevansi sistem *NFTix*:**
+  Struktur `TicketInfo` pada `TicketContract.sol` sengaja dirancang menggunakan teknik *struct packing*, di mana variabel `originalPrice` (`uint96`) dan `used` (`bool` = 8 bit) digabungkan ke dalam satu slot memori 256-bit tunggal ($96 + 8 = 104 \text{ bit} \le 256 \text{ bit}$). Teknik ini memangkas satu kali pemanggilan `SSTORE` ekstra, menghemat sekitar 20.000 gas per pencetakan tiket.
+
+---
+
+### 6.5 Opcode `REVERT` (`0xFD`)
+* **Fungsi:** Menghentikan eksekusi secara instan, mengembalikan seluruh perubahan state yang telah terjadi pada transaksi tersebut, namun tetap mengembalikan sisa gas (*unused gas*) kepada pemanggil.
+* **Relevansi sistem *NFTix*:**
+  Dipicu oleh *custom error* Solidity (seperti `error TicketAlreadyUsed()`, `error Unauthorized()`, `error InvalidPrice()`). Custom error hanya mengembalikan 4-byte hash selektor fungsi error, jauh lebih hemat gas dibandingkan pemanggilan string revert panjang via `require(condition, "Pesan string panjang...")`.
+
+---
+
+## 7. Analisis gas komparatif dan model biaya eksekusi
+
+Tabel berikut menunjukkan perbandingan alokasi biaya gas untuk operasi dasar pada sistem *NFTix*:
+
+| Kategori operasi | Opcode yang dieksekusi | Estimasi biaya gas | Implikasi arsitektural |
+| :--- | :--- | :--- | :--- |
+| **Aritmatika dasar** | `ADD`, `SUB`, `MUL`, `DIV` | 3 - 5 gas | Eksekusi di stack sangat murah |
+| **Akses calldata** | `CALLDATALOAD`, `CALLDATASIZE` | 3 gas | Membaca parameter fungsi `external` jauh lebih murah daripada `memory` |
+| **Pencatatan event** | `LOG1` - `LOG4` | 375 gas + (375 per topic) + (8 per byte) | Digunakan untuk audit riwayat tanpa membebani storage persisten |
+| **Validasi hashing** | `SHA3` / `KECCAK256` | 30 gas + (6 per word) | Digunakan pada verifikasi EIP-712 dan penurunan alamat |
+| **Delegasi proxy** | `DELEGATECALL` | ~2.600 gas (cold) / 100 gas (warm) | Biaya overhead yang sangat kecil dibandingkan manfaat penghematan deployment |
+| **Alokasi slot baru** | `SSTORE` (0 ke non-zero) | ~22.100 gas | Operasi paling mahal, diminimalkan via struct packing |
+
+---
+
+## 8. Matriks mitigasi ancaman keamanan level opcode
+
+| Vektor serangan opcode | Skenario ancaman | Solusi penanganan terpasang |
+| :--- | :--- | :--- |
+| **Reentrancy attack** | Penyerang memanfaatkan `CALL` eksternal untuk memanggil kembali fungsi sebelum state storage diperbarui | Menerapkan pola *Checks-Effects-Interactions* dan memprioritaskan opcode `STATICCALL` untuk operasi pembacaan lintas kontrak |
+| **Delegatecall injection** | Penyerang mengarahkan alamat implementasi ke kontrak berbahaya yang menjalankan `SELFDESTRUCT` | Alamat implementasi dikunci di slot memori ERC-1967 dan hanya dapat diubah melalui otoritas mutlak pemilik akun via signature biometrik |
+| **Storage collision** | Benturan slot variabel antara proxy dan logic contract saat melakukan `DELEGATECALL` | ZeroDev Kernel menerapkan layout penyimpanan terstruktur (*Diamond Storage* / ERC-1967 layout) sehingga slot tidak tumpang tindih |
+| **Gas limit exhaustion** | Eksekusi looping tidak terbatas yang melampaui batas gas blok | Seluruh operasi pencetakan dan verifikasi tiket dirancang dalam kompleksitas waktu konstan $O(1)$ tanpa iterasi unbounded |
+
+---
+
+## 9. Referensi standar terbuka
+
+1. **Wood, Gavin.** Ethereum: A Secure Decentralised Generalised Transaction Ledger (Ethereum Yellow Paper). [https://ethereum.github.io/yellowpaper/paper.pdf](https://ethereum.github.io/yellowpaper/paper.pdf).
+2. **Ethereum Improvement Proposal 150 (EIP-150):** Gas cost changes for IO-heavy operations. [https://eips.ethereum.org/EIPS/eip-150](https://eips.ethereum.org/EIPS/eip-150).
+3. **Ethereum Improvement Proposal 214 (EIP-214):** New opcode STATICCALL. [https://eips.ethereum.org/EIPS/eip-214](https://eips.ethereum.org/EIPS/eip-214).
+4. **Ethereum Improvement Proposal 1014 (EIP-1014):** Skinny CREATE2. [https://eips.ethereum.org/EIPS/eip-1014](https://eips.ethereum.org/EIPS/eip-1014).
+5. **Ethereum Improvement Proposal 2200 (EIP-2200):** Structured Definitions for Net Gas Metering. [https://eips.ethereum.org/EIPS/eip-2200](https://eips.ethereum.org/EIPS/eip-2200).

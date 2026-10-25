@@ -9,6 +9,7 @@ import {
 import { TicketsService } from './tickets.service';
 import { MintTicketDto } from './dto/mint-ticket.dto';
 import { RedeemTicketDto } from './dto/redeem-ticket.dto';
+import { CreateSnapDto } from './dto/create-snap.dto';
 
 @Controller('tickets')
 export class TicketsController {
@@ -42,5 +43,19 @@ export class TicketsController {
   @Get(':tokenId') // pakai get karena cuma mau baca data
   async getTicket(@Param('tokenId', ParseIntPipe) tokenId: number) {
     return this.ticketsService.getTicket(tokenId);
+  }
+
+  // Endpoint Request Snap Token Midtrans
+  // POST http://localhost:3001/api/tickets/create-snap
+  @Post('create-snap') // pakai post karena kita mau update data
+  async createSnap(@Body() createSnapDto: CreateSnapDto) {
+    return this.ticketsService.createSnapTransaction(createSnapDto);
+  }
+
+  // Endpoint Webhook Notifikasi Midtrans
+  // POST http://localhost:3001/api/tickets/midtrans-webhook
+  @Post('midtrans-webhook')
+  async handleMidtransWebhook(@Body() notificationPayload: any) {
+    return this.ticketsService.handleMidtransWebhook(notificationPayload);
   }
 }

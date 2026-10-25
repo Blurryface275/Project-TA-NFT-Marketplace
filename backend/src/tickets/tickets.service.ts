@@ -10,6 +10,7 @@ import { TICKET_CONTRACT_ABI } from './ticket-abi';
 import { sepolia } from 'viem/chains';
 import { MintTicketDto } from './dto/mint-ticket.dto';
 import { EventsService } from '../events/events.service';
+import { CreateSnapDto } from './dto/create-snap.dto';
 
 @Injectable()
 export class TicketsService {
@@ -175,24 +176,24 @@ export class TicketsService {
           walletAddress,
       );
 
-      // di sini publicClient digunakan utk baca dta (read-only)
-      // walletClient digunakan utk mengirim transaksi (write)
+      const ticket = await this.getTicket(tokenId)
 
-      // panggil fungsi ownerOf di smart contract unutk cek apakah owner wallet sudah sesuai
-      const owner = await this.publicClient.readContract({
-        address: this.contractAddress, // targetnya smart contract dengan ddress sesuai dengan .env
-        abi: TICKET_CONTRACT_ABI, // pakai abi dari ticket-abi.ts
-        functionName: 'ownerOf', // nama fungsi yang mau dibaca
-        args: [BigInt(tokenId)], // argumen / parameter untuk fungsi ownerOf
-      });
-      // validasi kecocokan : apakah pemegang tiket yang tercatat di blockchain sudah sama dengan pengirim?
-      if (owner.toLowerCase() !== walletAddress.toLowerCase()) {
+      // validasi kepemilikan
+      if (ticket.owner.toLowerCase() !== walletAddress.toLowerCase()){
         throw new BadRequestException(
           `Validasi gagal: Alamat dompet ini tidak sama dengan pemilik tiket di blockchain`,
         );
       }
 
-      // panggil fungsi 'markUsed' di smart contract Sepolia untuk menukar tiket NFT menjadi pulsa
+      // Cegah transaksi dikirim jika tiket sudah pernah dipakai sebelumnya (pencegahan double spending)
+      if (ticket.used === true){
+        throw new BadRequestException(
+          `Validasi gagal: Tiket ini sudah pernah digunakan`,
+        );
+      }
+
+      // Eksekusi fungsi markUsed (update status ticket) di smart contract
+      // walletClient digunakan untuk mengirim transaksi (write)
       const hash = await this.walletClient.writeContract({
         address: this.contractAddress,
         abi: TICKET_CONTRACT_ABI,
@@ -205,15 +206,18 @@ export class TicketsService {
       );
 
       // Menunggu sampai transaksi resmi masuk ke blok
+      // di sini publicClient digunakan utk baca dta (read-only)
       const receipt = await this.publicClient.waitForTransactionReceipt({
         hash: hash,
       });
+      
       return {
         success: true,
         message: 'Tiket berhasil digunakan (Redeemed)!',
         txHash: hash,
         blockNumber: Number(receipt.blockNumber),
       };
+
     } catch (error: any) {
       console.error('Error redeem ticket:', error);
       // NestJS Exception Filter: melempar error HTTP 400 ke frontend
@@ -284,5 +288,134 @@ export class TicketsService {
     }
 
     return userTickets;
+  }
+
+  async createSnapTransaction(dto: CreateSnapDto){
+    // Ambil data event & kategorinya dari database MySQL
+    const event = await this.eventsService.findOne(dto.eventId);
+    const category = event.ticketCategories.find(
+      (c) => Number(c.id) === Number(dto.categoryId),
+    );
+
+    if (!category){
+      throw new BadRequestException('Kategori tiket tidak ditemukan');
+    }
+
+    const qty = dto.quantity > 0 ? dto.quantity : 1;
+    const grossAmount = Math.round(Number(category.price) * qty);
+
+    // buat order ID unik (Format: NFTIX-EVENT-CATEGORY-TIMESTAMP-RANDOM)
+    const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
+    const orderId = `NFTIX-${dto.eventId}-${dto.categoryId}-${Date.now()}-${randomSuffix}`;
+
+    // Ambil server key dair file di backend/.env
+    const serverKey = this.configService.get<string>('MIDTRANS_SERVER_KEY');
+    if (!serverKey){
+      throw new Error('Server Key Midtrans belum dikonfigurasi');
+    }
+
+    // Basic Auth Midtrans
+    const basicAuth = Buffer.from(`${serverKey}:`).toString('base64');
+
+    // URL untuk transaksi Sandbox (default jika Midtrans isProduction = false)
+    const midtransUrl = 'https://app.sandbox.midtrans.com/snap/v1/transactions';
+
+    // Buat objek transaksi (body request untuk Midtrans)
+    const response = await fetch(midtransUrl, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${basicAuth}`,
+      },
+      body: JSON.stringify({
+        transaction_details: {
+          order_id: orderId,
+          gross_amount: grossAmount,
+        },
+        item_details: [
+          {
+            id: String(category.id),
+            price: Math.round(Number(category.price)),
+            quantity: qty,
+            name: `${event.eventName} (${category.name})`.slice(0, 50),
+          },
+        ],
+        customer_details: {
+          first_name: dto.walletAddress.slice(0, 10),
+          email: 'buyer@nftix.id',
+        },
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      console.error('Midtrans Snap Error:', data);
+      throw new BadRequestException(
+        data.error_messages?.[0] || 'Gagal membuat tagihan pembayaran Midtrans',
+      );
+    }
+    // Mengembalikan Snap Token dan URL Popup kasir ke frontend
+    // Expected Output:
+    //{
+    //  "token": "midtrans-snap-token-example",
+    //  "redirectUrl": "https://app.sandbox.midtrans.com/snap/v2/pay?token=midtrans-snap-token-example",
+    //  "orderId": "NFTIX-5-1-1756053929876",
+    //  "grossAmount": 200000
+    //}
+    return {
+      token: data.token,
+      redirectUrl: data.redirect_url,
+      orderId: orderId,
+      grossAmount: grossAmount,
+    };
+
+  }
+
+  // Menangani notifikasi webhook dari Midtrans setelah pembayaran selesai
+  async handleMidtransWebhook(payload: any) {
+    const serverKey = this.configService.get<string>('MIDTRANS_SERVER_KEY');
+    if (!serverKey) {
+      throw new Error('Server Key Midtrans belum dikonfigurasi');
+    }
+
+    const {
+      order_id,
+      status_code,
+      gross_amount,
+      signature_key,
+      transaction_status,
+      fraud_status,
+    } = payload;
+
+    // Verifikasi keaslian notifikasi menggunakan SHA-512 sesuai standar keamanan Midtrans
+    const crypto = await import('crypto');
+    const signaturePayload = `${order_id}${status_code}${gross_amount}${serverKey}`;
+    const calculatedSignature = crypto
+      .createHash('sha512')
+      .update(signaturePayload)
+      .digest('hex');
+
+    if (signature_key !== calculatedSignature) {
+      throw new BadRequestException('Signature key Midtrans tidak valid');
+    }
+
+    // Status pembayaran berhasil (settlement atau capture yang disetujui)
+    const isPaymentSuccess =
+      transaction_status === 'settlement' ||
+      (transaction_status === 'capture' && fraud_status === 'accept');
+
+    if (!isPaymentSuccess) {
+      return {
+        status: 'ignored',
+        message: `Status transaksi: ${transaction_status}, tidak memerlukan tindakan on-chain`,
+      };
+    }
+
+    return {
+      status: 'success',
+      message: 'Notifikasi pembayaran Midtrans berhasil diverifikasi',
+      orderId: order_id,
+    };
   }
 }

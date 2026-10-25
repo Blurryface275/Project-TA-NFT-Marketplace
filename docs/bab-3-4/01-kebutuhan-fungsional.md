@@ -60,18 +60,15 @@ Kebutuhan dikelompokkan menjadi **sembilan modul**.
 | M2 | Identitas Pengguna (KYC) | KF-07 – KF-12 | Pengguna |
 | M3 | Manajemen Event | KF-13 – KF-20 | Penyelenggara acara |
 | M4 | Katalog Event | KF-21 – KF-24 | Pengguna |
-| M5 | Pembelian Tiket | KF-25 – KF-34 | Pengguna, Sistem |
+| M5 | Pembelian Tiket dan Flash Sale | KF-25 – KF-34, **KF-60 – KF-63** | Pengguna, Sistem |
 | M6 | Kepemilikan Tiket | KF-35 – KF-38 | Pengguna |
 | M7 | Penjualan Kembali | KF-39 – KF-47, **KF-56 – KF-59** | Pengguna, Sistem |
 | M8 | Verifikasi Tiket di Lokasi Acara | KF-48 – KF-51 | Petugas lokasi acara |
-| M9 | Notifikasi | KF-52 – KF-55 | Sistem |
+| M9 | Notifikasi | KF-52 – KF-55, **KF-64** | Sistem |
 
-**Total: 59 kebutuhan fungsional.**
+**Total: 64 kebutuhan fungsional.**
 
-> **Kenapa KF-56 sampai KF-59 tidak disisipkan di tengah M7:** menyisipkannya
-> akan menggeser penomoran seluruh kebutuhan sesudahnya, dan setiap rujukan di
-> berkas lain ikut salah. Penomoran karena itu **hanya ditambah di belakang**,
-> tidak pernah disusun ulang.
+> **Penomoran kebutuhan tambahan:** kebutuhan KF-56 hingga KF-59 serta KF-60 hingga KF-64 ditambahkan di belakang penomoran modul untuk menjaga stabilitas rujukan antar berkas dokumentasi.
 
 > **Catatan penyusunan:** `tasks.md` menyebut adanya draf 27 kebutuhan
 > fungsional dalam 8 modul. Draf tersebut **tidak ditemukan** di dalam repositori
@@ -203,9 +200,20 @@ tiket bisa dipicu dari sisi peramban, siapa pun dapat mengaku sudah membayar dan
 memperoleh tiket gratis. Pemberitahuan dari Midtrans adalah satu-satunya bukti
 pembayaran yang tidak bisa dipalsukan pengguna.
 
-**KF-31 harus mendahului KF-33 dengan sengaja.** NFT menyimpan *penunjuk* ke
+**KF-31 harus mendahului KF-33 dengan sengaja.** NFT menyimpan penunjuk ke
 keterangan tiket, bukan keterangannya sendiri. Kalau urutannya terbalik, sempat
 ada tiket yang menunjuk ke alamat kosong.
+
+### 8.1 Transaksi kilat (flash sale) dan kontrol konkurensi
+
+Kebutuhan berikut menjamin keadilan alokasi dan ketahanan sistem saat lonjakan transaksi tinggi sesuai Bab 3.4 dan Ruang Lingkup Bab 1.5 Poin 10.
+
+| Kode | Kebutuhan | Rujukan |
+|---|---|---|
+| **KF-60** | Sistem harus menyediakan antarmuka khusus flash sale dengan **penghitung waktu mundur (countdown)** menuju jadwal pembukaan penjualan tiket | Fitur Bab 3.4 Poin 2 |
+| **KF-61** | Sistem harus menyediakan fitur **pendaftaran pengingat flash sale (reminder)** bagi pengguna terdaftar sebelum sesi penjualan dibuka | Ruang lingkup poin 10 |
+| **KF-62** | Sistem harus menerapkan **penguncian data kuota tingkat aplikasi (pessimistic locking)** saat reservasi dibuat guna mencegah alokasi berlebih (*overselling*) saat permintaan serentak | Modul 23 Audit Keamanan |
+| **KF-63** | Sistem harus secara otomatis **melepas kunci kuota dan membatalkan reservasi** via background worker bila pembayaran Midtrans tidak diselesaikan dalam batas waktu 15 menit | Ruang lingkup poin 10 |
 
 ---
 
@@ -318,6 +326,7 @@ depan petugas sama dengan yang terdaftar.
 | **KF-53** | Sistem harus memberi tahu pengguna ketika **tiket berhasil dicetak** ke dompetnya | Fitur Bab 3.4 |
 | **KF-54** | Sistem harus memberi tahu penjual ketika **tiket yang ditawarkannya terjual** | Fitur Bab 3.4 |
 | **KF-55** | Sistem harus menyimpan riwayat notifikasi agar dapat dibuka kembali pengguna | Ruang lingkup poin 10 |
+| **KF-64** | Sistem harus memberi tahu pengguna mengenai **hasil partisipasi flash sale**: alokasi tiket berhasil didapatkan atau kuota telah habis | Fitur Bab 3.4 Poin 6 |
 
 ---
 
@@ -330,49 +339,37 @@ benar-benar berasal dari hasil analisis, bukan disusun sendiri tanpa dasar.
 | Fitur di Bab 3.4 | Kode KF | Catatan penyesuaian |
 |---|---|---|
 | Registrasi otomatis cukup dengan verifikasi surel | KF-01 – KF-05 | Sesuai |
-| *Flash sale* dengan CAPTCHA dan batas maksimal pembelian | KF-19, KF-25, KF-26, KF-28 | **Bagian *flash sale* dihapus.** Yang dipertahankan adalah penyaring bot dan batas maksimal pembelian, karena keduanya tetap berguna pada pembelian biasa |
+| Flash sale dengan CAPTCHA dan batas maksimal pembelian | KF-19, KF-25, KF-26, KF-28, **KF-60 – KF-63** | Diterapkan menggunakan antrean Turnstile, timer countdown, penguncian pesanan, dan autentikasi passkey cepat |
 | Pembelian tiket reguler menghasilkan tiket digital unik | KF-25 – KF-34 | Diurai menjadi sepuluh butir karena tiap langkah perlu diuji terpisah |
-| *Resale* tiket dengan harga dikunci sesuai harga pembelian awal | KF-39 – KF-47 | Ditambah kebutuhan penolakan di sisi smart contract (KF-41, KF-45) |
+| Resale tiket dengan harga dikunci sesuai harga pembelian awal | KF-39 – KF-47, KF-56 – KF-59 | Ditambah kebutuhan penolakan di smart contract (KF-41, KF-45) dan pencairan rekening (KF-58, KF-59) |
 | Verifikasi tiket oleh petugas venue | KF-48 – KF-51 | Ditambah pencocokan identitas KTP (KF-51) |
-| Notifikasi status transaksi | KF-52 – KF-55 | Notifikasi hasil *flash sale* dihapus, diganti notifikasi status pembayaran |
+| Notifikasi status transaksi | KF-52 – KF-55, **KF-64** | Mencakup status pembayaran, tiket tercetak, tiket terjual, dan hasil alokasi flash sale |
 | Bebas biaya transaksi | KF-05 | Sesuai |
 | Melihat tiket elektronik yang sudah dibeli | KF-35 – KF-38 | Ditambah pembuktian kepemilikan mandiri (KF-37) |
-| *(Tidak ada di Bab 3.4)* | KF-06 – KF-12 | **Pendaftaran identitas KTP.** Belum ada saat Bab 3.4 disusun, ditambahkan setelah arsitektur final |
-| *(Tidak ada di Bab 3.4)* | KF-13 – KF-24 | **Manajemen event dan katalog.** Kurang terurai di ruang lingkup proposal |
+| *(Tidak ada di Bab 3.4)* | KF-06 – KF-12 | Pendaftaran identitas KTP dan pencatatan riwayat sesi masuk |
+| *(Tidak ada di Bab 3.4)* | KF-13 – KF-24 | Manajemen event dan katalog |
 
 ---
 
 ## 14. Kebutuhan yang Sengaja Tidak Ada
 
-Empat hal berikut muncul di proposal awal tapi **tidak menjadi kebutuhan
-sistem**. Didaftar di sini supaya ketiadaannya terbaca sebagai keputusan, bukan
-kelalaian.
+Tiga mekanisme berikut muncul dalam wacana awal namun tidak diimplementasikan:
 
-| Yang tidak ada | Kenapa | Rujukan |
+| Yang tidak ada | Alasan perancangan | Rujukan |
 |---|---|---|
-| Kebutuhan *flash sale* | Terhapus bersama *commit-reveal*. Alur utama tinggal tiga | Arsitektur 4.3 |
-| Kebutuhan pembelian dua tahap (*commit-reveal*) | Masalah yang diatasinya adalah perebutan cepat. Karena keuntungan calo sudah dimatikan lewat penguncian harga, insentif berebut hilang | Arsitektur 4.3 |
-| Kebutuhan pengundian acak (Chainlink VRF) | Persaingan dinilai sudah cukup sehat tanpa pengundian | Arsitektur 4.3 |
-| Kebutuhan tiket yang sama sekali tidak bisa dipindahkan (*Soulbound Token*) | Diganti pembatasan allowlist. Orang yang batal hadir tetap perlu bisa mengalihkan tiketnya secara sah | Arsitektur 4.5 |
+| Pembelian dua tahap commit-reveal | Penundaan alokasi dua tahap menambah latensi berlebih. Pencegahan bot dialihkan ke Cloudflare Turnstile, batas per wallet, dan passkey fast-pass | Modul 23 Audit Keamanan |
+| Pengundian acak on-chain (Chainlink VRF) | Alokasi berurutan berbasis waktu dengan kontrol konkurensi dinilai memadai tanpa membebani biaya oracle gas | Arsitektur 4.3 |
+| Tiket yang sama sekali tidak dapat dipindahtangankan (Soulbound) | Diganti mekanisme transfer terbatas allowlist agar tiket yang batal dihadiri tetap dapat dialihkan secara sah lewat loket resmi | Arsitektur 4.5 |
 
 ---
 
 ## 15. Daftar Periksa Kelengkapan
 
-Diperiksa terhadap ketentuan di `tasks.md` Langkah 4.
-
-- [x] **Tidak ada satu pun kebutuhan yang menyebut *flash sale* atau
-      *commit-reveal*** sebagai bagian aktif sistem. Keduanya hanya disebut di
-      Bagian 13 dan 14 dalam bingkai "dihapus".
-- [x] **Tidak ada kebutuhan yang menyatakan tiket "tidak bisa dipindahkan sama
-      sekali".** KF-44 dan KF-45 menyatakan pembatasan **jalur**, bukan larangan
-      perpindahan. Ditegaskan ulang di penutup Bagian 10.
-- [x] **Sudah ada kebutuhan pendaftaran identitas (KYC)** — seluruh modul M2
-      (KF-07 sampai KF-12), ditambah KF-46 dan KF-51.
-- [x] Setiap kebutuhan punya kode yang bisa dirujuk.
-- [x] Kebutuhan dikelompokkan per modul.
-- [x] **Ada modul untuk sisi penyelenggara acara** — M3 (KF-13 sampai KF-20),
-      mencakup pembuatan event dan pengaturan kuota.
+- [x] Kebutuhan flash sale dan mitigasi konkurensi aktif tercakup pada KF-60 hingga KF-63.
+- [x] Tidak ada kebutuhan yang menyatakan tiket "tidak bisa dipindahkan sama sekali". Perpindahan dibatasi jalurnya via allowlist resmi.
+- [x] Pendaftaran identitas (KYC) terintegrasi pada modul M2 (KF-07 sampai KF-12).
+- [x] Penyelenggara acara terfasilitasi pada modul M3 (KF-13 sampai KF-20).
+- [x] Sistem notifikasi lengkap mencakup transaksi reguler dan flash sale (KF-52 sampai KF-55, KF-64).
 - [x] Tidak ada angka kinerja yang dikarang. Seluruh tuntutan angka berada di
       [`02-kebutuhan-non-fungsional.md`](02-kebutuhan-non-fungsional.md) dan
       ditandai `[BUTUH DATA UJI]`.

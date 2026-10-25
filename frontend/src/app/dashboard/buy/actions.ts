@@ -157,3 +157,63 @@ export async function buyTicketAction(
     };
   }
 }
+
+// Meminta snap token Midtrans sebelum checkout
+export async function createSnapPaymentAction(
+  eventId: number,
+  categoryId: number,
+  quantity: number,
+){
+  const session = await getSession();
+
+  if (!session?.walletAddress){
+    return{
+      success: false,
+      message: "Dompet belum aktif. Silakan aktifkan dompet tiket terlebih dahulu.",
+    };
+  }
+
+  try{
+    // ambil response dari API relayer untuk buat snap token
+    const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
+    
+    const response = await fetch(`${backendUrl}/api/tickets/create-snap`,{
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        eventId: Number(eventId),
+        categoryId: Number(categoryId),
+        quantity: Number(quantity),
+        walletAddress: session.walletAddress,
+      }),
+    });
+
+    const resData = await response.json();
+
+    if (!response.ok){
+      return{
+        success: false,
+        message: resData.message || "Terjadi error pada proses pembayaran Midtrans",
+      };
+    }
+
+    return {
+      success: true,
+      token: resData.token,
+      redirectUrl: resData.redirectUrl,
+      orderId: resData.orderId,
+      grossAmount: resData.grossAmount,
+    };
+
+  }catch(error){
+    console.error(`[SNAP ACTION] Error membuat snap token:`, error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Error tidak diketahui";
+    return{
+      success: false,
+      message: `Gagal membuat snap token: ${errorMessage}`,
+    };
+  }
+}

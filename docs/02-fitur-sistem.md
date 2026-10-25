@@ -1,72 +1,64 @@
-# 02 — Fitur Sistem
+# 02. Fitur sistem
 
-Daftar semua yang bisa dilakukan, dikelompokkan **per siapa yang memakai**.
-Kolom status jujur: ✅ sudah ada di kode, 🚧 belum, 🔶 bentuknya masih
-dibahas dengan dosen.
-
-**Keadaan 2 September 2026:** yang ✅ baru sebagian `TicketContract.sol`, dan
-itu pun **belum diuji**. Situs web dan server belum ada sama sekali.
+Daftar seluruh kapabilitas sistem, dikelompokkan berdasarkan peran aktor pengguna.
+Keterangan status: ✅ sudah ada di kode, 🚧 dalam pengerjaan, 🔶 tahap perancangan atau penyesuaian regulasi.
 
 ## Pembeli tiket
 
-| Fitur | Penjelasan singkat | Status |
+| Fitur | Penjelasan ringkas | Status |
 |---|---|---|
-| Daftar akun | Email + kata sandi, seperti situs biasa | 🚧 |
-| Buat dompet lewat passkey | Sekali sentuh sidik jari/wajah, dompet blockchain jadi. Tidak ada 12 kata rahasia, tidak ada aplikasi tambahan | 🚧 (dicoba di `spike-next/`) |
-| Daftarkan identitas KTP | Isi data KTP sekali. Satu KTP = satu dompet = satu orang | 🔶 bentuk penyimpanannya belum putus |
-| Lihat katalog event | Daftar event yang sedang buka penjualan, bisa disaring per kategori | 🚧 |
-| Lihat detail event | Nama, tanggal, lokasi, kategori tiket, harga, **sisa kuota** — keterangannya diambil dari IPFS | 🚧 |
-| Beli tiket | Lolos satpam bot → bayar di Midtrans → tiket dicetak otomatis ke dompetmu | 🚧 |
-| Lihat tiket saya | Daftar tiket + rincian dan gambarnya | 🚧 |
-| Buktikan tiket asli sendiri | Nomor tiket (`tokenId`) + alamat kontrak bisa dicek siapa pun di Etherscan Sepolia — tanpa percaya pada kami | 🚧 |
-| Jual ulang tiket | Tawarkan lewat loket resmi. **Tidak ada kolom harga** — harganya otomatis = harga beli awal | 🚧 |
-| Batalkan penawaran | Selama belum terjual | 🚧 |
-| Beli tiket jual ulang | Bayar tepat harga asli lewat Midtrans; kepemilikan pindah di blockchain | 🚧 |
-| Notifikasi | Status bayar, tiket tercetak, tiket terjual | 🚧 (boleh dipotong) |
-| Pulihkan dompet | Tambah perangkat baru (disetujui perangkat lama), atau 12 kata darurat | 🚧 |
+| Daftar akun | Pendaftaran menggunakan email dan kata sandi | 🚧 |
+| Buat dompet via passkey | Pembuatan smart account blockchain otomatis berbasis biometrik WebAuthn tanpa frasa pemulihan manual | 🚧 (dalam tahap integrasi) |
+| Daftarkan identitas KTP | Pendaftaran NIK tunggal dengan enkripsi hash satu arah (keccak256) untuk mencegah duplikasi akun | 🔶 (diselaraskan dengan UU PDP) |
+| Lihat katalog event | Daftar event aktif yang dapat disaring berdasarkan kategori acara | 🚧 |
+| Lihat detail event | Informasi nama, tanggal, lokasi, kategori, harga, dan sisa kuota dari metadata IPFS | 🚧 |
+| Beli tiket reguler | Melewati verifikasi bot Turnstile, pembayaran Midtrans sandbox, dan pencetakan tiket NFT otomatis ke dompet | 🚧 |
+| Flash sale (war tiket) | Pembelian tiket kuota terbatas berkecepatan tinggi dengan antrean bot Turnstile, countdown waktu buka, dan autentikasi passkey cepat | 🚧 |
+| Pengingat flash sale | Pendaftaran notifikasi pengingat jadwal pembukaan penjualan tiket sebelum sesi dimulai | 🚧 |
+| Lihat tiket saya | Menampilkan daftar tiket aktif, rincian metadata, dan kode QR dinamis | 🚧 |
+| Buktikan kepemilikan mandiri | Verifikasi nomor token dan alamat smart contract langsung pada penjelajah blok Sepolia | 🚧 |
+| Jual ulang tiket (resale) | Penawaran tiket kembali lewat marketplace resmi dengan harga terkunci otomatis setara harga beli awal | 🚧 |
+| Batalkan penawaran resale | Pembatalan penawaran listing selama tiket belum dibeli oleh pengguna lain | 🚧 |
+| Beli tiket jual ulang | Pembayaran tiket resale tepat sebesar harga awal melalui Midtrans dengan perpindahan kepemilikan on-chain | 🚧 |
+| Notifikasi transaksi | Pemberitahuan status pembayaran, pencetakan tiket ke dompet, penjualan tiket resale, dan status alokasi flash sale | 🚧 |
+| Rekening pencairan dana | Pendaftaran nomor rekening bank penjual untuk penerimaan dana hasil transaksi penjualan kembali | 🚧 |
+| Pulihkan dompet | Penambahan perangkat autentikator baru atau pemulihan akses dompet akun | 🚧 |
 
 ## Penyelenggara acara
 
-| Fitur | Penjelasan singkat | Status |
+| Fitur | Penjelasan ringkas | Status |
 |---|---|---|
-| Akun penyelenggara | Terpisah dari akun pembeli, disetujui admin | 🔶 seberapa formal verifikasinya |
-| Buat event | Nama, tanggal, lokasi, kategori, kapasitas, gambar | ✅ di kontrak (`createEvent`), 🚧 di web |
-| Kategori tiket | Tiap event bisa punya beberapa kategori (harga + kuota masing-masing) | ✅ di kontrak (`addCategory`), 🚧 di web |
-| Kuota dipatok di blockchain | Terjual tidak bisa melebihi kuota — bahkan oleh pengelola sistem | ✅ tersimpan, 🚧 penegakan saat cetak |
-| Batas tiket per dompet | Satu dompet maksimal N tiket per event | ✅ di kontrak, 🔶 masih dipertahankan? |
-| Buka/tutup penjualan | Sakelar per event | ✅ (`setSalesOpen`) |
-| Rekap penjualan | Terjual, sisa kuota, yang sedang ditawarkan ulang | 🚧 |
+| Akun penyelenggara | Akun terpisah dari pembeli tiket untuk mengelola acara | 🔶 |
+| Buat event | Pengisian data nama, tanggal, lokasi, kategori, dan kapasitas kuota acara | ✅ di kontrak (`createEvent`), 🚧 di web |
+| Kategori tiket | Konfigurasi kuota dan harga untuk masing-masing tier tiket | ✅ di kontrak (`addCategory`), 🚧 di web |
+| Kuota mutlak di blockchain | Penegakan kuota maksimal secara on-chain agar pencetakan tiket tidak dapat melampaui kapasitas | ✅ di kontrak, 🚧 penegakan saat minting |
+| Batas tiket per dompet | Pembatasan kuota maksimal pembelian tiket per alamat dompet per event | ✅ di kontrak (`maxPerWallet`), 🚧 di web |
+| Pengaturan jadwal penjualan | Sakelar pembukaan dan penutupan masa penjualan tiket per event | ✅ (`setSalesOpen`) |
+| Rekapitulasi penjualan | Dasbor statistik tiket terjual, sisa kuota, dan status tiket yang sedang ditawarkan di pasar sekunder | 🚧 |
 
 ## Petugas di lokasi acara
 
-| Fitur | Penjelasan singkat | Status |
+| Fitur | Penjelasan ringkas | Status |
 |---|---|---|
-| Cek tiket asli & pemiliknya | Dibaca langsung dari blockchain | 🚧 |
-| Tandai tiket terpakai | Dicatat di blockchain, satu tiket tidak bisa masuk dua kali | 🚧 (boleh ditunda sampai setelah kuesioner) |
-| Cocokkan identitas pemegang tiket | Bentuknya tergantung skema KTP: lihat foto/nama, atau ketik NIK dan sistem jawab cocok/tidak | 🔶 |
+| Cek keaslian dan pemilik tiket | Pemeriksaan status kepemilikan tiket secara langsung dari smart contract Sepolia | 🚧 |
+| Tandai tiket terpakai | Pencatatan status tiket digunakan pada blockchain (`markUsed`) agar tiket tidak dapat dipakai ulang | ✅ di kontrak, 🚧 di web scanner |
+| Validasi identitas pemegang tiket | Verifikasi kecocokan NIK fisik dengan hash identitas terdaftar tanpa mengekspos data pribadi mentah | 🚧 |
 
-## Admin
+## Admin sistem
 
-| Fitur | Penjelasan singkat | Status |
+| Fitur | Penjelasan ringkas | Status |
 |---|---|---|
-| Setujui penyelenggara | Status menunggu → disetujui / ditolak | 🚧 |
-| Verifikasi KTP | Hanya ada kalau skema KTP-nya versi terbaca + foto | 🔶 |
+| Verifikasi penyelenggara | Persetujuan atau penolakan pengajuan akun penyelenggara acara | 🚧 |
+| Pengawasan integritas transaksi | Pemantauan anomali lalu lintas transaksi, rekonsiliasi pembayaran, dan eksekusi relayer | 🚧 |
 
-## Yang dikerjakan sistem sendiri (tanpa diminta)
+## Pemrosesan otomatis sistem
 
-| Fitur | Kenapa penting | Status |
+| Fitur | Alasan teknis dan keamanan | Status |
 |---|---|---|
-| Cetak tiket hanya setelah Midtrans bilang lunas | Kalau bisa dipicu dari peramban, siapa pun bisa mengaku sudah bayar | 🚧 |
-| Tolak tanda terima Midtrans ganda | Kasir kadang mengirim tanda terima dua kali; satu pembayaran harus tetap satu tiket | 🚧 |
-| Unggah keterangan ke IPFS **sebelum** cetak | Supaya tidak ada tiket yang menunjuk ke alamat kosong | 🚧 |
-| Beri stempel izin cetak (EIP-712) | Smart contract menolak cetak tanpa stempel sah | 🚧 |
-| Tanggung biaya transaksi | Lewat sponsor gas ZeroDev; pengguna tidak butuh koin | 🚧 (kode percobaan ada, hasil belum tercatat) |
-| Simpan salinan tiket ke database | Untuk tampilan cepat — **bukan** acuan kepemilikan | 🚧 |
-| Alamat tujuan & stempel bisa diganti pemilik kontrak | `setMarketplace`, `setSystemSigner` | ✅ |
-
-## Kalau waktu habis, urutan yang boleh dipotong
-
-Ada di `TASKS.md` bagian "boleh dipotong". Yang **tidak boleh** dipotong
-karena terkunci di metodologi skripsi: tiga alur utama (daftar, beli, jual
-ulang), uji keamanan transfer di luar loket dan pelanggaran harga, bukti
-kepemilikan, pengukuran gas dan waktu cetak, kuesioner ke orang nyata.
+| Pencetakan tiket setelah pelunasan resmi | Pencetakan tiket hanya dieksekusi setelah backend menerima webhook status settlement dari Midtrans | 🚧 |
+| Idempotensi pembayaran | Backend menolak proses ganda atas nomor pesanan yang sama guna mencegah pencetakan tiket berlebih | 🚧 |
+| Unggah metadata ke IPFS sebelum pencetakan | Menghindari keberadaan token NFT yang menunjuk ke alamat penyimpanan kosong | 🚧 |
+| Otorisasi pencetakan via EIP-712 | Smart contract memverifikasi tanda tangan kriptografis sistem relayer sebelum mencetak tiket | 🚧 |
+| Subsidi biaya gas transaksi | Sistem menanggung gas transaksi blockchain melalui mekanisme Paymaster dan relayer backend | 🚧 |
+| Pelepasan kunci reservasi otomatis | Background worker melepas kunci kuota tiket jika pembayaran Midtrans tidak diselesaikan dalam 15 menit | 🚧 |
+| Sinkronisasi cache basis data | Proyeksi data lokal di MySQL diperbarui berdasarkan status transaksi on-chain untuk efisiensi kueri baca | 🚧 |
