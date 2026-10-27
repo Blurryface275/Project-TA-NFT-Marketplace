@@ -2,8 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Script from "next/script";
 import { registerPasskey } from "@/lib/passkey";
-import { buyTicketAction, activateWalletAction, BuyTicketState } from "./actions";
+import {
+  buyTicketAction,
+  activateWalletAction,
+  BuyTicketState,
+  createSnapPaymentAction,
+  checkOrderStatusAction,
+  fetchMyTicketsAction,
+} from "./actions";
 import {
   Calendar,
   MapPin,
@@ -221,7 +229,7 @@ export default function BuyTicketCard({ // ini akan jadi default value untuk Buy
     }
   };
 
-  // Fungsi pembelian tiket ke backend relayer
+  // Fungsi pembelian tiket ke backend relayer terintegrasi Midtrans Snap
   const handleBuyTicket = async () => {
     if (!activeWallet) {
       setActivationError("Silakan aktifkan dompet tiket Anda terlebih dahulu.");
@@ -232,36 +240,106 @@ export default function BuyTicketCard({ // ini akan jadi default value untuk Buy
     setResult(null);
 
     try {
-      const res = await buyTicketAction(
-        EVENT_ID,
+      // 1. Minta Snap Token & simpan Order 'pending' ke database backend
+      const snapResponse = await createSnapPaymentAction(
+        currentEvent?.id || EVENT_ID,
         selectedCategory.id,
         safeQuantity,
       );
-      setResult(res);
 
-      if (res.success) {
-        const newlyMintedTickets: UserTicket[] = Array.from({
-          length: safeQuantity,
-        }).map((_, idx) => ({
-          tokenId: 9900 + idx,
-          eventId: EVENT_ID,
-          categoryId: selectedCategory.id,
-          originalPrice: pricePerTicket,
-          used: false,
-          owner: activeWallet,
-        }));
-
-        setOwnedTickets((prev) => [...prev, ...newlyMintedTickets]);
+      if (!snapResponse.success || !snapResponse.token) {
+        setResult({
+          success: false,
+          message:
+            snapResponse.message || "Gagal membuat sesi pembayaran Midtrans.",
+        });
+        setIsLoading(false);
+        return;
       }
+
+      // 2. Buka popup window modal kasir Midtrans Snap
+      if (typeof window === "undefined" || !(window as any).snap?.pay) {
+        setResult({
+          success: false,
+          message:
+            "SDK Midtrans Snap belum siap atau diblokir browser. Silakan muat ulang halaman.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      (window as any).snap.pay(snapResponse.token, {
+        onSuccess: async () => {
+          // 3. Polling status order ke backend setiap 2 detik sekali sampai status jadi 'paid'
+          let attempts = 0;
+          const maxAttempts = 15; // Maksimal ditunggu 30 detik
+
+          const interval = setInterval(async () => {
+            attempts++;
+            const statusResponse = await checkOrderStatusAction(
+              snapResponse.orderId!,
+            );
+
+            if (statusResponse.success && statusResponse.status === "paid") {
+              clearInterval(interval); // Berhenti polling
+              setIsLoading(false);
+              setResult({
+                success: true,
+                message:
+                  "Pembayaran terverifikasi! Tiket NFT resmi berhasil dicetak di jaringan Sepolia.",
+                txHash: statusResponse.txHash,
+                txHashes: statusResponse.txHashes,
+                blockNumber: statusResponse.blockNumber,
+              });
+
+              // Ambil tiket on-chain nyata dari backend (Hapus dummy 9900)
+              try {
+                const refreshed = await fetchMyTicketsAction(activeWallet);
+                if (refreshed && refreshed.length > 0) {
+                  setOwnedTickets(refreshed);
+                }
+              } catch (e) {
+                console.error("Gagal sinkronisasi tiket on-chain:", e);
+              }
+            } else if (attempts >= maxAttempts) {
+              clearInterval(interval);
+              setIsLoading(false);
+              setResult({
+                success: true,
+                message:
+                  "Pembayaran diterima Midtrans. Tiket sedang dalam proses minting di jaringan Sepolia.",
+                txHash: statusResponse.txHash,
+                txHashes: statusResponse.txHashes,
+                blockNumber: statusResponse.blockNumber,
+              });
+            }
+          }, 2000);
+        },
+        onPending: () => {
+          setIsLoading(false);
+          setResult({
+            success: false,
+            message:
+              "Pembayaran pending. Silakan selesaikan pembayaran tagihan Anda di ATM/m-banking.",
+          });
+        },
+        onError: () => {
+          setIsLoading(false);
+          setResult({
+            success: false,
+            message: "Pembayaran gagal atau dibatalkan di Midtrans.",
+          });
+        },
+        onClose: () => {
+          setIsLoading(false);
+        },
+      });
     } catch (err) {
       setResult({
         success: false,
         message:
           err instanceof Error ? err.message : "Terjadi kesalahan sistem.",
-        txHash: undefined,
-        blockNumber: undefined,
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -269,7 +347,13 @@ export default function BuyTicketCard({ // ini akan jadi default value untuk Buy
   // TAMPILAN 1: KATALOG EVENT MARKETPLACE (GRID KARTU)
   if (!selectedEventId || !currentEvent) {
     return (
-      <div className="space-y-6">
+      <>
+        <Script
+          src="https://app.sandbox.midtrans.com/snap/snap.js"
+          data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+          strategy="afterInteractive"
+        />
+        <div className="space-y-6">
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             Pilih event resmi untuk melihat kategori dan membeli tiket NFT.
@@ -396,12 +480,19 @@ export default function BuyTicketCard({ // ini akan jadi default value untuk Buy
           })}
         </div>
       </div>
+      </>
     );
   }
 
   // TAMPILAN 2: DETAIL PEMBELIAN TIKET (KARTU LENGKAP DENGAN TOMBOL KEMBALI)
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-4">
+    <>
+      <Script
+        src="https://app.sandbox.midtrans.com/snap/snap.js"
+        data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+        strategy="afterInteractive"
+      />
+      <div className="w-full max-w-2xl mx-auto space-y-4">
       {/* Tombol Navigasi Kembali ke Katalog Event */}
       <button
         type="button"
@@ -765,7 +856,7 @@ export default function BuyTicketCard({ // ini akan jadi default value untuk Buy
               {isLoading ? (
                 <>
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Memproses Minting ({safeQuantity} Tiket)...</span>
+                  <span>Menunggu Pembayaran & Minting Tiket...</span>
                 </>
               ) : isQuotaFull ? (
                 <>
@@ -786,5 +877,6 @@ export default function BuyTicketCard({ // ini akan jadi default value untuk Buy
         </div>
       </div>
     </div>
+    </>
   );
 }

@@ -38,6 +38,15 @@ export class TicketsController {
   async getUserTickets(@Param('walletAddress') walletAddress: string) {
     return this.ticketsService.getUserTickets(walletAddress);
   }
+
+  // Endpoint polling status pembayaran order
+  // GET http://localhost:3001/api/tickets/order-status/:orderId
+  @Get('order-status/:orderId')
+  async getOrderStatus(@Param('orderId') orderId: string) {
+    return this.ticketsService.getOrderStatus(orderId);
+  }
+
+
   // Endpoint untuk mengecek status dan kepemilikan tiket on-chain (Gratis Gas)
   // GET http://localhost:3001/api/tickets/1
   @Get(':tokenId') // pakai get karena cuma mau baca data

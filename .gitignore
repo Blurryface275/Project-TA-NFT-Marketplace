@@ -40,5 +40,7 @@ KONSULTASI RM*/
 .agents/
 .claude/
 .superpowers/
+.archify/
+diagram-assets/
 skills-lock.json
 skills/
