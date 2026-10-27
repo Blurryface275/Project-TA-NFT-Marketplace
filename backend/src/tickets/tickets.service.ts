@@ -14,8 +14,8 @@ import { CreateSnapDto } from './dto/create-snap.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order, OrderStatus } from './entities/order.entity';
-import { Customer } from '..customers/entities/customer.entity';
-import * as crypto from 'crypto'; 
+import { Customer } from '../customers/entities/customer.entity';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class TicketsService {
@@ -30,7 +30,7 @@ export class TicketsService {
     @InjectRepository(Order)
     private orderRepository: Repository<Order>,
     @InjectRepository(Customer)
-    private customerRepository: Repository<Customer>,  
+    private customerRepository: Repository<Customer>,
   ) {
     // Ambil konfigurasi dari backend/.env via NestJS ConfigService
     const RPC_URL = this.configService.get<string>('SEPOLIA_RPC_URL')!;
@@ -64,7 +64,7 @@ export class TicketsService {
     // Ambil data event dari DB MySQL buat dapetin batas kuota yg ditentuin organizer
     const event = await this.eventsService.findOne(dto.eventId);
     const MAX_PER_WALLET = event?.maxPerWallet || 2; // jika event null maka batas maksimal adalah 2
-    const qty = dto.quantity && dto.quantity > 0 ? dto.quantity : 1; 
+    const qty = dto.quantity && dto.quantity > 0 ? dto.quantity : 1;
 
     try {
       console.log(
@@ -188,17 +188,17 @@ export class TicketsService {
           walletAddress,
       );
 
-      const ticket = await this.getTicket(tokenId)
+      const ticket = await this.getTicket(tokenId);
 
       // validasi kepemilikan
-      if (ticket.owner.toLowerCase() !== walletAddress.toLowerCase()){
+      if (ticket.owner.toLowerCase() !== walletAddress.toLowerCase()) {
         throw new BadRequestException(
           `Validasi gagal: Alamat dompet ini tidak sama dengan pemilik tiket di blockchain`,
         );
       }
 
       // Cegah transaksi dikirim jika tiket sudah pernah dipakai sebelumnya (pencegahan double spending)
-      if (ticket.used === true){
+      if (ticket.used === true) {
         throw new BadRequestException(
           `Validasi gagal: Tiket ini sudah pernah digunakan`,
         );
@@ -222,14 +222,13 @@ export class TicketsService {
       const receipt = await this.publicClient.waitForTransactionReceipt({
         hash: hash,
       });
-      
+
       return {
         success: true,
         message: 'Tiket berhasil digunakan (Redeemed)!',
         txHash: hash,
         blockNumber: Number(receipt.blockNumber),
       };
-
     } catch (error: any) {
       console.error('Error redeem ticket:', error);
       // NestJS Exception Filter: melempar error HTTP 400 ke frontend
@@ -302,14 +301,14 @@ export class TicketsService {
     return userTickets;
   }
 
-  async createSnapTransaction(dto: CreateSnapDto){
+  async createSnapTransaction(dto: CreateSnapDto) {
     // Ambil data event & kategorinya dari database MySQL
     const event = await this.eventsService.findOne(dto.eventId);
     const category = event.ticketCategories.find(
       (c) => Number(c.id) === Number(dto.categoryId),
     );
 
-    if (!category){
+    if (!category) {
       throw new BadRequestException('Kategori tiket tidak ditemukan');
     }
 
@@ -323,11 +322,13 @@ export class TicketsService {
 
     // Pembuatan object customer
     const customer = await this.customerRepository.findOne({
-      where: { walletAddress: dto.walletAddress }
+      where: { walletAddress: dto.walletAddress },
     });
 
-    if (!customer){
-      throw new BadRequestException('Customer dengan alamat dompet tersebut tidak ditemukan.')
+    if (!customer) {
+      throw new BadRequestException(
+        'Customer dengan alamat dompet tersebut tidak ditemukan.',
+      );
     }
 
     const orderId = crypto.randomUUID();
@@ -347,7 +348,7 @@ export class TicketsService {
 
     // Ambil server key dair file di backend/.env
     const serverKey = this.configService.get<string>('MIDTRANS_SERVER_KEY');
-    if (!serverKey){
+    if (!serverKey) {
       throw new Error('Server Key Midtrans belum dikonfigurasi');
     }
 
@@ -361,9 +362,9 @@ export class TicketsService {
     const response = await fetch(midtransUrl, {
       method: 'POST',
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'Content-Type': 'application/json',
-        'Authorization': `Basic ${basicAuth}`,
+        Authorization: `Basic ${basicAuth}`,
       },
       body: JSON.stringify({
         transaction_details: {
@@ -404,12 +405,11 @@ export class TicketsService {
       token: data.token,
       redirectUrl: data.redirect_url,
       orderId: orderId,
-      grossAmount: grossAmount,
+      grossAmount: totalPrice,
     };
-
   }
 
-    // Method pembaca status untuk polling dari frontend
+  // Method pembaca status untuk polling dari frontend
   async getOrderStatus(orderId: string) {
     const order = await this.orderRepository.findOne({
       where: { id: orderId },
@@ -426,7 +426,6 @@ export class TicketsService {
       createdAt: order.createdAt,
     };
   }
-
 
   // Menangani notifikasi webhook dari Midtrans setelah pembayaran selesai
   async handleMidtransWebhook(payload: any) {
@@ -456,22 +455,111 @@ export class TicketsService {
       throw new BadRequestException('Signature key Midtrans tidak valid');
     }
 
-    // Status pembayaran berhasil (settlement atau capture yang disetujui)
+    // 0. Penanganan khusus tombol "Test notification URL" dari Dashboard Midtrans
+    if (
+      order_id &&
+      typeof order_id === 'string' &&
+      order_id.startsWith('payment_notif_test_')
+    ) {
+      console.log(
+        '✅ [Midtrans Webhook] Uji coba notifikasi dashboard berhasil diverifikasi:',
+        order_id,
+      );
+      return {
+        status: 'test_success',
+        message: 'Midtrans test notification verified',
+      };
+    }
+
+    // 1. Ambil data order dari database beserta relasi customer dan kategorinya
+    const order = await this.orderRepository.findOne({
+      where: { id: order_id },
+      relations: { customer: true, ticketCategory: true },
+    });
+    if (!order) {
+      throw new BadRequestException('Order tidak ditemukan');
+    }
+
+    // 2. Cegah double minting jika webhook terkirim lebih dari satu kali
+    if (order.status === OrderStatus.PAID) {
+      return {
+        status: 'already_processed',
+        message: 'Transaksi sudah diproses sebelumnya',
+      };
+    }
+
+    // 3. Evaluasi status Midtrans
     const isPaymentSuccess =
       transaction_status === 'settlement' ||
       (transaction_status === 'capture' && fraud_status === 'accept');
 
-    if (!isPaymentSuccess) {
+    if (isPaymentSuccess) {
+      order.status = OrderStatus.PAID;
+      order.midtransTransactionId = payload.transaction_id || null;
+      await this.orderRepository.save(order);
+
+      // 4. Eksekusi pencetakan (minting) tiket NFT on-chain ke Sepolia
+      try {
+        const mintResult = await this.mintTicket({
+          walletAddress: order.customer.walletAddress!,
+          eventId: order.ticketCategory.eventsId,
+          categoryId: Number(order.ticketCategory.id),
+          quantity: order.amount,
+        });
+
+        return {
+          status: 'success',
+          message: 'Pembayaran sukses dan tiket NFT berhasil dicetak on-chain',
+          orderId: order_id,
+          mintResult,
+        };
+      } catch (err: any) {
+        return {
+          status: 'paid_minting_failed',
+          orderId: order_id,
+          error: err.message,
+        };
+      }
+    } else if (['cancel', 'expire', 'deny'].includes(transaction_status)) {
+      order.status =
+        transaction_status === 'cancel'
+          ? OrderStatus.CANCELLED
+          : OrderStatus.FAILED;
+      order.midtransTransactionId = payload.transaction_id || null;
+      await this.orderRepository.save(order);
+
       return {
-        status: 'ignored',
-        message: `Status transaksi: ${transaction_status}, tidak memerlukan tindakan on-chain`,
+        status: 'cancelled_or_failed',
+        orderId: order_id,
+        message: `Transaksi berstatus ${order.status}`,
       };
     }
 
     return {
-      status: 'success',
-      message: 'Notifikasi pembayaran Midtrans berhasil diverifikasi',
+      status: 'pending',
       orderId: order_id,
+      message: `Transaksi berstatus ${transaction_status}, menunggu pembayaran`,
     };
+  }
+
+  // Mengambil seluruh order transaksi milik pembeli berdasarkan alamat dompet
+  async getMyOrders(walletAddress: string) {
+    const customer = await this.customerRepository.findOne({
+      where: { walletAddress },
+    });
+
+    if (!customer) {
+      return [];
+    }
+
+    return this.orderRepository.find({
+      where: { customersId: customer.id },
+      relations: {
+        ticketCategory: {
+          event: true,
+        },
+      },
+      order: { createdAt: 'DESC' },
+    });
   }
 }

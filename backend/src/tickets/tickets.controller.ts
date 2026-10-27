@@ -67,4 +67,12 @@ export class TicketsController {
   async handleMidtransWebhook(@Body() notificationPayload: any) {
     return this.ticketsService.handleMidtransWebhook(notificationPayload);
   }
+
+   // Endpoint untuk mengambil semua order milik pembeli
+  // GET http://localhost:3001/api/tickets/my-orders/:walletAddress
+  @Get('my-orders/:walletAddress')
+  async getMyOrders(@Param('walletAddress') walletAddress: string) {
+    return this.ticketsService.getMyOrders(walletAddress);
+  }
+
 }
