@@ -323,6 +323,7 @@ export class TicketsService {
     // Pembuatan object customer
     const customer = await this.customerRepository.findOne({
       where: { walletAddress: dto.walletAddress },
+      relations: { user: true },
     });
 
     if (!customer) {
@@ -378,10 +379,16 @@ export class TicketsService {
             quantity: qty,
             name: `${event.eventName} (${category.name})`.slice(0, 50),
           },
+          { // IMPORTANT : KALAU GAADA INI NANTI AKAN ERROR 400!!!
+            id: 'FEE-ADMIN', // ini udah paten, khusus biaya layanan
+            price: totalAdminFee,
+            quantity: 1,
+            name: 'Biaya Layanan & Jaringan',
+          },
         ],
         customer_details: {
-          first_name: dto.walletAddress.slice(0, 10),
-          email: 'buyer@nftix.id',
+          first_name: customer.user?.name || dto.walletAddress.slice(0, 10),
+          email: customer.user?.email || 'buyer@nftix.id',
         },
       }),
     });
@@ -427,7 +434,7 @@ export class TicketsService {
     };
   }
 
-  // Menangani notifikasi webhook dari Midtrans setelah pembayaran selesai
+  // Menangani response / notifikasi webhook dari Midtrans setelah pembayaran selesai 
   async handleMidtransWebhook(payload: any) {
     const serverKey = this.configService.get<string>('MIDTRANS_SERVER_KEY');
     if (!serverKey) {

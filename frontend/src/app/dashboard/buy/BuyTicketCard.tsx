@@ -26,6 +26,7 @@ import {
   Armchair,
   Key,
   ShieldCheck,
+  Receipt,
 } from "lucide-react";
 
 export interface TicketCategoryData {
@@ -286,7 +287,7 @@ export default function BuyTicketCard({ // ini akan jadi default value untuk Buy
               setResult({
                 success: true,
                 message:
-                  "Pembayaran terverifikasi! Tiket NFT resmi berhasil dicetak di jaringan Sepolia.",
+                  "Pembayaran berhasil!",
                 txHash: statusResponse.txHash,
                 txHashes: statusResponse.txHashes,
                 blockNumber: statusResponse.blockNumber,
@@ -765,14 +766,24 @@ export default function BuyTicketCard({ // ini akan jadi default value untuk Buy
                     </a>
                   </p>
                 ) : null}
-                <Link
-                  href="/dashboard/tickets"
-                  className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
-                >
-                  <Ticket className="h-3 w-3" />
-                  Lihat Tiket Saya
-                  <ArrowRight className="h-3 w-3 ml-0.5" />
-                </Link>
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  <Link
+                    href="/dashboard/tickets"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
+                  >
+                    <Ticket className="h-3.5 w-3.5" />
+                    Lihat Tiket Saya
+                    <ArrowRight className="h-3 w-3 ml-0.5" />
+                  </Link>
+                  <Link
+                    href="/dashboard/orders"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-muted/60 hover:bg-muted text-foreground text-xs font-medium transition-colors"
+                  >
+                    <Receipt className="h-3.5 w-3.5 text-primary" />
+                    Lihat Detail Transaksi
+                    <ArrowRight className="h-3 w-3 ml-0.5" />
+                  </Link>
+                </div>
               </div>
             </div>
           )}

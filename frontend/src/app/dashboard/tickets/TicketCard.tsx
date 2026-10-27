@@ -148,6 +148,10 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
       }) + " WIB"
     : "15 November 2026, 18:00 WIB";
 
+  const contractAddress =
+    process.env.NEXT_PUBLIC_TICKET_CONTRACT_ADDRESS ||
+    "0x08F9F8e90570A08851ca60419ae656FEF227c8a4";
+
   const [isUsed, setIsUsed] = useState(ticket.used);
   const [isLoading, setIsLoading] = useState(false);
   const [showQR, setShowQR] = useState(false);
@@ -646,15 +650,25 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
             )}
           </button>
         </div>
-        {/* Link ke Smart Contract Sepolia Etherscan */}
-        <div className="pt-2 text-center border-t border-border/30">
+        {/* Link ke Sepolia Etherscan untuk Cek Transaksi & Token On-Chain */}
+        <div className="pt-2 flex flex-wrap items-center justify-center gap-2 border-t border-border/30 text-[11px] text-muted-foreground">
           <a
-            href={`https://sepolia.etherscan.io/token/0x4A6e85fACA6df9eb2dB5BA832B4B48790D60F9b3?a=${ticket.tokenId}`}
+            href={`https://sepolia.etherscan.io/token/${contractAddress}?a=${ticket.tokenId}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors"
+            className="inline-flex items-center gap-1 hover:text-primary transition-colors hover:underline"
           >
-            <span>Verifikasi NFT di Sepolia Etherscan</span>
+            <span>Transaksi & Token #{ticket.tokenId}</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
+          <span>•</span>
+          <a
+            href={`https://sepolia.etherscan.io/address/${contractAddress}#events`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 hover:text-primary transition-colors hover:underline"
+          >
+            <span>Kontrak Sepolia Terverifikasi</span>
             <ExternalLink className="w-3 h-3" />
           </a>
         </div>

@@ -17,6 +17,10 @@ contract DeployScript is Script {
         TicketContract ticket = new TicketContract();
         console.log("TicketContract deployed at:", address(ticket));
 
+          // Set System Signer untuk otorisasi EIP-712
+        ticket.setSystemSigner(deployerAddress);
+        console.log("System Signer set to:", deployerAddress);
+
         // Initiate 1 dummy ticket event
         uint256 eventId = 1;
         uint64 eventTimestamp = uint64(block.timestamp + 30 days);

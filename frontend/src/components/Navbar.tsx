@@ -64,6 +64,14 @@ export default async function Navbar() {
             <span>My Ticket</span>
           </Link>
 
+          <Link
+            href="/dashboard/orders"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition"
+          >
+            <History className="h-4 w-4" />
+            <span>Orders</span>
+          </Link>
+
           {/* Menu Resale (Disabled / Coming Soon) */}
           <div className="flex items-center gap-1.5 px-3 py-2 text-muted-foreground/50 cursor-not-allowed select-none">
             <Repeat className="h-4 w-4" />
