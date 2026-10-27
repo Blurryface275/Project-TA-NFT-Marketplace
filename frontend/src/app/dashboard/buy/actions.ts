@@ -217,3 +217,52 @@ export async function createSnapPaymentAction(
     };
   }
 }
+
+// Cek status order di backend (polling tiap 2 detik) untuk update status
+export async function checkOrderStatusAction(orderId: string){
+  const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
+
+  try{
+     const response = await fetch(`${backendUrl}/api/tickets/order-status/${orderId}`, {
+      method: "GET",
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      return {
+        success: false,
+        status: "unknown",
+        message: "Gagal mengecek status order",
+      };
+    }
+    const data = await response.json();
+    return {
+      success: true,
+      ...data,
+    };
+  } catch (error) {
+    console.error("[POLL ORDER] Gagal cek status:", error);
+    return {
+      success: false,
+      status: "error",
+    };
+  }
+}
+
+// Mengambil seluruh tiket on-chain nyata milik akun user dari backend
+export async function fetchMyTicketsAction(walletAddress: string) {
+  const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
+  try {
+    const res = await fetch(
+      `${backendUrl}/api/tickets/my-tickets/${walletAddress}`,
+      { cache: "no-store" },
+    );
+    if (res.ok) {
+      return await res.json();
+    }
+    return [];
+  } catch (err) {
+    console.error("[FETCH TICKETS ACTION] Gagal mengambil tiket user:", err);
+    return [];
+  }
+}
+

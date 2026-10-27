@@ -11,6 +11,11 @@ import { sepolia } from 'viem/chains';
 import { MintTicketDto } from './dto/mint-ticket.dto';
 import { EventsService } from '../events/events.service';
 import { CreateSnapDto } from './dto/create-snap.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Order, OrderStatus } from './entities/order.entity';
+import { Customer } from '..customers/entities/customer.entity';
+import * as crypto from 'crypto'; 
 
 @Injectable()
 export class TicketsService {
@@ -19,7 +24,14 @@ export class TicketsService {
   private account;
   private contractAddress: `0x${string}`;
 
-  constructor(private configService: ConfigService, private eventsService: EventsService) {
+  constructor(
+    private configService: ConfigService,
+    private eventsService: EventsService,
+    @InjectRepository(Order)
+    private orderRepository: Repository<Order>,
+    @InjectRepository(Customer)
+    private customerRepository: Repository<Customer>,  
+  ) {
     // Ambil konfigurasi dari backend/.env via NestJS ConfigService
     const RPC_URL = this.configService.get<string>('SEPOLIA_RPC_URL')!;
     const privateKey = this.configService.get<string>(
@@ -302,11 +314,36 @@ export class TicketsService {
     }
 
     const qty = dto.quantity > 0 ? dto.quantity : 1;
-    const grossAmount = Math.round(Number(category.price) * qty);
+    // Rumus admin fee: 5000 + 2.5% dari grossAmount
+    const baseFee = 5000;
+    const variableFee = Math.round(Number(category.price) * qty * 0.025);
+    const totalAdminFee = baseFee + variableFee;
+    // Hitung total harga: (harga satuan * jumlah) + admin fee + variable fee
+    const totalPrice = Number(category.price) * qty + totalAdminFee;
 
-    // buat order ID unik (Format: NFTIX-EVENT-CATEGORY-TIMESTAMP-RANDOM)
-    const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
-    const orderId = `NFTIX-${dto.eventId}-${dto.categoryId}-${Date.now()}-${randomSuffix}`;
+    // Pembuatan object customer
+    const customer = await this.customerRepository.findOne({
+      where: { walletAddress: dto.walletAddress }
+    });
+
+    if (!customer){
+      throw new BadRequestException('Customer dengan alamat dompet tersebut tidak ditemukan.')
+    }
+
+    const orderId = crypto.randomUUID();
+
+    // simpan pesanan ke tabel orders dengan status 'pending' dulu
+    const newOrder = this.orderRepository.create({
+      id: orderId,
+      amount: qty,
+      totalPrice: totalPrice,
+      adminFee: totalAdminFee,
+      status: OrderStatus.PENDING,
+      customersId: customer.id,
+      ticketCategoriesId: String(category.id),
+    });
+
+    await this.orderRepository.save(newOrder);
 
     // Ambil server key dair file di backend/.env
     const serverKey = this.configService.get<string>('MIDTRANS_SERVER_KEY');
@@ -331,7 +368,7 @@ export class TicketsService {
       body: JSON.stringify({
         transaction_details: {
           order_id: orderId,
-          gross_amount: grossAmount,
+          gross_amount: totalPrice,
         },
         item_details: [
           {
@@ -371,6 +408,25 @@ export class TicketsService {
     };
 
   }
+
+    // Method pembaca status untuk polling dari frontend
+  async getOrderStatus(orderId: string) {
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId },
+    });
+    if (!order) {
+      throw new BadRequestException(`Order #${orderId} tidak ditemukan`);
+    }
+    return {
+      orderId: order.id,
+      status: order.status,
+      midtransTransactionId: order.midtransTransactionId,
+      amount: order.amount,
+      totalPrice: order.totalPrice,
+      createdAt: order.createdAt,
+    };
+  }
+
 
   // Menangani notifikasi webhook dari Midtrans setelah pembayaran selesai
   async handleMidtransWebhook(payload: any) {
