@@ -20,10 +20,14 @@ import { getEntryPoint, KERNEL_V3_3 } from "@zerodev/sdk/constants";
 export const entryPoint = getEntryPoint("0.7");
 export const kernelVersion = KERNEL_V3_3;
 
+const ZERODEV_PROJECT_ID = "65dbaf7c-f386-4065-a255-edd3561ae76f";
+const DEFAULT_PASSKEY_SERVER_URL = `https://passkeys.zerodev.app/api/v3/${ZERODEV_PROJECT_ID}`;
+const DEFAULT_ZERODEV_RPC = `https://rpc.zerodev.app/api/v3/${ZERODEV_PROJECT_ID}/chain/11155111`;
+
 // Client koneksi ke jaringan Sepolia Testnet via RPC ZeroDev
 const publicClient = createPublicClient({
   chain: sepolia,
-  transport: http(process.env.NEXT_PUBLIC_ZERODEV_RPC),
+  transport: http(process.env.NEXT_PUBLIC_ZERODEV_RPC || DEFAULT_ZERODEV_RPC),
 });
 
 // function untuk daftarin biometrik Passkey baru bagi user -> nanti dikirim ke frontend (formData)
@@ -31,7 +35,8 @@ export async function registerPasskey(email: string) {
   // Trigger prompt biometirk di browser (minta sidik jari / face id / pin hp / windwos hello)
   const webAuthnKey = await toWebAuthnKey({
     passkeyName: email, // email user
-    passkeyServerUrl: process.env.NEXT_PUBLIC_PASSKEY_SERVER_URL!, // link ke API Passkey
+    passkeyServerUrl:
+      process.env.NEXT_PUBLIC_PASSKEY_SERVER_URL || DEFAULT_PASSKEY_SERVER_URL, // link ke API Passkey
     mode: WebAuthnMode.Register, // mode register artinya kita mau daftarin biometrik baru buat akun
     passkeyServerHeaders: {}, // ini bisa kosong karena session sudah ada
   });

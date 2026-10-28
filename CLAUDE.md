@@ -5,8 +5,9 @@
 > **Patokan Mutlak Proyek (Single Source of Truth):**
 > 1. `dokumen/Proposal TA_160423176.pdf` (Versi revisi final, 20 Agustus 2026)
 > 2. `dokumen/TA_Benedictus Leonardo Edward Stephen Sugianto_160423176.pdf` (Laporan Tugas Akhir Bab 1–3)
+> 3. `README.md` (Spesifikasi Teknis, Matriks Fitur, dan Rencana Implementasi Arsitektur Resmi)
 >
-> Jangan mengusulkan arsitektur alternatif atau alur yang menyimpang dari kedua dokumen tersebut tanpa persetujuan eksplisit dari Edward.
+> Jangan mengusulkan arsitektur alternatif atau alur yang menyimpang dari dokumen tersebut tanpa persetujuan eksplisit dari Edward.
 
 ---
 

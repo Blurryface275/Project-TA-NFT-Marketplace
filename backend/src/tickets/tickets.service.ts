@@ -313,6 +313,19 @@ export class TicketsService {
     }
 
     const qty = dto.quantity > 0 ? dto.quantity : 1;
+
+    // Validasi kuota sebelum kelaurin modal / pop-up Midtrans
+    const maxAllowed = event.maxPerWallet || 2;
+    const existingTickets = await this.getUserTickets(dto.walletAddress);
+    const ownedCountForCurrentEvent = existingTickets.filter(
+      (t) => t.eventId === dto.eventId,
+    ).length;
+
+    if (ownedCountForCurrentEvent + qty > maxAllowed) {
+      throw new BadRequestException(
+        `Anda sudah memiliki ${ownedCountForCurrentEvent} tiket. Batas pembelian maksimal adalah ${maxAllowed} tiket.`,
+      );
+    }
     // Rumus admin fee: 5000 + 2.5% dari grossAmount
     const baseFee = 5000;
     const variableFee = Math.round(Number(category.price) * qty * 0.025);
@@ -521,6 +534,10 @@ export class TicketsService {
           mintResult,
         };
       } catch (err: any) {
+        console.error('❌ Minting on-chain gagal setelah pembayaran:', err);
+        order.status = OrderStatus.FAILED;
+        await this.orderRepository.save(order);
+        
         return {
           status: 'paid_minting_failed',
           orderId: order_id,
