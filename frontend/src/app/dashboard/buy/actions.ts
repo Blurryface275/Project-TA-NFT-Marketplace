@@ -77,9 +77,7 @@ export async function activateWalletAction(
   }
 }
 
-
 export type BuyTicketState = {
-  // ini adalah data yang akan dikirimkan nanti
   success?: boolean;
   message?: string;
   txHash?: string;
@@ -87,97 +85,31 @@ export type BuyTicketState = {
   blockNumber?: number;
 };
 
-export async function buyTicketAction(
+export async function createSnapPaymentAction(
   eventId: number,
   categoryId: number,
-  quantity: number = 1,
-): Promise<BuyTicketState> {
-  // ambil data session pengguna yang sedang login
+  quantity: number,
+): Promise<{
+  success: boolean;
+  token?: string;
+  redirectUrl?: string;
+  orderId?: string;
+  grossAmount?: number;
+  message?: string;
+}> {
   const session = await getSession();
 
   if (!session?.walletAddress) {
     return {
       success: false,
-      message: "Alamat dompet tidak ditemukan. Silakan login ulang.",
+      message: "Dompet belum aktif. Silahkan baut dompet terlebih dahulu.",
     };
   }
 
-  const userId = session.userId;
-  const userWalletAddress = session.walletAddress;
-  const eventIdNumber = Number(eventId);
-  const categoryIdNumber = Number(categoryId);
-  const qtyNumber = Number(quantity) || 1;
+  const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
 
   try {
-    console.log(
-      `[BUY ACTION] User ${userId} (wallet: ${userWalletAddress}) is buying ${qtyNumber} ticket(s) for event ${eventIdNumber} and category ${categoryIdNumber}`,
-    );
-
-    // Panggil API Backend Relayer
-    const response = await fetch(
-      `${process.env.BACKEND_URL}/api/tickets/mint`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          walletAddress: session.walletAddress,
-          eventId: eventId,
-          categoryId: categoryId,
-          quantity: qtyNumber,
-        }),
-      },
-    );
-
-    const resData = await response.json();
-
-    if (!response.ok) {
-      return {
-        success: false,
-        message: resData.message || "Gagal mencetak tiket on-chain",
-      };
-    }
-
-    return {
-      success: true,
-      message: resData.message,
-      txHash: resData.txHash,
-      txHashes: resData.txHashes,
-      blockNumber: resData.blockNumber,
-    };
-  } catch (error) {
-    console.error(`[BUY ACTION] Error saat mencetak tiket:`, error);
-    const errorMessage =
-      error instanceof Error ? error.message : "Error tidak diketahui"; // memastikan benar benar error dan bukan string metnah
-
-    return {
-      success: false,
-      message: `Gagal mencetak tiket: ${errorMessage}`,
-    };
-  }
-}
-
-// Meminta snap token Midtrans sebelum checkout
-export async function createSnapPaymentAction(
-  eventId: number,
-  categoryId: number,
-  quantity: number,
-){
-  const session = await getSession();
-
-  if (!session?.walletAddress){
-    return{
-      success: false,
-      message: "Dompet belum aktif. Silakan aktifkan dompet tiket terlebih dahulu.",
-    };
-  }
-
-  try{
-    // ambil response dari API relayer untuk buat snap token
-    const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
-    
-    const response = await fetch(`${backendUrl}/api/tickets/create-snap`,{
+    const response = await fetch(`${backendUrl}/api/tickets/create-snap`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -190,43 +122,45 @@ export async function createSnapPaymentAction(
       }),
     });
 
-    const resData = await response.json();
+    const data = await response.json();
 
-    if (!response.ok){
-      return{
+    if (!response.ok) {
+      return {
         success: false,
-        message: resData.message || "Terjadi error pada proses pembayaran Midtrans",
+        message: data.message || "Gagal membuat sesi pembayaran Midtrans.",
       };
     }
 
     return {
       success: true,
-      token: resData.token,
-      redirectUrl: resData.redirectUrl,
-      orderId: resData.orderId,
-      grossAmount: resData.grossAmount,
+      token: data.token,
+      redirectUrl: data.redirectUrl,
+      orderId: data.orderId,
+      grossAmount: data.grossAmount,
     };
-
-  }catch(error){
-    console.error(`[SNAP ACTION] Error membuat snap token:`, error);
+  } catch (error) {
+    console.error("[CREATE SNAP ACTION] Error:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Error tidak diketahui";
-    return{
+    return {
       success: false,
-      message: `Gagal membuat snap token: ${errorMessage}`,
+      message: `Gagal menghubungi server payment. Error: ${errorMessage}`,
     };
   }
 }
 
 // Cek status order di backend (polling tiap 2 detik) untuk update status
-export async function checkOrderStatusAction(orderId: string){
+export async function checkOrderStatusAction(orderId: string) {
   const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
 
-  try{
-     const response = await fetch(`${backendUrl}/api/tickets/order-status/${orderId}`, {
-      method: "GET",
-      cache: "no-store",
-    });
+  try {
+    const response = await fetch(
+      `${backendUrl}/api/tickets/order-status/${orderId}`,
+      {
+        method: "GET",
+        cache: "no-store",
+      },
+    );
     if (!response.ok) {
       return {
         success: false,
@@ -265,4 +199,3 @@ export async function fetchMyTicketsAction(walletAddress: string) {
     return [];
   }
 }
-

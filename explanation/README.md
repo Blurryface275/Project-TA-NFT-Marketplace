@@ -54,6 +54,10 @@ Seluruh dokumen disusun berstandar akademik dan rekayasa perangkat lunak (siap d
   * **Judul:** Desain dan spesifikasi teknis arsitektur multi-event dan kapasitas storage Ethereum Virtual Machine.
   * **Topik inti:** Arsitektur pasangan master contract tiket dengan marketplace sekunder resmi, mekanisme pertahanan anti-calo (allowlist guard dan resale price-lock), bukti matematis kapasitas $2^{256}$ slot storage EVM, dan komparasi dengan MySQL.
 
+* [25-smart-contract-sepolia-deployment-guide.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/25-smart-contract-sepolia-deployment-guide.md)
+  * **Judul:** Desain dan panduan operasional deployment smart contract Sepolia via Foundry broadcast.
+  * **Topik inti:** Prosedur eksekusi `Deploy.s.sol`, inisialisasi atomik `systemSigner` dan master data Event 1 di blok yang sama, sinkronisasi alamat kontrak ke `backend/.env` dan `frontend/.env.local`, serta penanganan kegagalan deployment.
+
 ---
 
 ### 4. Modul relayer dan integrasi pembayaran
@@ -69,6 +73,10 @@ Seluruh dokumen disusun berstandar akademik dan rekayasa perangkat lunak (siap d
 * [22-eip712-structured-data-signatures.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/22-eip712-structured-data-signatures.md)
   * **Judul:** Desain dan spesifikasi teknis tanda tangan data terstruktur EIP-712 pada relayer smart contract.
   * **Topik inti:** Penutupan celah keamanan panggilan kontrak langsung (*direct contract call*), penurunan matematis Domain Separator dan StructHash, verifikasi tanda tangan kriptografis ECDSA on-chain, proteksi nonces anti-replay, dan matriks mitigasi 4 vektor serangan.
+
+* [24-buyer-flow-behind-the-scene-midtrans-hooks.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/24-buyer-flow-behind-the-scene-midtrans-hooks.md)
+  * **Judul:** Desain dan spesifikasi teknis webhook Midtrans dan orkestrasi pencetakan tiket on-chain.
+  * **Topik inti:** Verifikasi tanda tangan digital SHA-512, pemisahan siklus `capture` FDS kartu kredit vs `settlement` QRIS/VA, penegakan kunci idempotensi database, defensive fallback, dan pemicuan pencetakan tiket on-chain via relayer Viem.
 
 ---
 

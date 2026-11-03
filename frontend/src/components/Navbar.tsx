@@ -34,15 +34,19 @@ export default async function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="w-full flex h-16 items-center justify-between px-6 sm:px-8 relative">
+      <div className="max-w-7xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8 relative">
         {/* SISI KIRI: BRAND LOGO */}
         <div className="flex items-center">
           <Link
             href={isLoggedIn ? "/dashboard" : "/"}
-            className="flex items-center gap-2 font-bold text-xl tracking-tight text-foreground hover:opacity-90 transition"
+            className="flex items-center gap-2.5 font-bold text-xl tracking-tight text-slate-900 hover:opacity-95 transition group"
           >
-            <Ticket className="h-5 w-5" />
-            <span>NFT Ticket</span>
+            <div className="w-8 h-8 rounded-xl bg-coral-50 border border-coral-100 flex items-center justify-center text-coral-500 shadow-xs group-hover:bg-coral-500 group-hover:text-white transition-all">
+              <Ticket className="h-4 w-4" />
+            </div>
+            <span>
+              NFT <span className="text-coral-500">Ticket</span>
+            </span>
           </Link>
         </div>
 

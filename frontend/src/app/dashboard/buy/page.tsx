@@ -44,18 +44,8 @@ export default async function BuyTicketPage() {
   }
 
   return (
-    <div className="container max-w-6xl mx-auto px-4 py-8 sm:py-12 space-y-6">
-      {/* Heading Halaman */}
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
-          Beli Tiket Event
-        </h1>
-        <p className="text-sm sm:text-base text-muted-foreground max-w-lg mx-auto">
-          Dapatkan tiket resmi berbasis NFT dengan garansi anti-scalping.
-        </p>
-      </div>
-
-      {/* Kartu Pembelian Tiket Interaktif Multi-Event */}
+    <div className="w-full">
+      {/* Kartu Pembelian Tiket Interaktif Multi-Event (Loket.com Design) */}
       <BuyTicketCard
         walletAddress={walletAddress}
         userEmail={userEmail}

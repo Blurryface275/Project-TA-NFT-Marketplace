@@ -7,7 +7,6 @@ import { User } from '../users/entities/user.entity';
 import { Customer } from '../customers/entities/customer.entity';
 import { PasskeyCredential } from './entities/passkey-credential.entity';
 import { MailService } from './mail.service';
-import { Mail } from 'nodemailer';
 
 @Module({
   imports: [TypeOrmModule.forFeature([User, Customer, PasskeyCredential])],

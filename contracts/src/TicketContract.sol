@@ -174,67 +174,54 @@ contract TicketContract is ERC721, Ownable, EIP712 {
         uint256 categoryId,
         uint256 nonce,
         bytes calldata signature
-    ) external returns (uint256){
-        if (to == address(0)){ // cek apakah alamat penerima adalah address kosong
-            revert ForbiddenZero();
-        }
-        if (systemSigner == address(0)){
-            revert SystemSignerNotSet();
-        }
-        if (usedNonces[nonce]){
-            revert NonceAlreadyUsed(nonce);
-        }
+    ) external returns (uint256) {
+        // Guard Input Dasar & systemSigner
+        if (to == address(0)) revert ForbiddenZero();
+        if (systemSigner == address(0)) revert SystemSignerNotSet();
 
-        // Verifikasi tanda tangan digital EIP-712 dari systemSigner backend
-        bytes32 structHash = keccak256(
-            abi.encode(MINT_TYPEHASH, to, eventId, categoryId, nonce)
-        );
+        // prevent Replay Attack dengan mengecek nocne udh dipake apa blom
+        if (usedNonces[nonce]) revert NonceAlreadyUsed(nonce);
+
+        // Rekonstruksi EIP-712 StructHash & Digest
+        bytes32 structHash = keccak256(abi.encode(MINT_TYPEHASH, to, eventId, categoryId, nonce));
         bytes32 digest = _hashTypedDataV4(structHash);
+
+        // VerifikasiSignature On-Chain
         address signer = ECDSA.recover(digest, signature);
-        if (signer != systemSigner){
-            revert InvalidSignature();
-        }
+        if (signer != systemSigner) revert InvalidSignature();
+
+        // Kunci nonce secara on-chain (bisa dipakai 1 kali) supaya nonce inig abisa dipake lagi
         usedNonces[nonce] = true;
 
-        if(!events[eventId].exists){ // cek apakah event sudah dibuat
-            revert EventNotFound(eventId);
-        }
-        if (!events[eventId].salesOpen) { // cek apakah penjualan sudah dibuka
-            revert SalesClosed();
-        }
-        if (!categories[eventId][categoryId].exists) { // cek apakah kategori sudah dibuat
-            revert CategoryNotFound(eventId, categoryId);
-        }
-        TicketCategory storage cat = categories[eventId][categoryId]; // buat penyimpanan sementara untuk mengakses data category
-        if (cat.minted >= cat.quota) { // cek apakah kuota sudah habis
-            revert QuotaExceeded();
-        }
-        if (walletPurchases[eventId][to] >= events[eventId].maxPerWallet) { // cek apakah pembelian sudah melebihi batas per wallet
-            revert MaxPerWalletExceeded();
-        }
+        // Validasi status acara dan kategori
+         if (!events[eventId].exists) revert EventNotFound(eventId);
+        if (!events[eventId].salesOpen) revert SalesClosed();
+        if (!categories[eventId][categoryId].exists) revert CategoryNotFound(eventId, categoryId);
+        TicketCategory storage cat = categories[eventId][categoryId];
+        if (cat.minted >= cat.quota) revert QuotaExceeded();
+        if (walletPurchases[eventId][to] >= events[eventId].maxPerWallet) revert MaxPerWalletExceeded();
 
-        // Increment id token * update kuota tiket ketika terjual
-        _nextTokenId++;
-        uint256 tokenId = _nextTokenId;
-        cat.minted++; // update jumlah tiket terjual
-        walletPurchases[eventId][to]++; // update jumlah tiket yang dibeli oleh wallet
+        // Mutasi kuota dan hitung tokenId baru
+          cat.minted++;
+        walletPurchases[eventId][to]++;
+        uint256 tokenId = ++_nextTokenId;
 
-        // Kunci harga asli saat minting (anti markup / calo)
-        uint96 price = cat.price;
 
-        // simpan data ticket
-        _tickets[tokenId] = TicketInfo({
+        // Kunci metadata tiket ke on-chain
+         _tickets[tokenId] = TicketInfo({
             eventId: eventId,
             categoryId: categoryId,
-            originalPrice: price,
+            originalPrice: cat.price,
             used: false
         });
 
-        // Mint NFT (ERC721)
-        _safeMint(to, tokenId); // mint ke alamat 'to'
+        // cetak NFT ke wallet penerima 
+        _safeMint(to, tokenId);
 
-        emit TicketMinted(tokenId, eventId, categoryId, to, price);
-        
+        // Tulsikan event lgo ek blockchain
+        emit TicketMinted(tokenId, eventId, categoryId, to, cat.price);
+
+        // kembalikan ID token yang baru dibuat
         return tokenId;
     }
 

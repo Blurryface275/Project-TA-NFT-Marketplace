@@ -31,12 +31,12 @@ export default async function OrdersPage() {
 
   return (
     <div className="container max-w-5xl mx-auto px-4 py-8 sm:py-12 space-y-8">
-      <div className="border-b border-border/60 pb-6">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">
+      <div className="border-b border-slate-200/80 pb-6">
+        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
           Riwayat Transaksi
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Daftar seluruh pesanan tiket Midtrans, status pembayaran, dan rincian biaya admin resmi.
+        <p className="text-sm text-slate-500 mt-1 font-medium">
+          Daftar seluruh pesanan tiket Midtrans, status pembayaran real-time, dan rincian biaya platform resmi.
         </p>
       </div>
 

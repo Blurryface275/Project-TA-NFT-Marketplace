@@ -61,122 +61,70 @@ export class TicketsService {
   }
 
   async mintTicket(dto: MintTicketDto) {
-    // Ambil data event dari DB MySQL buat dapetin batas kuota yg ditentuin organizer
-    const event = await this.eventsService.findOne(dto.eventId);
-    const MAX_PER_WALLET = event?.maxPerWallet || 2; // jika event null maka batas maksimal adalah 2
-    const qty = dto.quantity && dto.quantity > 0 ? dto.quantity : 1;
+    const qty = 1; // pembatasan 1 tiket untuk 1 wallet
 
-    try {
-      console.log(
-        ` [TicketsService] Permintaan minting ${qty} tiket untuk alamat dompet: ${dto.walletAddress}`,
-      );
+    console.log(`[TicketsService] Memproses pencetakan ${qty} tiket untuk dompet: ${dto.walletAddress}`,);
 
-      // Cek riwayat tiket yg sdh dimliki dompet ini khusus untuk event yg bersangkutan
-      const userTickets = await this.getUserTickets(dto.walletAddress);
-      const currentEventTickets = userTickets.filter(
-        (t) => t.eventId === Number(dto.eventId),
-      );
-      // Cek jumlah tiket yang sudah dimiliki dompet ini di smart contract Sepolia
-      // const currentBalance = await this.publicClient.readContract({
-      //   address: this.contractAddress,
-      //   abi: TICKET_CONTRACT_ABI,
-      //   functionName: 'balanceOf',
-      //   args: [dto.walletAddress as `0x${string}`],
-      // });
+    // Nonce anti-replay 
+    const nonce = BigInt(Date.now() * 1000);
 
-      const currentCount = Number(currentEventTickets.length);
-      console.log(
-        ` [TicketsService] Status kepemilikan saat ini: ${currentCount}/${MAX_PER_WALLET} tiket. Permintaan baru: ${qty} tiket.`,
-      );
+    // Domain separator EIP-712
+    const domain = {
+      name: 'NFTix',
+      version: '1',
+      chainId: 11155111,
+      verifyingContract: this.contractAddress
+    } as const;
 
-      // Validasi batas maksimal: jika tiket yang sudah ada + jumlah baru melebihi batas
-      if (currentCount + qty > MAX_PER_WALLET) {
-        throw new BadRequestException(
-          `Batas maksimal pembelian adalah ${MAX_PER_WALLET} tiket per akun. Anda saat ini telah memiliki ${currentCount} tiket.`,
-        );
-      }
+    // Tipe struktur data EIP-712 
+    const types = {
+      MintAuth: [
+        { name: 'to', type: 'address' },
+        { name: 'eventId', type: 'uint256' },
+        { name: 'categoryId', type: 'uint256' },
+        { name: 'nonce', type: 'uint256' }
+      ],
+    } as const;
 
-      const txHashes: string[] = [];
-      let lastReceipt: any = null;
+    // Message EIP-712 
+    const message = {
+      to: dto.walletAddress as `0x${string}`,
+      eventId: BigInt(dto.eventId),
+      categoryId: BigInt(dto.categoryId),
+      nonce: nonce,
+    } as const;
 
-      // Loop minting sebanyak jumlah tiket yang diminta (1 atau 2)
-      for (let i = 0; i < qty; i++) {
-        console.log(
-          ` [TicketsService] Mengirim transaksi #${i + 1} dari ${qty} ke Sepolia...`,
-        );
+    // Pembuatan signature untuk EIP-712 
+    const signature = await this.account.signTypedData({
+      domain,
+      types,
+      primaryType: 'MintAuth',
+      message,
+    });
 
-        // 1. Generate nonce unik untuk mencegah replay attack (waktu + urutan loop)
-        const nonce = BigInt(Date.now() * 1000 + i);
+    // Panggil fungsi MintTicket pada Smart Contract
+    // Smart contract akan melakukan verifikasi: address signature valid, nonce belum pernah dipakai
+    console.log(`[TicketsService] Mengirim transaksi mintTicket ke Sepolia...`);
+    const hash = await this.walletClient.writeContract({
+      address: this.contractAddress,
+      abi: TICKET_CONTRACT_ABI,
+      functionName: 'mintTicket',
+      args: [
+        dto.walletAddress as `0x${string}`,
+        BigInt(dto.eventId),
+        BigInt(dto.categoryId),
+        nonce,
+        signature,
+      ],
+    });
 
-        // 2. Tandatangani data terstruktur EIP-712 menggunakan private key backend (systemSigner)
-        const signature = await this.account.signTypedData({
-          domain: {
-            name: 'NFTix',
-            version: '1',
-            chainId: sepolia.id,
-            verifyingContract: this.contractAddress,
-          },
-          types: {
-            MintAuth: [
-              { name: 'to', type: 'address' },
-              { name: 'eventId', type: 'uint256' },
-              { name: 'categoryId', type: 'uint256' },
-              { name: 'nonce', type: 'uint256' },
-            ],
-          },
-          primaryType: 'MintAuth',
-          message: {
-            to: dto.walletAddress as `0x${string}`,
-            eventId: BigInt(dto.eventId),
-            categoryId: BigInt(dto.categoryId),
-            nonce: nonce,
-          },
-        });
-
-        // 3. Panggil fungsi 'mintTicket(to, eventId, categoryId, nonce, signature)' di smart contract Sepolia
-        const hash = await this.walletClient.writeContract({
-          address: this.contractAddress,
-          abi: TICKET_CONTRACT_ABI,
-          functionName: 'mintTicket',
-          // BigInt digunakan karena di Solidity tipenya adalah uint256
-          args: [
-            dto.walletAddress as `0x${string}`,
-            BigInt(dto.eventId),
-            BigInt(dto.categoryId),
-            nonce,
-            signature,
-          ],
-        });
-
-        console.log(
-          `Transaksi #${i + 1} dikirim ke Sepolia dengan txHash: ${hash}. Menunggu konfirmasi blok ...`,
-        );
-
-        // Menunggu sampai transaksi resmi masuk ke blok sebelum mengirim transaksi berikutnya (mencegah nonce collision)
-        const receipt = await this.publicClient.waitForTransactionReceipt({
-          hash: hash,
-        });
-
-        txHashes.push(hash);
-        lastReceipt = receipt;
-      }
-
-      return {
-        success: true,
-        message: `${qty} tiket berhasil dicetak pada jaringan Sepolia Testnet`,
-        txHash: txHashes[0],
-        txHashes: txHashes,
-        blockNumber: Number(lastReceipt?.blockNumber),
-      };
-    } catch (error: any) {
-      console.error('Error minting ticket:', error);
-      // NestJS Exception Filter: melempar error HTTP 400 ke frontend
-      throw new BadRequestException(
-        error?.shortMessage ||
-          error?.message ||
-          'Gagal mencetak tiket on-chain',
-      );
-    }
+    // Tunggu kofirmasi blok
+    await this.publicClient.waitForTransactionReceipt({ hash });
+    return {
+      success: true,
+      recipient: dto.walletAddress,
+      txHash: hash,
+    };
   }
 
   async redeemTicket(tokenId: number, walletAddress: string) {
@@ -302,52 +250,58 @@ export class TicketsService {
   }
 
   async createSnapTransaction(dto: CreateSnapDto) {
-    // Ambil data event & kategorinya dari database MySQL
+    // Ambil data event & kategorinya dri database MySQL
     const event = await this.eventsService.findOne(dto.eventId);
+    // output event ini nanti bentuknya : {id: 1, name: 'Jazz Festival', ticketCategories: [
+    //   {id: 1, name: 'VIP', price: 1000000},
+    //   {id: 2, name: 'Festival', price: 500000},
+    // ]} --> mengikuti sesuai dto CreateSnapDto
+
+    // Ambil data kategori berdasarkan dto.categoryId
     const category = event.ticketCategories.find(
       (c) => Number(c.id) === Number(dto.categoryId),
-    );
+    ); 
+    // contoh output : {id: 1, name: 'VIP', price: 1000000}
 
     if (!category) {
-      throw new BadRequestException('Kategori tiket tidak ditemukan');
+      throw new BadRequestException("Kategori tiket tidak ditemukan")
     }
 
-    const qty = dto.quantity > 0 ? dto.quantity : 1;
-
-    // Validasi kuota sebelum kelaurin modal / pop-up Midtrans
-    const maxAllowed = event.maxPerWallet || 2;
+    // jika dto.quantity < 1 maka qty = 1, kalau >1 maka qty = dto.quantity
+    const qty = dto.quantity > 0 ? dto.quantity : 1; 
+    
+    // Validasi batas kuota per wallet mencegah calo memborong tiket
+    const maxAllowed = event.maxPerWallet || 1;
     const existingTickets = await this.getUserTickets(dto.walletAddress);
     const ownedCountForCurrentEvent = existingTickets.filter(
-      (t) => t.eventId === dto.eventId,
+      (t) => t.eventId === dto.eventId, //difilter dengan cara membandingkan eventId satu persatu
     ).length;
-
-    if (ownedCountForCurrentEvent + qty > maxAllowed) {
-      throw new BadRequestException(
-        `Anda sudah memiliki ${ownedCountForCurrentEvent} tiket. Batas pembelian maksimal adalah ${maxAllowed} tiket.`,
-      );
+    
+    if(ownedCountForCurrentEvent + qty > maxAllowed) {
+      throw new BadRequestException(`Batas tiket anda sudah terpenuhi`);
     }
-    // Rumus admin fee: 5000 + 2.5% dari grossAmount
-    const baseFee = 5000;
+
+    // Hitung biaya tiket + biaya admin untuk transaksi di blockchain
+    const baseFee = 5000; // Fee transaksi untuk biaya gas di blockchain
     const variableFee = Math.round(Number(category.price) * qty * 0.025);
     const totalAdminFee = baseFee + variableFee;
-    // Hitung total harga: (harga satuan * jumlah) + admin fee + variable fee
     const totalPrice = Number(category.price) * qty + totalAdminFee;
 
-    // Pembuatan object customer
-    const customer = await this.customerRepository.findOne({
+    // make sure customer sudah memiliki wallet dan passkey terdaftar
+    let customer = await this.customerRepository.findOne({
       where: { walletAddress: dto.walletAddress },
       relations: { user: true },
     });
-
+    
     if (!customer) {
-      throw new BadRequestException(
-        'Customer dengan alamat dompet tersebut tidak ditemukan.',
-      );
+      // jika belum punya wallet, buat wallet baru untuk customer ini
+      // note : user akan otomatis terdaftar saat pertama kali register passkey
+      throw new BadRequestException("Customer tidak ditemukan");
     }
 
-    const orderId = crypto.randomUUID();
+    // buat ID pesanan unik (UUIDv4) dan simpan order dengan status PENDING
+    const orderId = crypto.randomUUID(); // pake algoritma CSPRNG
 
-    // simpan pesanan ke tabel orders dengan status 'pending' dulu
     const newOrder = this.orderRepository.create({
       id: orderId,
       amount: qty,
@@ -359,22 +313,18 @@ export class TicketsService {
     });
 
     await this.orderRepository.save(newOrder);
-
-    // Ambil server key dair file di backend/.env
-    const serverKey = this.configService.get<string>('MIDTRANS_SERVER_KEY');
-    if (!serverKey) {
-      throw new Error('Server Key Midtrans belum dikonfigurasi');
+    
+    // Siapkan authentication Midtrans  (Basic Auth: Base64 dari ServerKey:)
+    const serverKey = this.configService.get('MIDTRANS_SERVER_KEY');
+    if(!serverKey){
+      throw new Error ('MIDTRANS_SERVER_KEY tidak ditemukan di environment')
     }
-
-    // Basic Auth Midtrans
-    const basicAuth = Buffer.from(`${serverKey}:`).toString('base64');
-
-    // URL untuk transaksi Sandbox (default jika Midtrans isProduction = false)
+    const basicAuth = Buffer.from(`${serverKey}:`).toString('base64'); // contoh output : srv-pk-c19448fa0fa3d9e2b8131037f541ab72:
     const midtransUrl = 'https://app.sandbox.midtrans.com/snap/v1/transactions';
 
-    // Buat objek transaksi (body request untuk Midtrans)
+    // Request Snap Token ke Midtrans 
     const response = await fetch(midtransUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
@@ -390,37 +340,32 @@ export class TicketsService {
             id: String(category.id),
             price: Math.round(Number(category.price)),
             quantity: qty,
-            name: `${event.eventName} (${category.name})`.slice(0, 50),
+            name: `${event.eventName} (${category.name})`.slice(0,50), // dibatasi 50 karakter
           },
-          { // IMPORTANT : KALAU GAADA INI NANTI AKAN ERROR 400!!!
-            id: 'FEE-ADMIN', // ini udah paten, khusus biaya layanan
+          {
+            id: 'FEE-ADMIN',
             price: totalAdminFee,
             quantity: 1,
-            name: 'Biaya Layanan & Jaringan',
-          },
+            name: 'Biaya Layanan & Admin',
+          }, 
         ],
         customer_details: {
-          first_name: customer.user?.name || dto.walletAddress.slice(0, 10),
-          email: customer.user?.email || 'buyer@nftix.id',
+          first_name: customer.user.name,
+          email: customer.user.email,
+          
         },
       }),
     });
 
     const data = await response.json();
-    if (!response.ok) {
+    if(!response.ok){
       console.error('Midtrans Snap Error:', data);
-      throw new BadRequestException(
-        data.error_messages?.[0] || 'Gagal membuat tagihan pembayaran Midtrans',
+      throw new BadRequestException( 
+        data.error_message || `Gagal membuat token Snap Midtrans`,
       );
     }
-    // Mengembalikan Snap Token dan URL Popup kasir ke frontend
-    // Expected Output:
-    //{
-    //  "token": "midtrans-snap-token-example",
-    //  "redirectUrl": "https://app.sandbox.midtrans.com/snap/v2/pay?token=midtrans-snap-token-example",
-    //  "orderId": "NFTIX-5-1-1756053929876",
-    //  "grossAmount": 200000
-    //}
+
+    // Return hasil snap token dari Mditrans ke Frontend
     return {
       token: data.token,
       redirectUrl: data.redirect_url,
@@ -428,6 +373,7 @@ export class TicketsService {
       grossAmount: totalPrice,
     };
   }
+  
 
   // Method pembaca status untuk polling dari frontend
   async getOrderStatus(orderId: string) {
@@ -447,15 +393,16 @@ export class TicketsService {
     };
   }
 
-  // Menangani response / notifikasi webhook dari Midtrans setelah pembayaran selesai 
   async handleMidtransWebhook(payload: any) {
+    // buat serverKey dulu sesuai dokumentasi Midtrans
     const serverKey = this.configService.get<string>('MIDTRANS_SERVER_KEY');
-    if (!serverKey) {
-      throw new Error('Server Key Midtrans belum dikonfigurasi');
-    }
+      if(!serverKey){
+        throw new Error('MIDTRANS_SERVER_KEY belum dikonfigurasi di file .env');
+      }
 
+    // Susun parameter menjadi sebuah payload
     const {
-      order_id,
+      order_id, 
       status_code,
       gross_amount,
       signature_key,
@@ -463,44 +410,46 @@ export class TicketsService {
       fraud_status,
     } = payload;
 
-    // Verifikasi keaslian notifikasi menggunakan SHA-512 sesuai standar keamanan Midtrans
-    const crypto = await import('crypto');
+    // Verfiikasi keaslian webhook menggunakan SHA-512
+    const crypto = await import('crypto'); // buat secure hash
     const signaturePayload = `${order_id}${status_code}${gross_amount}${serverKey}`;
     const calculatedSignature = crypto
       .createHash('sha512')
       .update(signaturePayload)
       .digest('hex');
 
-    if (signature_key !== calculatedSignature) {
+    if (signature_key !== calculatedSignature){
       throw new BadRequestException('Signature key Midtrans tidak valid');
     }
 
-    // 0. Penanganan khusus tombol "Test notification URL" dari Dashboard Midtrans
-    if (
+    // Handle tombol 'Test Notificiation URL' buat dashboard simulator biar ga error
+     if (
       order_id &&
       typeof order_id === 'string' &&
       order_id.startsWith('payment_notif_test_')
     ) {
-      console.log(
-        '✅ [Midtrans Webhook] Uji coba notifikasi dashboard berhasil diverifikasi:',
-        order_id,
-      );
       return {
         status: 'test_success',
         message: 'Midtrans test notification verified',
       };
     }
 
-    // 1. Ambil data order dari database beserta relasi customer dan kategorinya
+    // Ambil data order dari Database beserta relasinya
     const order = await this.orderRepository.findOne({
-      where: { id: order_id },
-      relations: { customer: true, ticketCategory: true },
+      where: {
+        id: order_id
+      },
+      relations: {
+        customer: true,
+        ticketCategory: true  
+      },
     });
-    if (!order) {
-      throw new BadRequestException('Order tidak ditemukan');
+
+     if (!order) {
+      throw new BadRequestException(`Order #${order_id} tidak ditemukan`);
     }
 
-    // 2. Cegah double minting jika webhook terkirim lebih dari satu kali
+    // Proteksi idempotensi : biar ga ada double minting jika webhook terkirim 2x
     if (order.status === OrderStatus.PAID) {
       return {
         status: 'already_processed',
@@ -508,17 +457,16 @@ export class TicketsService {
       };
     }
 
-    // 3. Evaluasi status Midtrans
-    const isPaymentSuccess =
-      transaction_status === 'settlement' ||
-      (transaction_status === 'capture' && fraud_status === 'accept');
+    // Re-check status pembayaran dari Midtrans
+    // 'settlement' digunakan untuk QRIS / VA / E-Wallet 
+    // 'capture' dan 'fraud_status === 'accept' digunakan untuk Kartu Kredit / Debit
+    const isPaymentSuccess = transaction_status === 'settlement' || (transaction_status === 'capture' && fraud_status === 'accept');
 
-    if (isPaymentSuccess) {
+    if (isPaymentSuccess){
       order.status = OrderStatus.PAID;
       order.midtransTransactionId = payload.transaction_id || null;
       await this.orderRepository.save(order);
 
-      // 4. Eksekusi pencetakan (minting) tiket NFT on-chain ke Sepolia
       try {
         const mintResult = await this.mintTicket({
           walletAddress: order.customer.walletAddress!,
@@ -529,26 +477,20 @@ export class TicketsService {
 
         return {
           status: 'success',
-          message: 'Pembayaran sukses dan tiket NFT berhasil dicetak on-chain',
-          orderId: order_id,
-          mintResult,
+          message: 'Pembayaran sukses dan tiket telah dicetak dan dapat dilihat secara on-chain',
+          orderId: order_id, mintResult,
         };
-      } catch (err: any) {
-        console.error('❌ Minting on-chain gagal setelah pembayaran:', err);
-        order.status = OrderStatus.FAILED;
-        await this.orderRepository.save(order);
-        
-        return {
+      }
+      catch (err:any){
+        console.error('Minting on-chain gagal setelah pembayaran karena ', err);
+        return{
           status: 'paid_minting_failed',
           orderId: order_id,
           error: err.message,
         };
       }
-    } else if (['cancel', 'expire', 'deny'].includes(transaction_status)) {
-      order.status =
-        transaction_status === 'cancel'
-          ? OrderStatus.CANCELLED
-          : OrderStatus.FAILED;
+    } else if (['cancel','expire','deny'].includes(transaction_status)){
+      order.status = transaction_status === 'cancel' ? OrderStatus.CANCELLED : OrderStatus.FAILED;
       order.midtransTransactionId = payload.transaction_id || null;
       await this.orderRepository.save(order);
 
@@ -559,11 +501,13 @@ export class TicketsService {
       };
     }
 
-    return {
+     return {
       status: 'pending',
       orderId: order_id,
       message: `Transaksi berstatus ${transaction_status}, menunggu pembayaran`,
-    };
+    };  
+    
+
   }
 
   // Mengambil seluruh order transaksi milik pembeli berdasarkan alamat dompet

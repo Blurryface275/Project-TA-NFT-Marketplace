@@ -15,12 +15,7 @@ import { CreateSnapDto } from './dto/create-snap.dto';
 export class TicketsController {
   constructor(private readonly ticketsService: TicketsService) {}
 
-  // Endpoint untuk mencetak tiket NFT baru ke dompet user
-  // POST http://localhost:3001/api/tickets/mint
-  @Post('mint') // pakai post karena kita mau update data
-  async mintTicket(@Body() mintTicketDto: MintTicketDto) {
-    return this.ticketsService.mintTicket(mintTicketDto);
-  }
+
 
   // Endpoint untuk menukar tiket NFT di gerbang masuk
   // POST http://localhost:3001/api/tickets/redeem
