@@ -58,6 +58,10 @@ Seluruh dokumen disusun berstandar akademik dan rekayasa perangkat lunak (siap d
   * **Judul:** Desain dan panduan operasional deployment smart contract Sepolia via Foundry broadcast.
   * **Topik inti:** Prosedur eksekusi `Deploy.s.sol`, inisialisasi atomik `systemSigner` dan master data Event 1 di blok yang sama, sinkronisasi alamat kontrak ke `backend/.env` dan `frontend/.env.local`, serta penanganan kegagalan deployment.
 
+* [26-marketplace-contract-and-anti-scalping-resale.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/26-marketplace-contract-and-anti-scalping-resale.md)
+  * **Judul:** Desain dan spesifikasi teknis kontrak pasar sekunder (`MarketplaceContract.sol`) dan mekanisme allowlist anti-scalping.
+  * **Topik inti:** Arsitektur non-escrow price-lock (`price == originalPrice`), gerbang transfer `_update` dan zero-approval `isApprovedForAll`, katalog antarmuka ABI, serta jejak data end-to-end (calldata 32-byte, event log, dan state MySQL) tanpa pemotongan.
+
 ---
 
 ### 4. Modul relayer dan integrasi pembayaran
