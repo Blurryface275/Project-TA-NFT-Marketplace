@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Script from "next/script";
 import { registerPasskey } from "@/lib/passkey";
@@ -101,6 +101,17 @@ export default function BuyTicketCard({
   // State untuk melacak status transaksi dan loading saat minting
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<BuyTicketState | null>(null);
+
+  // State Cloudflare Turnstile token untuk mitigasi bot calo
+  const [turnstileToken, setTurnstileToken] = useState<string>("");
+
+  // Callback global saat Turnstile berhasil memvalidasi pengunjung manusia
+  // Sumber: https://developers.cloudflare.com/turnstile/get-started/client-side-rendering/
+  useEffect(() => {
+    (window as any).onTurnstileSuccess = (token: string) => {
+      setTurnstileToken(token);
+    };
+  }, []);
 
   // Simpan data tiket kepemilikan user dalam state lokal
   const [ownedTickets, setOwnedTickets] = useState<UserTicket[]>(userTickets);
@@ -272,11 +283,12 @@ export default function BuyTicketCard({
     setResult(null);
 
     try{
-      // Minta Snap Token dari backend via Server Action
+      // Minta Snap Token dari backend via Server Action (sertakan token verifikasi Turnstile)
       const snapRes = await createSnapPaymentAction(
         EVENT_ID,
         selectedCategoryId,
         safeQuantity,
+        turnstileToken,
       );
 
       if (!snapRes.success || !snapRes.token){
@@ -401,6 +413,10 @@ export default function BuyTicketCard({
         <Script
           src="https://app.sandbox.midtrans.com/snap/snap.js"
           data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+          strategy="afterInteractive"
+        />
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js"
           strategy="afterInteractive"
         />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8">
@@ -574,6 +590,10 @@ export default function BuyTicketCard({
       <Script
         src="https://app.sandbox.midtrans.com/snap/snap.js"
         data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+        strategy="afterInteractive"
+      />
+      <Script
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js"
         strategy="afterInteractive"
       />
       <div className="w-full bg-[#f8fafc] min-h-screen">
@@ -1088,23 +1108,38 @@ export default function BuyTicketCard({
                         </button>
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={handleBuyTicket}
-                        disabled={isLoading || isQuotaFull}
-                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow transition cursor-pointer text-sm"
-                      >
-                        {isLoading ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>Memproses Pembayaran...</span>
-                          </>
-                        ) : isQuotaFull ? (
-                          <span>Batas Kuota Tercapai</span>
-                        ) : (
-                          <span>Beli Tiket Sekarang</span>
-                        )}
-                      </button>
+                      <>
+                        {/* Widget Cloudflare Turnstile: Bot calo otomatis diblokir sebelum tombol checkout aktif */}
+                        <div
+                          className="cf-turnstile my-2 flex justify-center"
+                          data-sitekey={
+                            process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ||
+                            "1x00000000000000000000AA"
+                          }
+                          data-callback="onTurnstileSuccess"
+                          data-theme="light"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={handleBuyTicket}
+                          disabled={isLoading || isQuotaFull || !turnstileToken}
+                          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow transition cursor-pointer text-sm"
+                        >
+                          {isLoading ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span>Memproses Pembayaran...</span>
+                            </>
+                          ) : isQuotaFull ? (
+                            <span>Batas Kuota Tercapai</span>
+                          ) : !turnstileToken ? (
+                            <span>Menunggu Verifikasi Manusia...</span>
+                          ) : (
+                            <span>Beli Tiket Sekarang</span>
+                          )}
+                        </button>
+                      </>
                     )}
                   </div>
                 )}

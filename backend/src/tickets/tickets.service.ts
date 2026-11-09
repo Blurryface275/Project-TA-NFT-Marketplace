@@ -270,6 +270,31 @@ export class TicketsService {
   }
 
   async createSnapTransaction(dto: CreateSnapDto) {
+    // Validasi Cloudflare Turnstile
+    const turnstileSecret = this.configService.get<string>('TURNSTILE_SECRET_KEY');
+    if(turnstileSecret){
+      if(!dto.turnstileToken){
+        throw new BadRequestException('Token verifikasi Cloudflare Turnstile wajib disertakan');
+      }
+
+      const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          secret: turnstileSecret,
+          response: dto.turnstileToken,
+        }),
+      });
+
+      const verifyData = await verifyRes.json();
+      if(!verifyData.success){
+        console.error('[TURNSTILE] Verifikasi bot gagal:', verifyData['error-codes']);
+        throw new BadRequestException('Verifikasi bot (Cloudflare Turnstile) gagal atau kedaluwarsa');     
+      }
+        console.log('[TURNSTILE] Lolos verifikasi manusia:', verifyData.hostname);
+    }
     // Ambil data event & kategorinya dri database MySQL
     const event = await this.eventsService.findOne(dto.eventId);
     // output event ini nanti bentuknya : {id: 1, name: 'Jazz Festival', ticketCategories: [

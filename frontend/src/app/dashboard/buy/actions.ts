@@ -89,6 +89,7 @@ export async function createSnapPaymentAction(
   eventId: number,
   categoryId: number,
   quantity: number,
+  turnstileToken?: string,
 ): Promise<{
   success: boolean;
   token?: string;
@@ -102,7 +103,7 @@ export async function createSnapPaymentAction(
   if (!session?.walletAddress) {
     return {
       success: false,
-      message: "Dompet belum aktif. Silahkan baut dompet terlebih dahulu.",
+      message: "Dompet belum aktif. Silahkan buat dompet terlebih dahulu.",
     };
   }
 
@@ -119,6 +120,7 @@ export async function createSnapPaymentAction(
         categoryId: Number(categoryId),
         quantity: Number(quantity),
         walletAddress: session.walletAddress,
+        turnstileToken,
       }),
     });
 
