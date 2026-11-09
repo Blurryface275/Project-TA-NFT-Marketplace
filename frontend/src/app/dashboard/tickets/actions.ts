@@ -73,3 +73,110 @@ export async function redeemTicketAction(
     };
   }
 }
+
+export type ResaleActionState = {
+  success: boolean;
+  message: string;
+  txHash?: string;
+  lockedPrice?: number;
+};
+
+// Server Action untuk daftarin tiket ke Pasar Sekunder (harga dikunci = originalPrice nya)
+export async function listTicketForResaleAction(
+  tokenId: number,
+): Promise<ResaleActionState>{
+  // ambil session pengguna yg lagi login
+  const session = await getSession();
+  if(!session?.walletAddress){
+    return{
+      success: false,
+      message: "Alamat dompet tidak ditemukan. Silahkan aktifkan dompet terlebih dahulu.",
+    };
+  }
+
+  try{
+    console.log(`[RESALE LIST ACTION] User ${session.userId} mendaftarkan jual Token ID #${tokenId}`,);
+
+    const response = await fetch(`${process.env.BACKEND_URL}/api/tickets/resale/list`,
+      {
+        method: "POST",
+        headers:{
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tokenId: Number(tokenId),
+          sellerWallet: session.walletAddress,
+        }),
+      },  
+    );
+
+    const resData = await response.json();
+    if (!response.ok) {
+      return {
+        success: false,
+        message: resData.message || "Gagal mendaftarkan tiket ke pasar sekunder",
+      };
+    }
+    return {
+      success: true,
+      message: "Tiket berhasil terdaftar di Pasar Sekunder Resmi!",
+      txHash: resData.txHash,
+      lockedPrice: Number(resData.lockedPrice),
+    };
+  } catch (error) {
+    console.error("[RESALE LIST ACTION] Error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Error tidak diketahui";
+    return {
+      success: false,
+      message: `Gagal mendaftarkan resale: ${errorMessage}`,
+    };
+  }
+}
+// Server Action untuk membatalkan penjualan tiket di Pasar Sekunder
+export async function cancelResaleListingAction(
+  tokenId: number,
+): Promise<ResaleActionState> {
+  const session = await getSession();
+  if (!session?.walletAddress) {
+    return {
+      success: false,
+      message: "Alamat dompet tidak ditemukan.",
+    };
+  }
+  try {
+    const response = await fetch(
+      `${process.env.BACKEND_URL}/api/tickets/resale/cancel`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tokenId: Number(tokenId),
+          sellerWallet: session.walletAddress,
+        }),
+      },
+    );
+    const resData = await response.json();
+    if (!response.ok) {
+      return {
+        success: false,
+        message: resData.message || "Gagal membatalkan listing resale",
+      };
+    }
+    return {
+      success: true,
+      message: "Penjualan tiket berhasil dibatalkan!",
+      txHash: resData.txHash,
+    };
+  } catch (error) {
+    console.error("[RESALE CANCEL ACTION] Error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Error tidak diketahui";
+    return {
+      success: false,
+      message: `Gagal membatalkan listing: ${errorMessage}`,
+    };
+  }
+}

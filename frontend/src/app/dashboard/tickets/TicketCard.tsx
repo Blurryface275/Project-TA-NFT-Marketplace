@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { redeemTicketAction, RedeemTicketState } from "./actions";
+import {
+  redeemTicketAction,
+  RedeemTicketState,
+  listTicketForResaleAction,
+  cancelResaleListingAction,
+  ResaleActionState,
+} from "./actions";
 import {
   Ticket,
   QrCode,
@@ -16,7 +22,8 @@ import {
   Timer,
   RefreshCw,
   KeyRound,
-  Armchair
+  Armchair,
+  Repeat,
 } from "lucide-react";
 
 export interface TicketData {
@@ -415,6 +422,57 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
     }
   };
 
+  // State khusus untuk fitur Pasar Sekunder (Resale)
+  const [isListingResale, setIsListingResale] = useState(false);
+  const [isListedOnResale, setIsListedOnResale] = useState(false);
+  const [resaleResult, setResaleResult] = useState<ResaleActionState | null>(null);
+
+  // Handler saat user klik tombol "Jual Tiket Resmi"
+  const handleListForResale = async () => {
+    if (isUsed || isListedOnResale) return;
+
+    // Konfirmasi bahwa harga jual dikunci otomatis = originalPrice (Zero-Profit Resale)
+    const confirmSell = confirm(
+      `Jual Tiket #${ticket.tokenId} di Pasar Sekunder Resmi?\n\n` +
+        `Sesuai aturan Anti-Calo Smart Contract, harga jual dikunci otomatis sebesar Rp ${Number(ticket.originalPrice).toLocaleString("id-ID")} (sama persis dengan harga beli awal).`,
+    );
+    if (!confirmSell) return;
+
+    setIsListingResale(true);
+    setResaleResult(null);
+
+    try {
+      const res = await listTicketForResaleAction(ticket.tokenId);
+      setResaleResult(res);
+      if (res.success) {
+        setIsListedOnResale(true);
+      }
+    } finally {
+      setIsListingResale(false);
+    }
+  };
+
+  // Handler saat user ingin membatalkan tiket yang sedang dijual
+  const handleCancelResale = async () => {
+    const confirmCancel = confirm(
+      `Batalkan penjualan Tiket #${ticket.tokenId} dari Pasar Sekunder?`,
+    );
+    if (!confirmCancel) return;
+
+    setIsListingResale(true);
+    setResaleResult(null);
+
+    try {
+      const res = await cancelResaleListingAction(ticket.tokenId);
+      setResaleResult(res);
+      if (res.success) {
+        setIsListedOnResale(false);
+      }
+    } finally {
+      setIsListingResale(false);
+    }
+  };
+
   return (
     <div
       className={`relative w-full rounded-2xl border transition-all duration-300 overflow-hidden shadow-[0_2px_16px_rgba(0,0,0,0.04)] ${
@@ -661,6 +719,77 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
             )}
           </button>
         </div>
+
+        {/* Notifikasi Hasil Transaksi Resale */}
+        {resaleResult && (
+          <div
+            className={`p-3.5 rounded-xl border text-xs space-y-1 animate-in fade-in ${
+              resaleResult.success
+                ? "bg-teal-50 border-teal-200 text-teal-900"
+                : "bg-rose-50 border-rose-200 text-rose-800"
+            }`}
+          >
+            <p className="font-bold">{resaleResult.message}</p>
+            {resaleResult.txHash && (
+              <p className="font-mono text-[11px] break-all">
+                Tx Sepolia:{" "}
+                <a
+                  href={`https://sepolia.etherscan.io/tx/${resaleResult.txHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline font-bold text-coral-600"
+                >
+                  {resaleResult.txHash.slice(0, 24)}...
+                </a>
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Tombol Pasar Sekunder Resmi (Resale Price-Lock = originalPrice) */}
+        {!isUsed && (
+          <div className="pt-1">
+            {!isListedOnResale ? (
+              <button
+                type="button"
+                onClick={handleListForResale}
+                disabled={isListingResale}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-teal-600/30 bg-teal-50/70 hover:bg-teal-100/80 text-teal-800 text-xs font-bold transition cursor-pointer disabled:opacity-50"
+              >
+                {isListingResale ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-teal-700" />
+                    <span>Mendaftarkan ke MarketplaceContract...</span>
+                  </>
+                ) : (
+                  <>
+                    <Repeat className="w-3.5 h-3.5 text-teal-700" />
+                    <span>
+                      Jual Tiket Resmi (Harga Terkunci Rp{" "}
+                      {Number(ticket.originalPrice).toLocaleString("id-ID")})
+                    </span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleCancelResale}
+                disabled={isListingResale}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold transition cursor-pointer disabled:opacity-50"
+              >
+                {isListingResale ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Membatalkan Listing On-Chain...</span>
+                  </>
+                ) : (
+                  <span>Batalkan Penjualan di Pasar Sekunder</span>
+                )}
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Link ke Sepolia Etherscan untuk Cek Transaksi & Token On-Chain */}
         <div className="pt-3 flex flex-wrap items-center justify-center gap-2 border-t border-slate-100 text-[11px] text-slate-500">

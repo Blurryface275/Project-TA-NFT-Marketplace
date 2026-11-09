@@ -76,14 +76,14 @@ export default async function Navbar() {
             <span>Orders</span>
           </Link>
 
-          {/* Menu Resale (Disabled / Coming Soon) */}
-          <div className="flex items-center gap-1.5 px-3 py-2 text-muted-foreground/50 cursor-not-allowed select-none">
+          {/* Menu Pasar Sekunder Resmi (Resale Ticket) */}
+          <Link
+            href="/dashboard/resale"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition"
+          >
             <Repeat className="h-4 w-4" />
             <span>Resale Ticket</span>
-            <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground font-semibold">
-              Soon
-            </span>
-          </div>
+          </Link>
 
           {userRole === "ORGANIZER" && (
             <Link
