@@ -78,6 +78,23 @@ export const TICKET_CONTRACT_ABI = [
     stateMutability: 'view',
   },
   {
+    type: 'function',
+    name: 'registerIdentity',
+    inputs: [
+      { name: 'user', type: 'address' },
+      { name: 'nikHash', type: 'bytes32' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getUserIdentity',
+    inputs: [{ name: 'user', type: 'address' }],
+    outputs: [{ name: '', type: 'bytes32' }],
+    stateMutability: 'view',
+  },
+  {
     type: 'event',
     name: 'TicketMinted',
     inputs: [

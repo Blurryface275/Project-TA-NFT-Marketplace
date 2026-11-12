@@ -362,4 +362,42 @@ contract TicketContractTest is Test {
         vm.expectRevert(TicketContract.MaxPerWalletExceeded.selector);
         ticket.mintTicket(buyer, EVENT_ID, CATEGORY_ID, overNonce, sigOver);
     }
+
+    // =========================================================================
+    // 8. Identity & KYC Tests (UU PDP Compliance)
+    // =========================================================================
+
+    function test_RegisterIdentity_Success() public {
+        bytes32 nikHash = keccak256(abi.encodePacked("3578012345670001"));
+
+        vm.prank(owner);
+        ticket.registerIdentity(buyer, nikHash);
+
+        assertEq(ticket.getUserIdentity(buyer), nikHash);
+    }
+
+    function test_RegisterIdentity_RevertIf_NotOwner() public {
+        bytes32 nikHash = keccak256(abi.encodePacked("3578012345670001"));
+
+        vm.prank(stranger);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Ownable.OwnableUnauthorizedAccount.selector,
+                stranger
+            )
+        );
+        ticket.registerIdentity(buyer, nikHash);
+    }
+
+    function test_RegisterIdentity_RevertIf_ZeroAddressOrHash() public {
+        bytes32 nikHash = keccak256(abi.encodePacked("3578012345670001"));
+
+        vm.startPrank(owner);
+        vm.expectRevert(TicketContract.ForbiddenZero.selector);
+        ticket.registerIdentity(address(0), nikHash);
+
+        vm.expectRevert(TicketContract.ForbiddenZero.selector);
+        ticket.registerIdentity(buyer, bytes32(0));
+        vm.stopPrank();
+    }
 }

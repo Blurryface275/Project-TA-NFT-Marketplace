@@ -44,6 +44,9 @@ export class Event{
     @OneToMany(() => TicketCategory, (cat) => cat.event)
     ticketCategories: TicketCategory[];
 
-    @Column({name: 'max_per_wallet', type: 'int', default: 2})
-    maxPerWallet: number; // by default limitnya 2 tickets per user
+    @Column({name: 'sale_start_time', type:'datetime', nullable: true})
+    saleStartTime: Date;
+
+    @Column({name: 'max_per_wallet', type: 'int', default: 1})
+    maxPerWallet: number; // by default limitnya 1 tickets per user
 }

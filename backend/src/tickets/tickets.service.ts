@@ -13,7 +13,7 @@ import { MintTicketDto } from './dto/mint-ticket.dto';
 import { EventsService } from '../events/events.service';
 import { CreateSnapDto } from './dto/create-snap.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, MoreThan } from 'typeorm';
 import { Order, OrderStatus } from './entities/order.entity';
 import { Customer } from '../customers/entities/customer.entity';
 import * as crypto from 'crypto';
@@ -297,6 +297,17 @@ export class TicketsService {
     }
     // Ambil data event & kategorinya dri database MySQL
     const event = await this.eventsService.findOne(dto.eventId);
+
+        // Validasi Flash Sale Time Gate: Cek apakah penjualan sudah dibuka
+    if (event.saleStartTime) {
+      const now = new Date();
+      const saleStart = new Date(event.saleStartTime);
+      if (now < saleStart) {
+        throw new BadRequestException(
+          `Flash sale belum dibuka! Penjualan tiket baru dimulai pada: ${saleStart.toLocaleString('id-ID')}`
+        );
+      }
+    }
     // output event ini nanti bentuknya : {id: 1, name: 'Jazz Festival', ticketCategories: [
     //   {id: 1, name: 'VIP', price: 1000000},
     //   {id: 2, name: 'Festival', price: 500000},
@@ -314,6 +325,24 @@ export class TicketsService {
 
     // jika dto.quantity < 1 maka qty = 1, kalau >1 maka qty = dto.quantity
     const qty = dto.quantity > 0 ? dto.quantity : 1; 
+
+    // Soft-Locking / Reservation Window 10 Menit (Anti-Overbooking / First-Principles)
+    // Hitung tiket yang sudah PAID + tiket PENDING yang masih aktif (< 10 menit)
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const activeOrders = await this.orderRepository.find({
+      where: [
+        { ticketCategoriesId: String(category.id), status: OrderStatus.PAID },
+        { ticketCategoriesId: String(category.id), status: OrderStatus.PENDING, createdAt: MoreThan(tenMinutesAgo) },
+      ],
+    });
+    const reservedQuota = activeOrders.reduce((sum, order) => sum + (order.amount || 1), 0);
+    const availableQuota = category.quota - reservedQuota;
+
+    if (availableQuota < qty) {
+      throw new BadRequestException(
+        'Semua kuota tiket saat ini sedang dalam proses pembayaran oleh pembeli lain. Silakan coba beberapa saat lagi jika ada pesanan yang batal/kedaluwarsa.'
+      );
+    }
     
     // Validasi batas kuota per wallet mencegah calo memborong tiket
     const maxAllowed = event.maxPerWallet || 1;

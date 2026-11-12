@@ -200,6 +200,19 @@ contract TicketContract is ERC721, Ownable, EIP712 {
         // mengubah alamat marketplace
         marketplaceAddress = _marketplace;
     }
+    /// @notice Mendaftarkan hash KYC KTP pengguna ke alamat dompet (UU PDP Compliance)
+    function registerIdentity(
+        address user,
+        bytes32 nikHash
+    ) external onlyOwner {
+        if (user == address(0)) revert ForbiddenZero();
+        if (nikHash == bytes32(0)) revert ForbiddenZero();
+        userIdentities[user] = nikHash;
+    }
+    /// @notice Membaca hash identitas KTP yang terdaftar untuk suatu alamat dompet
+    function getUserIdentity(address user) external view returns (bytes32) {
+        return userIdentities[user];
+    }
     function setSystemSigner(address _signer) public onlyOwner {
         if (_signer == address(0)) {
             revert ForbiddenZero();

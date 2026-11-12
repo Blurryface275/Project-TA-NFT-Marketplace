@@ -14,3 +14,4 @@
 
 ## 4. Patokan Utama Proyek (Single Source of Truth)
 * **Wajib membaca dan mematuhi `README.md`:** Berkas `README.md` di root repositori adalah acuan teknis mutlak, matriks status fitur, dan rencana implementasi arsitektur pada setiap awal percakapan atau sesi baru. Dilarang menyimpang dari spesifikasi dan rancangan fondasional yang telah disepakati di `README.md`.
+* **Standar Desain UI/UX (Anti-Overstimulation):** Wajib mematuhi `design/UI_UX_STYLE_GUIDE.md`. Dilarang menggunakan font display artistik/eksperimental (seperti Syne/Space Mono/brutalist) dan garis hitam tebal yang overstimulating. Gunakan standar *E-Commerce Utility Minimalist* (Plus Jakarta Sans/Inter, card putih bersih hairline border, warna brand warm coral `#FF5A36`, tanpa jargon crypto mentah di UI).

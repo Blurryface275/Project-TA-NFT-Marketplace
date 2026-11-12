@@ -56,6 +56,7 @@ export interface EventData {
   category: string;
   capacity: number;
   maxPerWallet?: number;
+  saleStartTime?: string | null;
   imageIpfsCid: string | null;
   organizersId?: number;
   ticketCategories: TicketCategoryData[];
@@ -101,6 +102,7 @@ export default function BuyTicketCard({
   // State untuk melacak status transaksi dan loading saat minting
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<BuyTicketState | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
 
   // State Cloudflare Turnstile token untuk mitigasi bot calo
   const [turnstileToken, setTurnstileToken] = useState<string>("");
@@ -112,6 +114,40 @@ export default function BuyTicketCard({
       setTurnstileToken(token);
     };
   }, []);
+
+  // State Flash Sale Time Gate & Countdown
+  const [timeLeft, setTimeLeft] = useState<{ hours: number; minutes: number; seconds: number; isStarted: boolean }>({
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+    isStarted: true,
+  });
+
+  useEffect(() => {
+    if (!currentEvent?.saleStartTime) {
+      setTimeLeft({ hours: 0, minutes: 0, seconds: 0, isStarted: true });
+      return;
+    }
+
+    const checkTime = () => {
+      const now = new Date().getTime();
+      const target = new Date(currentEvent.saleStartTime!).getTime();
+      const diff = target - now;
+
+      if (diff <= 0) {
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0, isStarted: true });
+      } else {
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        setTimeLeft({ hours, minutes, seconds, isStarted: false });
+      }
+    };
+
+    checkTime();
+    const interval = setInterval(checkTime, 1000);
+    return () => clearInterval(interval);
+  }, [currentEvent?.saleStartTime]);
 
   // Simpan data tiket kepemilikan user dalam state lokal
   const [ownedTickets, setOwnedTickets] = useState<UserTicket[]>(userTickets);
@@ -328,7 +364,7 @@ export default function BuyTicketCard({
 
             const orderStatus = await checkOrderStatusAction(snapRes.orderId);
 
-            // Sukses: Transaksi Lunas & tiket otomatis tercetak di jaringan blockchain
+            // Sukses: Transaksi Lunas & tiket resmi diterbitkan
             if (orderStatus.success && orderStatus.status === "paid"){
               clearInterval(interval);
 
@@ -338,8 +374,9 @@ export default function BuyTicketCard({
 
               setResult({
                 success: true,
-                message: "Pembayaran berhasil dan tiket NFT telah resmi diterbitkan di Sepolia!",
+                message: "Pembayaran berhasil dan tiket resmi telah diterbitkan!",
               });
+              setShowSuccessModal(true);
               setIsLoading(false);
               return;
             }
@@ -361,8 +398,9 @@ export default function BuyTicketCard({
               setIsLoading(false);
               setResult({
                 success: true,
-                message: "Pembayaran telah diterima Midtrans. Tiket sedang diproses oleh blockchain relayer, silakan periksa berkala di menu Tiket Saya.",
+                message: "Pembayaran telah diterima Midtrans. Tiket resmi sedang diproses, silakan periksa berkala di menu Tiket Saya.",
               });
+              setShowSuccessModal(true);
               return;
             }
           }, 2000);
@@ -426,7 +464,7 @@ export default function BuyTicketCard({
               Jelajahi Event & Konser
             </h1>
             <p className="text-sm text-slate-500 font-medium">
-              Beli tiket resmi berbasis Smart Account NFT blockchain yang dijamin 100% bebas calo.
+              Beli tiket resmi bergaransi 100% asli langsung dari penyelenggara acara terpercaya.
             </p>
           </div>
 
@@ -596,582 +634,447 @@ export default function BuyTicketCard({
         src="https://challenges.cloudflare.com/turnstile/v0/api.js"
         strategy="afterInteractive"
       />
-      <div className="w-full bg-[#f8fafc] min-h-screen">
-        {/* LOKET.COM HERO BANNER (Clean Dark Navy #0b1b36) */}
-        <div className="w-full bg-[#0b1b36] text-white py-10 sm:py-12 lg:py-14 border-b border-slate-800">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* Navigasi Breadcrumb Loket */}
-            <div className="flex items-center gap-2 text-xs text-slate-400 mb-5">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedEventId(null);
-                  setResult(null);
-                }}
-                className="hover:text-white transition flex items-center gap-1.5 font-medium cursor-pointer"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Semua Event</span>
-              </button>
-              <span>/</span>
-              <span className="text-slate-400">
-                {currentEvent.category || "Konser & Musik"}
-              </span>
-              <span>/</span>
-              <span className="text-white font-medium truncate max-w-[280px]">
-                {currentEvent.eventName}
-              </span>
-            </div>
-
-            {/* Grid Hero Loket: Kiri Judul & Meta (8 Kolom), Kanan Spacer (4 Kolom) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              <div className="lg:col-span-8 space-y-4">
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-tight leading-tight">
-                  {currentEvent.eventName}
-                </h1>
-
-                <div className="space-y-2 text-sm text-slate-300">
-                  <div className="flex items-center gap-2.5">
-                    <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
-                    <span>{currentEvent.venueLocation}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2.5">
-                    <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
-                    <span>{eventDateFormatted}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Spacer kanan untuk desktop (area floating card) */}
-              <div className="hidden lg:block lg:col-span-4" />
-            </div>
+      <div className="w-full bg-[#F8F9FA] min-h-screen py-8 sm:py-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+          {/* Navigation Breadcrumb */}
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedEventId(null);
+                setResult(null);
+              }}
+              className="hover:text-coral-500 transition flex items-center gap-1.5 font-semibold cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Semua Event</span>
+            </button>
+            <span>/</span>
+            <span className="text-slate-400 capitalize">
+              {currentEvent.category || "Konser"}
+            </span>
+            <span>/</span>
+            <span className="text-slate-900 font-semibold truncate max-w-[260px]">
+              {currentEvent.eventName}
+            </span>
           </div>
-        </div>
 
-        {/* LOKET.COM 2-COLUMN BODY CONTAINER */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
-            {/* SISI KIRI (8 KOLOM): TABS & KONTEN */}
-            <div className="lg:col-span-8 space-y-6">
-              {/* Tab Navigation Loket.com exact */}
-              <div className="flex items-center gap-8 border-b border-slate-200 text-sm">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("deskripsi")}
-                  className={`pb-3 font-bold transition cursor-pointer relative ${
-                    activeTab === "deskripsi"
-                      ? "text-blue-600 border-b-2 border-blue-600 -mb-[1px]"
-                      : "text-slate-500 hover:text-slate-800"
-                  }`}
-                >
-                  Deskripsi
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("tiket")}
-                  className={`pb-3 font-bold transition cursor-pointer relative flex items-center gap-1.5 ${
-                    activeTab === "tiket"
-                      ? "text-blue-600 border-b-2 border-blue-600 -mb-[1px]"
-                      : "text-slate-500 hover:text-slate-800"
-                  }`}
-                >
-                  <span>Tiket</span>
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-blue-100 text-blue-700 font-bold">
-                    {activeCategories.length}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("terms")}
-                  className={`pb-3 font-bold transition cursor-pointer relative ${
-                    activeTab === "terms"
-                      ? "text-blue-600 border-b-2 border-blue-600 -mb-[1px]"
-                      : "text-slate-500 hover:text-slate-800"
-                  }`}
-                >
-                  Syarat dan Ketentuan
-                </button>
-              </div>
-
-              {/* TAB 1: DESKRIPSI (Struktur paragraf lengkap sesuai Loket.com) */}
-              {activeTab === "deskripsi" && (
-                <div className="space-y-5 text-sm text-slate-700 leading-relaxed bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-xs">
-                  <p>
-                    Workshop ini diadakan pada hari/tanggal : <strong>{eventDateFormatted}</strong>.{" "}
-                    <strong>{currentEvent.eventName}</strong> hadir sebagai ruang belajar praktis bagi Anda yang ingin membangun fondasi mengajar yang kuat, mulai dari langkah paling dasar hingga siap tampil di depan kelas dengan lebih tenang.
-                  </p>
-                  <p>
-                    Dalam workshop ini, peserta akan mempelajari teknik dasar memegang dan membunyikan angklung, mengenal nada serta notasi angka, dan memahami cara kerja angklung sebagai alat musik yang dimainkan bersama-sama. Peserta juga akan dibekali cara memperkenalkan lagu sederhana kepada murid, mengatur kelompok, memberi aba-aba yang jelas, serta menjaga ritme permainan agar tetap kompak.
-                  </p>
-                  <p>
-                    Selain keterampilan teknis, Anda akan mendapatkan tips menyusun materi latihan bertahap, mengelola kelas, dan menumbuhkan semangat belajar murid sejak pertemuan pertama. Pendekatan ini membantu guru pemula menghindari kebingungan umum saat mulai mengajar, sehingga proses latihan terasa lebih terarah dan menyenangkan.
-                  </p>
-                  <p>
-                    Seluruh sesi disampaikan dengan metode praktik langsung sehingga mudah diikuti, bahkan bagi Anda yang belum memiliki pengalaman mengajar sebelumnya. Setiap peserta akan didampingi agar dapat mencoba, bertanya, dan berdiskusi secara terbuka bersama sesama calon pengajar dari berbagai daerah.
-                  </p>
-                  <p>
-                    Angklung adalah warisan budaya yang diakui UNESCO dan layak terus hidup melalui tangan para pengajar yang bersemangat. Bergabunglah bersama kami untuk menambah bekal, memperluas jejaring, dan memperoleh keyakinan baru dalam mengajar. Jadilah bagian dari generasi pengajar yang melestarikan angklung dengan penuh kreativitas, kesabaran, dan kebanggaan. Daftarkan diri Anda sekarang dan mulailah langkah pertama Anda bersama komunitas yang saling mendukung.
-                  </p>
-                </div>
-              )}
-
-              {/* TAB 2: TIKET (Loket.com Standard Ticket Container) */}
-              {activeTab === "tiket" && (
-                <div className="space-y-4">
-                  {/* Section Header */}
-                  <div className="flex items-center justify-between pb-1">
-                    <h2 className="text-xl font-bold text-slate-900">Tiket</h2>
-                    <span className="text-xs text-slate-500">
-                      {isQuotaFull
-                        ? "Batas kuota event tercapai"
-                        : `Maksimal ${MAX_PER_WALLET} tiket per akun`}
-                    </span>
-                  </div>
-
-                  {/* Loket.com Accordion Ticket Box */}
-                  <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
-                    {/* Group Header Bar */}
-                    <div className="bg-[#f0f4f8] px-5 py-3.5 flex items-center justify-between border-b border-slate-200">
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-800 tracking-wide uppercase">
-                          TIKET MASUK RESMI
-                        </h3>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {activeCategories.length} kategori tiket • Harga mulai dari Rp {currentMinPrice.toLocaleString("id-ID")}
-                        </p>
-                      </div>
-                      <ChevronDown className="w-4 h-4 text-slate-500" />
-                    </div>
-
-                    {/* Ticket Rows */}
-                    <div className="divide-y divide-slate-100">
-                      {activeCategories.map((cat) => {
-                        const isSelected = selectedCategoryId === cat.id;
-
-                        return (
-                          <div
-                            key={cat.id}
-                            onClick={() => setSelectedCategoryId(cat.id)}
-                            className={`px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors cursor-pointer ${
-                              isSelected ? "bg-blue-50/40" : "hover:bg-slate-50/70"
-                            }`}
-                          >
-                            {/* Kolom 1: Harga Kiri */}
-                            <div className="sm:w-32 shrink-0">
-                              <span className="text-base font-bold text-slate-900 block">
-                                Rp {cat.price.toLocaleString("id-ID")}
-                              </span>
-                            </div>
-
-                            {/* Kolom 2: Nama & Batas Waktu */}
-                            <div className="flex-1 min-w-0">
-                              <h4 className={`text-sm font-semibold ${isSelected ? "text-blue-600" : "text-slate-900"}`}>
-                                {cat.name}
-                              </h4>
-                              <p className="text-xs text-slate-500 mt-0.5">
-                                Penjualan berakhir {eventDateFormatted} • 22.00 WIB
-                              </p>
-                              <p className="text-xs text-slate-400 mt-0.5">
-                                Nomor Kursi: <span className="text-slate-600 font-medium">{cat.rowPrefix}-0{ownedCountForCurrentEvent + 1}</span>
-                              </p>
-                            </div>
-
-                            {/* Kolom 3: Status Available & Stepper / Pilih */}
-                            <div className="sm:w-40 shrink-0 flex items-center sm:justify-end gap-3">
-                              <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded">
-                                Available
-                              </span>
-
-                              {isSelected && !isQuotaFull ? (
-                                <div
-                                  className="flex items-center border border-slate-300 rounded bg-white overflow-hidden shadow-2xs"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                                    disabled={safeQuantity <= 1 || isLoading}
-                                    className="w-7 h-7 flex items-center justify-center font-bold text-blue-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer text-sm"
-                                  >
-                                    -
-                                  </button>
-                                  <span className="w-7 text-center font-semibold text-xs text-slate-900">
-                                    {safeQuantity}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => setQuantity((q) => Math.min(remainingQuota, q + 1))}
-                                    disabled={safeQuantity >= remainingQuota || isLoading}
-                                    className="w-7 h-7 flex items-center justify-center font-bold text-blue-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer text-sm"
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedCategoryId(cat.id)}
-                                  className="px-4 py-1.5 rounded text-xs font-semibold border border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white transition cursor-pointer"
-                                >
-                                  Pilih
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-slate-400 pt-1">
-                    * Pembelian tiket dibatasi maksimal {MAX_PER_WALLET} tiket per akun.
-                  </p>
-                </div>
-              )}
-
-              {/* TAB 3: SYARAT & KETENTUAN (Legal T&C Loket.com) */}
-              {activeTab === "terms" && (
-                <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-4 text-xs text-slate-700 leading-relaxed">
-                  <h3 className="text-base font-bold text-slate-900 pb-2 border-b border-slate-100">
-                    Syarat & Ketentuan Acara
-                  </h3>
-                  <ol className="list-decimal list-inside space-y-2">
-                    <li>
-                      Pembelian dibatasi maksimal <strong>{MAX_PER_WALLET} tiket</strong> per akun.
-                    </li>
-                    <li>
-                      Tiket yang telah dibeli akan otomatis diterbitkan ke akun resmi pembeli.
-                    </li>
-                    <li>
-                      Alokasi nomor kursi bersifat urut dan otomatis saat konfirmasi transaksi.
-                    </li>
-                    <li>
-                      Saat memasuki pintu gerbang acara, pengunjung wajib menunjukkan QR Code tiket yang valid.
-                    </li>
-                    <li>
-                      Penyelenggara berhak menolak tiket yang diperoleh di luar kanal penjualan resmi.
-                    </li>
-                  </ol>
-                </div>
-              )}
-
-              {/* Rekomendasi Event Serupa Loket.com */}
-              {allEvents.filter((e) => e.id !== currentEvent.id).length > 0 && (
-                <div className="pt-6 space-y-4 border-t border-slate-200">
-                  <h3 className="text-base font-extrabold text-slate-900">
-                    Event Lainnya Untuk Kamu
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {allEvents
-                      .filter((e) => e.id !== currentEvent.id)
-                      .slice(0, 2)
-                      .map((otherEvt) => (
-                        <div
-                          key={otherEvt.id}
-                          onClick={() => handleSelectEventCard(otherEvt)}
-                          className="p-3 bg-white border border-slate-200 rounded-xl hover:shadow-md transition cursor-pointer flex items-center gap-3 group"
-                        >
-                          <div
-                            className="w-20 h-14 rounded-lg bg-cover bg-center shrink-0 border border-slate-100"
-                            style={{
-                              backgroundImage: otherEvt.imageIpfsCid
-                                ? `url(${otherEvt.imageIpfsCid})`
-                                : "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
-                            }}
-                          />
-                          <div className="overflow-hidden space-y-1">
-                            <h4 className="text-xs font-bold text-slate-900 truncate group-hover:text-blue-600 transition">
-                              {otherEvt.eventName}
-                            </h4>
-                            <p className="text-[11px] text-slate-500 truncate">
-                              {otherEvt.venueLocation}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* SISI KANAN (4 KOLOM): FLOATING RIGHT CARD OVERLAPPING HERO BANNER */}
-            <div className="lg:col-span-4 lg:-mt-44 relative z-20 space-y-4">
-              <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
-                {/* 1. Poster Event (16:9 Aspect Video) */}
+          {/* 2-Column Balanced Grid Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* KOLOM KIRI (7 KOLOM): INFORMASI EVENT & PILIHAN KATEGORI TIKET */}
+            <div className="lg:col-span-7 space-y-6">
+              {/* Event Banner & Info Card */}
+              <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-xs">
                 <div
-                  className="w-full aspect-video bg-cover bg-center relative overflow-hidden"
+                  className="w-full h-48 sm:h-56 bg-cover bg-center relative p-5 flex flex-col justify-between text-white"
                   style={{
                     backgroundImage: currentEvent.imageIpfsCid
-                      ? `url(${currentEvent.imageIpfsCid})`
-                      : "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
+                      ? `linear-gradient(to top, rgba(15, 23, 42, 0.85) 0%, rgba(15, 23, 42, 0.2) 60%), url(${currentEvent.imageIpfsCid})`
+                      : "linear-gradient(135deg, #1E1B4B 0%, #312E81 50%, #4338CA 100%)",
                   }}
-                />
+                >
+                  <span className="self-start px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-900/70 backdrop-blur-md text-white border border-white/20 capitalize">
+                    {currentEvent.category || "Konser Resmi"}
+                  </span>
 
-                {/* 2. Loket.com Price Bar & Beli Tiket Action */}
-                <div className="p-4 sm:p-5 flex items-center justify-between border-b border-slate-100 bg-slate-50/50">
                   <div>
-                    <span className="text-[11px] text-slate-500 font-medium block">
-                      Harga mulai dari
-                    </span>
-                    <span className="text-xl font-bold text-slate-900">
-                      {currentMinPrice === 0
-                        ? "Gratis"
-                        : `Rp ${currentMinPrice.toLocaleString("id-ID")}`}
-                    </span>
+                    <h1 className="text-xl sm:text-2xl font-extrabold text-white leading-tight">
+                      {currentEvent.eventName}
+                    </h1>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("tiket")}
-                    className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition cursor-pointer"
-                  >
-                    Beli Tiket
-                  </button>
                 </div>
 
-                {/* 3. Detail Event Body */}
-                <div className="p-4 sm:p-5 space-y-3.5">
-                  <h2 className="text-base font-bold text-slate-900 leading-snug">
-                    {currentEvent.eventName}
-                  </h2>
+                {/* Perforated Divider */}
+                <div className="w-full border-t border-dashed border-slate-200" />
 
-                  <div className="space-y-2 text-xs text-slate-600">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span className="truncate">{currentEvent.venueLocation}</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                {/* Event Metadata Strip */}
+                <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Jadwal Acara
+                    </span>
+                    <div className="flex items-center gap-2 text-slate-800 font-semibold">
+                      <Calendar className="w-3.5 h-3.5 text-coral-500 shrink-0" />
                       <span>{eventDateFormatted}</span>
                     </div>
-
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <Tag className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span className="truncate">
-                        {currentEvent.category || "Konser & Musik"}
-                      </span>
-                    </div>
                   </div>
 
-                  {/* 4. Organizer Box */}
-                  <div className="pt-3 border-t border-slate-100 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 font-medium text-xs shrink-0">
-                      <Building2 className="w-4 h-4 text-slate-500" />
-                    </div>
-                    <div className="text-xs overflow-hidden">
-                      <span className="text-[11px] text-slate-400 block">
-                        Diselenggarakan oleh
-                      </span>
-                      <strong className="text-slate-800 font-semibold truncate block">
-                        {currentEvent.organizersId === 1
-                          ? "BEM Universitas Surabaya"
-                          : "Saung Angklung Udjo"}
-                      </strong>
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Lokasi Venue
+                    </span>
+                    <div className="flex items-center gap-2 text-slate-800 font-semibold">
+                      <MapPin className="w-3.5 h-3.5 text-coral-500 shrink-0" />
+                      <span className="truncate">{currentEvent.venueLocation}</span>
                     </div>
                   </div>
                 </div>
-
-                {/* 5. Checkout Area (Aktif saat tab tiket dibuka) */}
-                {activeTab === "tiket" && (
-                  <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/70 space-y-4">
-                    <div className="space-y-2 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-slate-800">
-                          {selectedCategory.name} (x{safeQuantity})
-                        </span>
-                        <span className="font-bold text-slate-900">
-                          Rp {totalPrice.toLocaleString("id-ID")}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-[11px] text-slate-600">
-                        <span>Alokasi Kursi:</span>
-                        <span className="font-semibold text-slate-800">
-                          {safeQuantity === 1
-                            ? `${selectedCategory.rowPrefix}-0${ownedCountForCurrentEvent + 1}`
-                            : `${selectedCategory.rowPrefix}-0${ownedCountForCurrentEvent + 1}, ${selectedCategory.rowPrefix}-0${ownedCountForCurrentEvent + 2}`}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/60">
-                        <span>Biaya Layanan:</span>
-                        <span className="font-medium text-emerald-600">
-                          Rp 0
-                        </span>
-                      </div>
-
-                      <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-xs">
-                        <span className="text-slate-600 font-medium">
-                          Total Pembayaran
-                        </span>
-                        <span className="text-base font-bold text-blue-600">
-                          Rp {totalPrice.toLocaleString("id-ID")}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Penerima Tiket */}
-                    <div className="p-2.5 rounded-lg bg-white border border-slate-200 text-xs flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 text-slate-600">
-                        <Wallet className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                        <span>Akun Penerima:</span>
-                      </div>
-                      <span
-                        className="font-medium text-slate-800 truncate max-w-[140px] text-xs"
-                        title={activeWallet || "Perlu Aktivasi"}
-                      >
-                        {activeWallet ? `${activeWallet.slice(0, 6)}...${activeWallet.slice(-4)}` : "Belum Aktif"}
-                      </span>
-                    </div>
-
-                    {/* Notifikasi Transaksi Sukses */}
-                    {result?.success && (
-                      <div className="p-3.5 rounded-xl bg-teal-50 border border-teal-200 text-teal-900 text-xs space-y-2">
-                        <div className="flex items-center gap-2 font-bold text-teal-800">
-                          <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
-                          <span>{result.message || "Tiket Berhasil Dicetak!"}</span>
-                        </div>
-                        {result.txHash && (
-                          <a
-                            href={`https://sepolia.etherscan.io/tx/${result.txHash}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline block font-mono text-[11px] font-bold"
-                          >
-                            Cek Etherscan Sepolia
-                          </a>
-                        )}
-                        <div className="pt-1 flex gap-2">
-                          <Link
-                            href="/dashboard/tickets"
-                            className="flex-1 text-center py-1.5 rounded-lg bg-blue-600 text-white font-bold text-[11px]"
-                          >
-                            Lihat Tiket
-                          </Link>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Notifikasi Transaksi Gagal */}
-                    {result && !result.success && (
-                      <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
-                        <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="font-bold">Pembayaran Gagal</p>
-                          <p className="text-[11px] text-rose-700 mt-0.5">
-                            {result.message}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Tombol Aksi Utama Checkout */}
-                    {!isLoggedIn ? (
-                      <Link
-                        href="/login"
-                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 transition shadow-sm text-sm"
-                      >
-                        <span>Masuk untuk Membeli</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </Link>
-                    ) : !activeWallet ? (
-                      <div className="space-y-2">
-                        <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-slate-800 text-xs space-y-1">
-                          <div className="flex items-center gap-1.5 font-semibold text-blue-700">
-                            <Key className="w-3.5 h-3.5 text-blue-600" />
-                            <span>Aktivasi Passkey Diperlukan</span>
-                          </div>
-                          <p className="text-slate-600 text-[11px] leading-snug">
-                            Gunakan sensor biometrik atau PIN perangkat untuk mengamankan tiket Anda.
-                          </p>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={handleActivateWallet}
-                          disabled={isActivatingWallet}
-                          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition shadow-sm text-sm cursor-pointer"
-                        >
-                          {isActivatingWallet ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              <span>Menghubungkan Sensor...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Key className="w-4 h-4" />
-                              <span>Aktifkan Dompet (Passkey)</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        {/* Widget Cloudflare Turnstile: Bot calo otomatis diblokir sebelum tombol checkout aktif */}
-                        <div
-                          className="cf-turnstile my-2 flex justify-center"
-                          data-sitekey={
-                            process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ||
-                            "1x00000000000000000000AA"
-                          }
-                          data-callback="onTurnstileSuccess"
-                          data-theme="light"
-                        />
-
-                        <button
-                          type="button"
-                          onClick={handleBuyTicket}
-                          disabled={isLoading || isQuotaFull || !turnstileToken}
-                          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow transition cursor-pointer text-sm"
-                        >
-                          {isLoading ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              <span>Memproses Pembayaran...</span>
-                            </>
-                          ) : isQuotaFull ? (
-                            <span>Batas Kuota Tercapai</span>
-                          ) : !turnstileToken ? (
-                            <span>Menunggu Verifikasi Manusia...</span>
-                          ) : (
-                            <span>Beli Tiket Sekarang</span>
-                          )}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
               </div>
 
-              {/* 6. Tombol Bagikan Event (Loket.com Style) */}
-              <div className="space-y-2">
-                <span className="text-xs font-bold text-slate-900 block">
-                  Bagikan Event
+              {/* Ticket Category Selector */}
+              <div className="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-bold uppercase tracking-wide text-slate-900">
+                    Pilih Kategori Tiket
+                  </h2>
+                  <span className="text-xs text-slate-500">
+                    {isQuotaFull
+                      ? "Batas kuota tercapai"
+                      : `Maks. ${MAX_PER_WALLET} tiket/akun`}
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {activeCategories.map((cat) => {
+                    const isSelected = selectedCategoryId === cat.id;
+
+                    return (
+                      <div
+                        key={cat.id}
+                        onClick={() => setSelectedCategoryId(cat.id)}
+                        className={`p-4 rounded-xl border transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                          isSelected
+                            ? "border-coral-500 bg-coral-50/20 ring-1 ring-coral-500 shadow-xs"
+                            : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/60"
+                        }`}
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h3
+                              className={`text-sm font-bold ${
+                                isSelected ? "text-coral-600" : "text-slate-900"
+                              }`}
+                            >
+                              {cat.name}
+                            </h3>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
+                              {cat.badge}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500">{cat.description}</p>
+                          <p className="text-[11px] text-slate-400">
+                            Alokasi Kursi:{" "}
+                            <span className="font-medium text-slate-600">
+                              {cat.rowPrefix}-0{ownedCountForCurrentEvent + 1}
+                            </span>
+                          </p>
+                        </div>
+
+                        <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                          <div className="text-left sm:text-right">
+                            <span className="text-base font-extrabold text-slate-900 font-mono block">
+                              Rp {cat.price.toLocaleString("id-ID")}
+                            </span>
+                            <span className="text-[10px] font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded">
+                              Tersedia
+                            </span>
+                          </div>
+
+                          {isSelected && !isQuotaFull ? (
+                            <div
+                              className="flex items-center border border-slate-300 rounded-lg bg-white overflow-hidden shadow-2xs"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setQuantity((q) => Math.max(1, q - 1))
+                                }
+                                disabled={safeQuantity <= 1 || isLoading}
+                                className="w-7 h-7 flex items-center justify-center font-bold text-coral-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer text-sm"
+                              >
+                                -
+                              </button>
+                              <span className="w-7 text-center font-bold text-xs text-slate-900 font-mono">
+                                {safeQuantity}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setQuantity((q) =>
+                                    Math.min(remainingQuota, q + 1)
+                                  )
+                                }
+                                disabled={
+                                  safeQuantity >= remainingQuota || isLoading
+                                }
+                                className="w-7 h-7 flex items-center justify-center font-bold text-coral-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer text-sm"
+                              >
+                                +
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedCategoryId(cat.id)}
+                              className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-coral-500 text-coral-600 hover:bg-coral-500 hover:text-white transition cursor-pointer"
+                            >
+                              Pilih
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Syarat Pembelian Ringkas */}
+              <div className="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 text-xs text-slate-600 space-y-2">
+                <span className="font-bold text-slate-800 block">
+                  Ketentuan Tiket:
                 </span>
-                <button
-                  type="button"
-                  onClick={handleShareEvent}
-                  className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 flex items-center justify-center transition shadow-2xs cursor-pointer relative"
-                  title="Salin Link Event"
-                >
-                  {copiedLink ? (
-                    <Check className="w-4 h-4 text-emerald-600" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
-                  {copiedLink && (
-                    <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded bg-slate-900 text-white text-[10px] whitespace-nowrap shadow-sm">
-                      Tersalin!
-                    </span>
-                  )}
-                </button>
+                <ul className="list-disc list-inside space-y-1 text-slate-500">
+                  <li>Batas maksimal {MAX_PER_WALLET} tiket per akun pembeli.</li>
+                  <li>
+                    Tiket digital langsung diterbitkan ke akun resmi Anda setelah
+                    pembayaran terkonfirmasi.
+                  </li>
+                  <li>
+                    Tunjukkan QR Code tiket pada menu &quot;Tiket Saya&quot; saat
+                    memasuki lokasi acara.
+                  </li>
+                </ul>
               </div>
             </div>
+
+            {/* KOLOM KANAN (5 KOLOM): SLIM CHECKOUT PANEL */}
+            <aside className="lg:col-span-5 sticky top-24 space-y-4">
+              <div className="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
+                <h2 className="text-base font-bold text-slate-900">
+                  Rincian Pembayaran
+                </h2>
+
+                {/* Flash Sale Chip */}
+                <div className="bg-[#FFFBEB] border border-[#FEF3C7] rounded-xl px-3.5 py-2.5 flex items-center justify-between text-xs text-[#92400E] font-semibold">
+                  <span>⚡ Flash Sale Terbuka</span>
+                  <span className="font-mono font-bold">
+                    {timeLeft.isStarted
+                      ? "00:14:32"
+                      : `${String(timeLeft.hours).padStart(2, "0")}:${String(
+                          timeLeft.minutes
+                        ).padStart(2, "0")}:${String(timeLeft.seconds).padStart(
+                          2,
+                          "0"
+                        )}`}
+                  </span>
+                </div>
+
+                {/* Bill Breakdown Table */}
+                <div className="space-y-2.5 py-3 border-y border-slate-100 text-xs">
+                  <div className="flex justify-between text-slate-600">
+                    <span>
+                      {selectedCategory.name} ({safeQuantity} Tiket)
+                    </span>
+                    <span className="font-semibold text-slate-900 font-mono">
+                      Rp {totalPrice.toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Biaya Layanan & Pembayaran</span>
+                    <span className="font-semibold text-teal-600">
+                      Rp 0 (Gratis)
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-baseline pt-2 border-t border-slate-100 font-bold">
+                    <span className="text-slate-900 text-sm">Total Tagihan</span>
+                    <span className="text-lg font-extrabold text-coral-500 font-mono">
+                      Rp {totalPrice.toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Penerima Tiket */}
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/70 text-xs flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-slate-500">
+                    <Wallet className="w-3.5 h-3.5 text-coral-500 shrink-0" />
+                    <span>Akun Penerima:</span>
+                  </div>
+                  <span className="font-mono font-semibold text-slate-800 text-[11px] truncate max-w-[140px]">
+                    {activeWallet
+                      ? `${activeWallet.slice(0, 6)}...${activeWallet.slice(-4)}`
+                      : "Perlu Aktivasi"}
+                  </span>
+                </div>
+
+                {/* Error Alert */}
+                {result && !result.success && (
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">Pembayaran Gagal</p>
+                      <p className="text-[11px] text-rose-700 mt-0.5">
+                        {result.message}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Checkout Action Button */}
+                {!isLoggedIn ? (
+                  <Link
+                    href="/login"
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-white bg-coral-500 hover:bg-coral-600 transition shadow-xs text-xs sm:text-sm cursor-pointer"
+                  >
+                    <span>Masuk untuk Membeli</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                ) : !activeWallet ? (
+                  <div className="space-y-2">
+                    <div className="p-3 rounded-xl bg-coral-50 border border-coral-200 text-slate-800 text-xs space-y-1">
+                      <div className="flex items-center gap-1.5 font-semibold text-coral-700">
+                        <Key className="w-3.5 h-3.5 text-coral-600" />
+                        <span>Aktivasi Passkey Diperlukan</span>
+                      </div>
+                      <p className="text-slate-600 text-[11px]">
+                        Gunakan sensor biometrik atau PIN perangkat untuk
+                        mengamankan tiket Anda.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleActivateWallet}
+                      disabled={isActivatingWallet}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-white bg-coral-500 hover:bg-coral-600 disabled:opacity-50 transition shadow-xs text-xs sm:text-sm cursor-pointer"
+                    >
+                      {isActivatingWallet ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Menghubungkan Sensor...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Key className="w-4 h-4" />
+                          <span>Aktifkan Dompet (Passkey)</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div
+                      className="cf-turnstile my-1 flex justify-center"
+                      data-sitekey={
+                        process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ||
+                        "1x00000000000000000000AA"
+                      }
+                      data-callback="onTurnstileSuccess"
+                      data-theme="light"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={handleBuyTicket}
+                      disabled={
+                        isLoading ||
+                        isQuotaFull ||
+                        !timeLeft.isStarted ||
+                        !turnstileToken
+                      }
+                      className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-white bg-coral-500 hover:bg-coral-600 disabled:opacity-50 disabled:cursor-not-allowed transition text-xs sm:text-sm shadow-xs cursor-pointer"
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Memproses Pembayaran...</span>
+                        </>
+                      ) : !timeLeft.isStarted ? (
+                        <span>Menunggu Waktu Flash Sale...</span>
+                      ) : isQuotaFull ? (
+                        <span>Batas Kuota Tercapai</span>
+                      ) : !turnstileToken ? (
+                        <span>Menunggu Verifikasi Manusia...</span>
+                      ) : (
+                        <span>Beli Tiket Sekarang</span>
+                      )}
+                    </button>
+                  </>
+                )}
+
+                {/* Share Event Link */}
+                <div className="pt-2 flex items-center justify-between text-xs text-slate-500 border-t border-slate-100">
+                  <span>Bagikan event ini</span>
+                  <button
+                    type="button"
+                    onClick={handleShareEvent}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 transition text-slate-700 cursor-pointer font-medium"
+                  >
+                    {copiedLink ? (
+                      <Check className="w-3.5 h-3.5 text-teal-600" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                    <span>{copiedLink ? "Tersalin!" : "Salin Link"}</span>
+                  </button>
+                </div>
+              </div>
+            </aside>
           </div>
         </div>
       </div>
+
+      {/* MODAL PEMBAYARAN SUKSES */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-2xl p-6 flex flex-col items-center text-center gap-4 shadow-xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+            {/* Ikon Centang Eye-Catching Coral Tunggal */}
+            <div className="w-12 h-12 rounded-full bg-coral-50 flex items-center justify-center text-coral-500">
+              <Check className="w-6 h-6 stroke-[2.5]" />
+            </div>
+
+            {/* Judul & Pesan Ringkas */}
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-slate-900">
+                Pembayaran Berhasil!
+              </h3>
+              <p className="text-xs text-slate-500">
+                Tiket resmi pesananmu telah diterbitkan.
+              </p>
+            </div>
+
+            {/* Struk 3 Baris Esensial */}
+            <div className="w-full bg-slate-50 rounded-xl p-3.5 space-y-2 text-xs border border-slate-100 text-left">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Acara</span>
+                <span className="font-semibold text-slate-900 text-right truncate max-w-[180px]">
+                  {currentEvent.eventName}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Kategori</span>
+                <span className="font-semibold text-slate-900">
+                  {selectedCategory.name} ({safeQuantity} Tiket)
+                </span>
+              </div>
+              <div className="flex justify-between items-baseline pt-1.5 border-t border-slate-200/60">
+                <span className="text-slate-500 font-medium">Total Bayar</span>
+                <span className="font-extrabold text-coral-500 font-mono text-sm">
+                  Rp {totalPrice.toLocaleString("id-ID")}
+                </span>
+              </div>
+            </div>
+
+            {/* Tombol Aksi Modal */}
+            <div className="w-full space-y-2 pt-1">
+              <Link
+                href="/dashboard/tickets"
+                onClick={() => setShowSuccessModal(false)}
+                className="w-full flex items-center justify-center py-2.5 px-4 rounded-xl bg-coral-500 hover:bg-coral-600 active:scale-[0.99] text-white text-xs font-semibold text-center transition shadow-xs"
+              >
+                Lihat Tiket Saya
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowSuccessModal(false)}
+                className="w-full py-2 px-4 rounded-xl bg-white hover:bg-slate-50 active:scale-[0.99] text-slate-600 border border-slate-200 text-xs font-medium text-center transition cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

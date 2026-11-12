@@ -145,15 +145,20 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
         : "text-emerald-400";
 
   // Format tanggal event sesuai zona WIB
-  const eventDateFormatted = currentEvent?.startDate
-    ? new Date(currentEvent.startDate).toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }) + " WIB"
-    : "15 November 2026, 18:00 WIB";
+  const dateObj = currentEvent?.startDate
+    ? new Date(currentEvent.startDate)
+    : new Date("2026-11-28T19:00:00");
+  const eventDateOnly = dateObj.toLocaleDateString("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  const eventTimeOnly =
+    dateObj.toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }) + " WIB";
 
   const contractAddress =
     process.env.NEXT_PUBLIC_TICKET_CONTRACT_ADDRESS ||
@@ -473,347 +478,235 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
     }
   };
 
+  const ticketStubMaskStyle: React.CSSProperties = {
+    mask: "radial-gradient(circle 12px at left 150px, transparent 12px, #fff 13px), radial-gradient(circle 12px at right 150px, transparent 12px, #fff 13px)",
+    maskComposite: "intersect",
+    WebkitMask:
+      "radial-gradient(circle 12px at 0px 150px, transparent 12px, #fff 13px), radial-gradient(circle 12px at 100% 150px, transparent 12px, #fff 13px)",
+    WebkitMaskComposite: "destination-in",
+  };
+
   return (
     <div
-      className={`relative w-full rounded-2xl border transition-all duration-300 overflow-hidden shadow-[0_2px_16px_rgba(0,0,0,0.04)] ${
-        isUsed
-          ? "bg-slate-50/70 border-slate-200 opacity-80"
-          : "bg-white border-slate-200/90 hover:border-coral-500/40 hover:shadow-[0_16px_36px_rgba(255,90,54,0.08)] hover:-translate-y-0.5"
-      }`}
+      className="relative w-full transition-all duration-200"
+      style={{ filter: "drop-shadow(0 4px 12px rgba(15, 23, 42, 0.05))" }}
     >
-      {/* Header Tiket: Banner Tiket Konser */}
-      <div
-        className={`p-6 border-b ${
-          isUsed
-            ? "bg-gradient-to-r from-slate-900 to-slate-800 border-slate-700"
-            : "bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-slate-800"
+      <article
+        className={`relative bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col ${
+          isUsed ? "opacity-75" : ""
         }`}
+        style={ticketStubMaskStyle}
       >
-        <div className="flex items-center justify-between gap-2 mb-3">
-          {/* Badge Token ID */}
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-coral-500/20 text-coral-300 border border-coral-500/30">
-            <Ticket className="w-3.5 h-3.5 text-coral-400" />
-            TOKEN #{ticket.tokenId}
-          </span>
-          {/* Status Badge */}
-          {isUsed ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700">
-              <Lock className="w-3 h-3" />
-              SUDAH DIGUNAKAN
+        {/* 1. Banner Stub Atas (Tepat 150px sejajar dengan cutout) */}
+        <div
+          className={`w-full h-[150px] p-5 flex flex-col justify-between text-white ${
+            isUsed
+              ? "bg-gradient-to-r from-slate-900 to-slate-800"
+              : "bg-gradient-to-br from-[#1E1B4B] via-[#312E81] to-[#4338CA]"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="self-start bg-slate-900/70 backdrop-blur-xs px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider text-white">
+              {categoryName}
             </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-400"></span>
+            {isUsed && (
+              <span className="bg-slate-800/90 text-slate-300 text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+                Sudah Digunakan
               </span>
-              TIKET AKTIF
-            </span>
-          )}
+            )}
+          </div>
+          <h3 className="text-lg sm:text-xl font-extrabold leading-snug tracking-tight text-white line-clamp-2">
+            {currentEvent?.eventName || "UBAYA Music Fest 2026"}
+          </h3>
         </div>
-        <h3 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-          {currentEvent?.eventName || "UBAYA Music Fest 2026"}
-        </h3>
-        <p className={`text-xs font-bold mt-1 tracking-wide ${badgeColor}`}>
-          {categoryName} • NO. KURSI: {seatNumber}
-        </p>
-      </div>
 
-      {/* Info Waktu & Lokasi Dinamis */}
-      <div className="px-6 py-3.5 bg-slate-50/80 border-b border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-600 gap-2">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-coral-500 shrink-0" />
-          <span className="font-medium">{eventDateFormatted}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-teal-600 shrink-0" />
-          <span className="font-medium">
-            {currentEvent?.venueLocation || "Stadion Gelora 10 November"}
-          </span>
-        </div>
-      </div>
+        {/* 2. Garis Sobekan Perforasi */}
+        <div className="w-full h-0 border-t-[1.5px] border-dashed border-slate-300" />
 
-      {/* Badan Tiket */}
-      <div className="p-6 space-y-4">
-        {/* Info Harga Asli & Kategori Dinamis */}
-        <div className="grid grid-cols-2 gap-3 text-xs">
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70">
-            <span className="text-slate-400 block text-[11px] font-semibold uppercase tracking-wider">
-              Harga On-Chain
+        {/* 3. Badan Tiket (Stub Body) */}
+        <div className="p-5 flex flex-col gap-4 bg-white">
+          {/* Info Grid: Jadwal Acara & Lokasi Venue */}
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Jadwal Acara
+              </div>
+              <div className="text-[13px] font-semibold text-slate-900 mt-0.5">
+                {eventDateOnly}
+              </div>
+              <div className="text-xs text-slate-500">{eventTimeOnly}</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Lokasi Venue
+              </div>
+              <div
+                className="text-[13px] font-semibold text-slate-900 mt-0.5 truncate"
+                title={currentEvent?.venueLocation || "Gelora Bung Karno"}
+              >
+                {currentEvent?.venueLocation || "Gelora Bung Karno"}
+              </div>
+              <div className="text-xs text-slate-500">
+                {currentEvent?.category || "Surabaya"}
+              </div>
+            </div>
+          </div>
+
+          {/* Nomor Tiket */}
+          <div>
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Nomor Tiket
+            </div>
+            <span className="font-mono text-xs font-semibold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-md inline-block mt-1">
+              #TKT-{ticket.tokenId} • {seatNumber}
             </span>
-            <span className="text-base font-extrabold text-slate-900 font-mono mt-0.5 block">
+          </div>
+
+          {/* Harga Beli Resmi */}
+          <div className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl px-3.5 py-3">
+            <span className="text-xs text-slate-600 font-medium">Harga Beli Resmi</span>
+            <span className="text-base sm:text-lg font-extrabold text-slate-900 font-mono">
               Rp {Number(ticket.originalPrice).toLocaleString("id-ID")}
             </span>
           </div>
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70">
-            <span className="text-slate-400 block text-[11px] font-semibold uppercase tracking-wider">
-              Kategori & Kursi
-            </span>
-            <span className="text-sm font-extrabold text-slate-900 font-mono mt-0.5 block">
-              {seatNumber}
-            </span>
-          </div>
-        </div>
 
-        {/* Alamat Dompet Pemilik */}
-        <div className="p-3 rounded-xl bg-white border border-slate-200 text-xs flex items-center justify-between shadow-xs">
-          <span className="text-slate-500 font-medium">Pemilik Smart Account:</span>
-          <span
-            className="font-mono text-slate-800 font-semibold truncate max-w-[200px]"
-            title={ticket.owner}
-          >
-            {ticket.owner}
-          </span>
-        </div>
+          {/* Bagian QR Code (Dinamis saat dibuka) */}
+          {showQR && (
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col items-center justify-center space-y-3 text-center animate-in fade-in">
+              <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-xs">
+                {timeLeft > 0 ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={qrImageUrl}
+                    alt={`QR Code Tiket #${ticket.tokenId}`}
+                    className="w-40 h-40 object-contain mx-auto"
+                  />
+                ) : (
+                  <div className="w-40 h-40 flex flex-col items-center justify-center bg-slate-100 text-slate-500 rounded-lg p-2 space-y-1">
+                    <AlertCircle className="w-8 h-8 text-amber-500" />
+                    <span className="text-xs font-bold text-slate-800">QR Kedaluwarsa</span>
+                    <p className="text-[10px] text-slate-500">Masa berlaku 60 detik telah habis</p>
+                  </div>
+                )}
+              </div>
 
-        {/* QR Code Section (Bisa di-toggle muncul/tutup) */}
-        {showQR && (
-          <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col items-center justify-center space-y-4 text-center animate-in fade-in">
-            <div className="relative p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
-              {timeLeft > 0 ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={qrImageUrl}
-                  alt={`QR Code Tiket #${ticket.tokenId}`}
-                  className="w-48 h-48 object-contain"
-                />
-              ) : (
-                <div className="w-48 h-48 flex flex-col items-center justify-center bg-slate-100 text-slate-500 rounded-xl p-4 space-y-2">
-                  <AlertCircle className="w-10 h-10 text-amber-500" />
-                  <span className="text-xs font-bold text-slate-800">
-                    QR Kedaluwarsa
+              {/* Timer Countdown Bar */}
+              <div className="w-full max-w-xs space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5 text-slate-600 font-medium">
+                    <Timer className="w-3.5 h-3.5 text-coral-500" />
+                    <span>Masa Berlaku QR:</span>
                   </span>
-                  <p className="text-[11px] text-slate-500">
-                    Masa berlaku 60 detik telah habis demi keamanan anti-tangkapan layar
-                  </p>
+                  <span
+                    className={`font-mono font-bold ${
+                      timeLeft <= 10 ? "text-rose-600" : "text-teal-700"
+                    }`}
+                  >
+                    {timeLeft > 0 ? `${timeLeft} Detik` : "Kedaluwarsa"}
+                  </span>
                 </div>
-              )}
-            </div>
+                <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-1000 ease-linear ${
+                      timeLeft <= 10 ? "bg-rose-500" : "bg-coral-500"
+                    }`}
+                    style={{ width: `${(timeLeft / 60) * 100}%` }}
+                  />
+                </div>
+                {timeLeft === 0 && (
+                  <button
+                    type="button"
+                    onClick={handleToggleQR}
+                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-coral-500 text-white hover:bg-coral-600 text-xs font-bold transition cursor-pointer"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Perbarui QR</span>
+                  </button>
+                )}
+              </div>
 
-            {/* Indikator Status & Countdown Timer */}
-            <div className="w-full max-w-xs space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1.5 text-slate-600 font-medium">
-                  <Timer className="w-4 h-4 text-coral-500" />
-                  <span>Masa Berlaku QR:</span>
-                </span>
-                <span
-                  className={`font-mono font-bold ${
-                    timeLeft <= 10 ? "text-rose-600 animate-pulse" : "text-teal-700"
-                  }`}
-                >
-                  {timeLeft > 0 ? `${timeLeft} Detik` : "Kedaluwarsa"}
-                </span>
-              </div>
-              {/* Progress Bar Menyusut dari 60s ke 0s */}
-              <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-1000 ease-linear ${
-                    timeLeft <= 10 ? "bg-rose-500" : "bg-teal-500"
-                  }`}
-                  style={{ width: `${(timeLeft / 60) * 100}%` }}
-                />
-              </div>
-              {/* Tombol Perbarui jika Expired */}
-              {timeLeft === 0 && (
+              {/* Simulasi Gate Redeem untuk Penguji/Dosen Penguji */}
+              <div className="pt-2 border-t border-slate-200/60 w-full">
                 <button
                   type="button"
-                  onClick={handleToggleQR}
-                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-coral-500 text-white hover:bg-coral-600 text-xs font-bold transition shadow-xs cursor-pointer"
+                  onClick={handleRedeem}
+                  disabled={isLoading || isUsed}
+                  className="text-[11px] text-slate-500 hover:text-slate-800 underline decoration-dotted transition-colors cursor-pointer"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Verifikasi Ulang Passkey</span>
+                  {isLoading ? "Memproses Redeem Gate..." : "Simulasi Petugas: Scan & Redeem Gate"}
                 </button>
-              )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Notifikasi Hasil Transaksi Redeem */}
-        {result?.success && (
-          <div className="p-4 rounded-xl bg-teal-50 border border-teal-200 text-teal-900 text-xs space-y-1.5 animate-in fade-in">
-            <div className="flex items-center gap-2 font-bold text-teal-800">
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-teal-600" />
+          {/* Feedback Alert Status Transaksi */}
+          {result?.success && (
+            <div className="p-3 rounded-lg bg-teal-50 border border-teal-200 text-teal-900 text-xs flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
               <span>{result.message}</span>
             </div>
-            {result.txHash && (
-              <p className="font-mono text-[11px] text-teal-700 break-all pl-6">
-                Tx:{" "}
-                <a
-                  href={`https://sepolia.etherscan.io/tx/${result.txHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:underline text-coral-600 font-bold"
-                >
-                  {result.txHash.slice(0, 24)}...
-                </a>
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Notifikasi Error */}
-        {result && !result.success && (
-          <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5 animate-in fade-in">
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold">Redeem Gagal</p>
-              <p className="text-rose-700 mt-0.5">{result.message}</p>
+          )}
+          {resaleResult && (
+            <div
+              className={`p-3 rounded-lg border text-xs ${
+                resaleResult.success
+                  ? "bg-teal-50 border-teal-200 text-teal-900"
+                  : "bg-rose-50 border-rose-200 text-rose-800"
+              }`}
+            >
+              {resaleResult.message}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Tombol Aksi */}
-        <div className="flex items-center gap-3 pt-2">
-          {/* Tombol Tampilkan QR dengan Passkey */}
-          <button
-            type="button"
-            onClick={handleToggleQR}
-            disabled={isSigning || isUsed}
-            className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-800 transition shadow-xs cursor-pointer disabled:opacity-50"
-          >
-            {isSigning ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin text-coral-500" />
-                <span>Meminta Passkey...</span>
-              </>
-            ) : showQR ? (
-              <>
-                <QrCode className="w-4 h-4 text-slate-600" />
-                <span>Tutup QR Gate</span>
-              </>
-            ) : (
-              <>
-                <KeyRound className="w-4 h-4 text-coral-500" />
-                <span>Buka QR Gate (Passkey)</span>
-              </>
-            )}
-          </button>
+          {/* Tombol Aksi: Tampilkan QR Code & Jual Kembali */}
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={handleToggleQR}
+              disabled={isSigning || isUsed}
+              className="flex-[2] bg-coral-500 hover:bg-coral-600 text-white font-semibold text-xs sm:text-sm py-2.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
+            >
+              {isSigning ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Meminta Passkey...</span>
+                </>
+              ) : showQR ? (
+                <>
+                  <QrCode className="w-4 h-4" />
+                  <span>Tutup QR Code Tiket</span>
+                </>
+              ) : (
+                <>
+                  <QrCode className="w-4 h-4" />
+                  <span>Tampilkan QR Code Tiket</span>
+                </>
+              )}
+            </button>
 
-          {/* Tombol Redeem On-Chain */}
-          <button
-            type="button"
-            onClick={handleRedeem}
-            disabled={isUsed || isLoading}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-bold transition cursor-pointer ${
-              isUsed
-                ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
-                : "bg-coral-500 hover:bg-coral-600 text-white shadow-[0_4px_16px_rgba(255,90,54,0.25)]"
-            }`}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Memproses Blok...</span>
-              </>
-            ) : isUsed ? (
-              <>
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Tiket Hangus</span>
-              </>
-            ) : (
-              <>
-                <ShieldCheck className="w-4 h-4" />
-                <span>Redeem di Gate</span>
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Notifikasi Hasil Transaksi Resale */}
-        {resaleResult && (
-          <div
-            className={`p-3.5 rounded-xl border text-xs space-y-1 animate-in fade-in ${
-              resaleResult.success
-                ? "bg-teal-50 border-teal-200 text-teal-900"
-                : "bg-rose-50 border-rose-200 text-rose-800"
-            }`}
-          >
-            <p className="font-bold">{resaleResult.message}</p>
-            {resaleResult.txHash && (
-              <p className="font-mono text-[11px] break-all">
-                Tx Sepolia:{" "}
-                <a
-                  href={`https://sepolia.etherscan.io/tx/${resaleResult.txHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline font-bold text-coral-600"
-                >
-                  {resaleResult.txHash.slice(0, 24)}...
-                </a>
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Tombol Pasar Sekunder Resmi (Resale Price-Lock = originalPrice) */}
-        {!isUsed && (
-          <div className="pt-1">
-            {!isListedOnResale ? (
+            {!isUsed && (
               <button
                 type="button"
-                onClick={handleListForResale}
+                onClick={isListedOnResale ? handleCancelResale : handleListForResale}
                 disabled={isListingResale}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-teal-600/30 bg-teal-50/70 hover:bg-teal-100/80 text-teal-800 text-xs font-bold transition cursor-pointer disabled:opacity-50"
+                className={`flex-1 font-semibold text-xs sm:text-sm py-2.5 px-3 rounded-lg text-center transition-colors cursor-pointer disabled:opacity-50 border ${
+                  isListedOnResale
+                    ? "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
+                    : "bg-white text-slate-800 border-slate-200 hover:bg-slate-50"
+                }`}
               >
                 {isListingResale ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-teal-700" />
-                    <span>Mendaftarkan ke MarketplaceContract...</span>
-                  </>
+                  <Loader2 className="w-4 h-4 animate-spin mx-auto text-slate-500" />
+                ) : isListedOnResale ? (
+                  "Batal Resale"
                 ) : (
-                  <>
-                    <Repeat className="w-3.5 h-3.5 text-teal-700" />
-                    <span>
-                      Jual Tiket Resmi (Harga Terkunci Rp{" "}
-                      {Number(ticket.originalPrice).toLocaleString("id-ID")})
-                    </span>
-                  </>
-                )}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleCancelResale}
-                disabled={isListingResale}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold transition cursor-pointer disabled:opacity-50"
-              >
-                {isListingResale ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Membatalkan Listing On-Chain...</span>
-                  </>
-                ) : (
-                  <span>Batalkan Penjualan di Pasar Sekunder</span>
+                  "Jual Kembali"
                 )}
               </button>
             )}
           </div>
-        )}
-
-        {/* Link ke Sepolia Etherscan untuk Cek Transaksi & Token On-Chain */}
-        <div className="pt-3 flex flex-wrap items-center justify-center gap-2 border-t border-slate-100 text-[11px] text-slate-500">
-          <a
-            href={`https://sepolia.etherscan.io/token/${contractAddress}?a=${ticket.tokenId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 hover:text-coral-600 transition-colors hover:underline font-medium"
-          >
-            <span>Audit Token #{ticket.tokenId}</span>
-            <ExternalLink className="w-3 h-3 text-slate-400" />
-          </a>
-          <span>•</span>
-          <a
-            href={`https://sepolia.etherscan.io/address/${contractAddress}#events`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 hover:text-teal-600 transition-colors hover:underline font-medium"
-          >
-            <span>Smart Contract Sepolia</span>
-            <ExternalLink className="w-3 h-3 text-slate-400" />
-          </a>
         </div>
-      </div>
+      </article>
     </div>
   );
 }
