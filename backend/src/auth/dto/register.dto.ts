@@ -16,6 +16,11 @@ export class RegisterDto {
   @IsEmail({}, { message: 'Format email tidak valid' })
   email: string;
 
+  @IsNotEmpty({ message: 'NIK tidak boleh kosong' })
+  @IsString()
+  @MinLength(16, { message: 'NIK wajib 16 digit angka sesuai KTP' })
+  nik: string;
+
   @IsNotEmpty({ message: 'Password tidak boleh kosong' })
   @MinLength(8, { message: 'Password minimal 8 karakter' })
   password: string;

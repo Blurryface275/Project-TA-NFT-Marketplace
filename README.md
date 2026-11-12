@@ -34,9 +34,8 @@ Keterangan:
 | Registrasi Email & Password (bcrypt) | N/A | ✅ | ✅ | ✅ **Selesai** | Tersimpan di tabel `users` MySQL. |
 | OTP Verifikasi Email (Mailtrap) | N/A | ✅ | ✅ | ✅ **Selesai** | Template 6 digit OTP via Nodemailer & Mailtrap. |
 | Smart Account Passkey (WebAuthn P-256) | ✅ | ✅ | ✅ | ✅ **Selesai** | Penurunan alamat via ZeroDev CREATE2 (`customers`). |
-| Backup Seed Phrase BIP-39 (12 Kata) | ❌ | ❌ | ❌ | ❌ **Belum** | Cadangan signer mandiri di client untuk pemulihan akun. |
-| Pendaftaran KYC KTP (`kyc_records`) | ❌ | ❌ | ❌ | ❌ **Belum** | Tabel `kyc_records` & endpoint registrasi NIK belum dibuat. |
-| Fungsi Identitas On-Chain (`registerIdentity`) | 🚧 | ❌ | ❌ | 🚧 **Parsial** | Mapping `userIdentities` ada; fungsi setter/getter baru dirancang. |
+| Pendaftaran KYC NIK KTP (`nik_hash`) | ✅ | ✅ | ✅ | ✅ **Selesai** | Input 16 digit NIK saat signup, hashing keccak256 di RAM (UU PDP). |
+| Fungsi Identitas On-Chain (`registerIdentity`) | ✅ | ✅ | ✅ | ✅ **Selesai** | Terdaftar on-chain di `TicketContract.sol` mapping `userIdentities`. |
 | **2. Master Event & Katalog** | | | | | |
 | Pembuatan Event & Kategori On-Chain | ✅ | ✅ | ✅ | ✅ **Selesai** | `createEvent` & `addCategory` di Sepolia Testnet. |
 | Portal Admin Penyelenggara Event | N/A | ✅ | ✅ | ✅ **Selesai** | Formulir `/dashboard/admin/events/new` + preview tiket. |

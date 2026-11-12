@@ -40,11 +40,11 @@ async function main() {
   const abi = artifact.abi;
   const bytecode = artifact.bytecode.object as `0x${string}`;
 
-  console.log('⏳ Mengirim transaksi deployment TicketContract ke Sepolia...');
+   console.log('⏳ Mengirim transaksi deployment TicketContract ke Sepolia...');
   const hash = await walletClient.deployContract({
     abi,
     bytecode,
-    gas: 17_000_000n, // Alokasi 6.5M gas cukup untuk code storage Sepolia
+    gas: 22_000_000n, // Naikkan batas gas agar tidak Out of Gas (aktual ~18.04M)
   });
 
   console.log(`🚀 Transaksi Deploy terkirim! TxHash: ${hash}`);
@@ -64,7 +64,7 @@ async function main() {
   console.log(`📍 Alamat Kontrak Baru: ${newContractAddress}`);
   console.log(`📦 Blok: #${receipt.blockNumber}`);
 
-  // Set systemSigner langsung ke alamat admin
+    // 1. Set systemSigner langsung ke alamat admin relayer
   console.log(`\n⏳ Mengatur systemSigner ke ${adminAccount.address}...`);
   const setSignerTx = await walletClient.writeContract({
     address: newContractAddress,
@@ -73,16 +73,52 @@ async function main() {
     args: [adminAccount.address],
   });
   await publicClient.waitForTransactionReceipt({ hash: setSignerTx });
-  console.log(`✅ systemSigner berhasil aktif di kontrak baru!`);
+  console.log(`✅ systemSigner berhasil aktif di TicketContract!`);
 
-  console.log(
-    `\n===============================================================`,
+  // 2. Deploy MarketplaceContract
+  const marketplaceArtifactPath = path.resolve(
+    __dirname,
+    '../../../../contracts/out/MarketplaceContract.sol/MarketplaceContract.json',
   );
-  console.log(`👉 Silakan perbarui file backend/.env kamu:`);
+  if (!fs.existsSync(marketplaceArtifactPath)) {
+    throw new Error(`Artifact MarketplaceContract tidak ditemukan di: ${marketplaceArtifactPath}`);
+  }
+
+  const marketplaceArtifact = JSON.parse(fs.readFileSync(marketplaceArtifactPath, 'utf8'));
+   console.log('\n⏳ Mengirim transaksi deployment MarketplaceContract ke Sepolia...');
+  const marketHash = await walletClient.deployContract({
+    abi: marketplaceArtifact.abi,
+    bytecode: marketplaceArtifact.bytecode.object as `0x${string}`,
+    args: [newContractAddress, adminAccount.address],
+    gas: 8_000_000n, // Naikkan batas gas (aktual ~5.59M)
+  });
+
+  const marketReceipt = await publicClient.waitForTransactionReceipt({ hash: marketHash });
+  if (marketReceipt.status === 'reverted') {
+    throw new Error('Marketplace deployment reverted on-chain!');
+  }
+  const marketplaceAddress = marketReceipt.contractAddress!;
+  console.log(`🎉 MarketplaceContract Ter-deploy: ${marketplaceAddress}`);
+
+  // 3. Otorisasi MarketplaceContract di TicketContract (setMarketplace)
+  console.log(`\n⏳ Menghubungkan Marketplace ke TicketContract...`);
+  const setMarketplaceTx = await walletClient.writeContract({
+    address: newContractAddress,
+    abi,
+    functionName: 'setMarketplace',
+    args: [marketplaceAddress],
+  });
+  await publicClient.waitForTransactionReceipt({ hash: setMarketplaceTx });
+  console.log(`✅ MarketplaceContract resmi terotorisasi di TicketContract!`);
+
+  console.log(`\n===============================================================`);
+  console.log(`👉 Salin dan perbarui konfigurasi file .env kamu:`);
+  console.log(`backend/.env:`);
   console.log(`TICKET_CONTRACT_ADDRESS=${newContractAddress}`);
-  console.log(
-    `===============================================================`,
-  );
+  console.log(`MARKETPLACE_CONTRACT_ADDRESS=${marketplaceAddress}`);
+  console.log(`\nfrontend/.env.local:`);
+  console.log(`NEXT_PUBLIC_TICKET_CONTRACT_ADDRESS=${newContractAddress}`);
+  console.log(`===============================================================`);
 }
 
 main().catch((err) => {

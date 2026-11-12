@@ -10,6 +10,7 @@ import { TicketsService } from './tickets.service';
 import { MintTicketDto } from './dto/mint-ticket.dto';
 import { RedeemTicketDto } from './dto/redeem-ticket.dto';
 import { CreateSnapDto } from './dto/create-snap.dto';
+import { DualScanVerifyDto } from './dto/dual-scan-verify.dto';
 
 @Controller('tickets')
 export class TicketsController {
@@ -25,6 +26,13 @@ export class TicketsController {
       redeemTicketDto.tokenId,
       redeemTicketDto.walletAddress,
     );
+  }
+
+  // Endpoint Verifikasi Dual-Scan Gerbang Masuk Venue (Dynamic QR + KTP Fisik keccak256)
+  // POST http://localhost:3001/api/tickets/verify-dual-scan
+  @Post('verify-dual-scan')
+  async verifyDualScan(@Body() dto: DualScanVerifyDto) {
+    return this.ticketsService.verifyDualScanGate(dto);
   }
 
   // Endpoint untuk mengambil semua tiket punya alamat dompet tertentu

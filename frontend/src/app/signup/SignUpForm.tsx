@@ -228,6 +228,34 @@ export function SignUpForm() {
           </div>
 
           <div className="space-y-1">
+            <label htmlFor="signup-nik" className="text-xs font-medium text-slate-700 block">
+              Nomor Induk Kependudukan (NIK 16 Digit)
+            </label>
+            <input
+              id="signup-nik"
+              name="nik"
+              type="text"
+              inputMode="numeric"
+              maxLength={16}
+              required
+              aria-required="true"
+              aria-invalid={!!signupState?.errors?.nik}
+              aria-describedby={signupState?.errors?.nik ? "signup-nik-error" : undefined}
+              placeholder="16 digit angka sesuai KTP"
+              className="w-full bg-slate-50/70 border border-slate-200/50 rounded-2xl px-3.5 py-2.5 text-xs font-mono font-medium text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-[#FF5A36] focus:ring-1 focus:ring-[#FF5A36] transition-all duration-150 min-h-[44px]"
+            />
+            {signupState?.errors?.nik ? (
+              <p id="signup-nik-error" role="alert" className="text-[11px] text-rose-500 mt-1">
+                {signupState.errors.nik[0]}
+              </p>
+            ) : (
+              <p className="text-[10px] text-slate-400">
+                Data NIK dienkripsi satu arah (UU PDP) untuk validasi gerbang konser.
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-1">
             <label htmlFor="signup-email" className="text-xs font-medium text-slate-700 block">
               Email
             </label>

@@ -12,6 +12,7 @@ export async function signup(
   const validatedFields = SignUpFormSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
+    nik: formData.get("nik"),
     password: formData.get("password"),
   });
 
@@ -23,7 +24,7 @@ export async function signup(
     };
   }
 
-  const { name, email, password } = validatedFields.data;
+  const { name, email, nik, password } = validatedFields.data;
 
   console.log("============================================");
   console.log("🚀 [Signup Action] Registrasi Akun Baru (Progressive Onboarding)");
@@ -34,7 +35,7 @@ export async function signup(
 
   let response;
   try {
-    // 2. Kirim data registrasi Web2 (nama, email, password) ke Backend NestJS
+    // 2. Kirim data registrasi Web2 (nama, email, nik, password) ke Backend NestJS
     response = await fetch(`${process.env.BACKEND_URL}/api/auth/register`, {
       method: "POST",
       headers: {
@@ -43,6 +44,7 @@ export async function signup(
       body: JSON.stringify({
         name,
         email,
+        nik,
         password,
       }),
     });

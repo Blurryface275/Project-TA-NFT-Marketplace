@@ -17,8 +17,8 @@ export class Customer {
   @Column({ type: 'varchar', name: 'wallet_address', length: 42, nullable: true })
   walletAddress: string | null; // Alamat smart account ERC-4337 (bisa null sebelum aktivasi)
 
-  @Column({ type: 'varchar', name: 'recovery_phrase_hash', length: 255, nullable: true })
-  recoveryPhraseHash: string | null; // Cadangan seed phrase (tahap berikutnya)
+  @Column({ type: 'varchar', name: 'nik_hash', length: 66, nullable: true })
+  nikHash: string | null; // Hash keccak256 NIK KTP (UU PDP Compliance, tanpa simpan NIK mentah)
 
   @Column({ name: 'users_id' })
   usersId: number;

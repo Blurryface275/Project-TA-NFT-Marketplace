@@ -14,6 +14,13 @@ export const SignUpFormSchema = z.object({
     .email({ message: "Please enter a valid email." })
     .trim(),
 
+  // Validasi NIK: Wajib 16 digit angka sesuai KTP fisik (UU PDP Compliance)
+  nik: z
+    .string()
+    .length(16, { message: "NIK wajib terdiri dari 16 digit angka sesuai KTP" })
+    .regex(/^\d+$/, { message: "NIK hanya boleh berisi karakter angka" })
+    .trim(),
+
   // Validasi Password: Wajib minimal 8 karakter dengan kombinasi huruf, angka, dan simbol
   password: z
     .string()
@@ -33,6 +40,7 @@ export type FormState =
       errors?: {
         name?: string[]; // Array string: Menampung daftar pesan error untuk field name
         email?: string[]; // Array string: Menampung daftar pesan error untuk field email
+        nik?: string[]; // Array string: Menampung daftar pesan error untuk field nik KTP
         password?: string[]; // Array string: Menampung lebih dari 1 pesan error jika password melanggar beberapa aturan sekaligus
       };
       message?: string; // Pesan status umum/global (misal: "Pendaftaran gagal" atau pesan sistem)

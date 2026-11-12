@@ -4,7 +4,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createPublicClient, createWalletClient, http } from 'viem';
+import { createPublicClient, createWalletClient, http, keccak256, toHex, stringToBytes } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { TICKET_CONTRACT_ABI } from './ticket-abi';
 import { MARKETPLACE_CONTRACT_ABI } from './marketplace-abi';
@@ -12,6 +12,7 @@ import { sepolia } from 'viem/chains';
 import { MintTicketDto } from './dto/mint-ticket.dto';
 import { EventsService } from '../events/events.service';
 import { CreateSnapDto } from './dto/create-snap.dto';
+import { DualScanVerifyDto } from './dto/dual-scan-verify.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
 import { Order, OrderStatus } from './entities/order.entity';
@@ -202,6 +203,98 @@ export class TicketsService {
       // NestJS Exception Filter: melempar error HTTP 400 ke frontend
       throw new BadRequestException(
         error?.shortMessage || error?.message || 'Gagal menukar tiket',
+      );
+    }
+  }
+
+  // Verifikasi Dual-Scan Gerbang Masuk (Venue Gate Access Control):
+  // 1. Validasi Dynamic QR Code WebAuthn (anti-screenshot, expiry 60 detik)
+  // 2. Validasi KTP Fisik via keccak256(NIK) on-chain (UU PDP Compliance)
+  // 3. Eksekusi markUsed(tokenId) di smart contract
+  async verifyDualScanGate(dto: DualScanVerifyDto) {
+    try {
+      // 1. Validasi masa berlaku Dynamic QR Code (Maksimal 60 detik)
+      const signedTime = new Date(dto.signedAt).getTime();
+      const currentTime = Date.now();
+      const timeDiffSeconds = Math.floor((currentTime - signedTime) / 1000);
+
+      if (isNaN(signedTime) || timeDiffSeconds > 60 || timeDiffSeconds < -5) {
+        throw new BadRequestException(
+          'QR Code tiket sudah kedaluwarsa (masa aktif 60 detik). Minta pengunjung merefresh QR Code di HP-nya.',
+        );
+      }
+
+      // 2. Ambil data tiket on-chain untuk cek status pemakaian & kepemilikan dompet
+      const ticket = await this.getTicket(dto.tokenId);
+
+      if (ticket.used) {
+        throw new BadRequestException(
+          `Tiket #${dto.tokenId} sudah pernah digunakan (ALREADY USED). Akses masuk ditolak!`,
+        );
+      }
+
+      if (ticket.owner.toLowerCase() !== dto.walletAddress.toLowerCase()) {
+        throw new BadRequestException(
+          'Alamat dompet di QR Code tidak cocok dengan pemilik sah tiket di blockchain!',
+        );
+      }
+
+      // 3. Validasi KTP Fisik: Hitung keccak256(NIK) di RAM lalu langsung cocokkan ke Smart Contract
+      const computedNikHash = keccak256(stringToBytes(dto.nik));
+
+      const registeredNikHash = await this.publicClient.readContract({
+        address: this.contractAddress,
+        abi: TICKET_CONTRACT_ABI,
+        functionName: 'getUserIdentity',
+        args: [dto.walletAddress as `0x${string}`],
+      });
+
+      if (!registeredNikHash || registeredNikHash === '0x0000000000000000000000000000000000000000000000000000000000000000') {
+        // Jika belum KYC di on-chain, daftarkan on-chain secara otomatis saat verifikasi gate pertama kali
+        console.log(`[Dual-Scan] Akun ${dto.walletAddress} belum terikat identitas on-chain. Mendaftarkan KYC on-chain...`);
+        const registerTx = await this.walletClient.writeContract({
+          address: this.contractAddress,
+          abi: TICKET_CONTRACT_ABI,
+          functionName: 'registerIdentity',
+          args: [dto.walletAddress as `0x${string}`, computedNikHash],
+        });
+        await this.publicClient.waitForTransactionReceipt({ hash: registerTx });
+      } else if (registeredNikHash.toLowerCase() !== computedNikHash.toLowerCase()) {
+        throw new BadRequestException(
+          'Verifikasi KTP Gagal: NIK KTP fisik yang diperiksa tidak cocok dengan pemilik sah tiket ini!',
+        );
+      }
+
+      // 4. Eksekusi markUsed(tokenId) on-chain
+      const hash = await this.walletClient.writeContract({
+        address: this.contractAddress,
+        abi: TICKET_CONTRACT_ABI,
+        functionName: 'markUsed',
+        args: [BigInt(dto.tokenId)],
+      });
+
+      const receipt = await this.publicClient.waitForTransactionReceipt({
+        hash: hash,
+      });
+
+      // 5. Update cache database lokal agar sinkron
+      await this.ticketCacheRepository.update(
+        { tokenId: dto.tokenId },
+        { used: 1, syncedAt: new Date() },
+      );
+
+      return {
+        success: true,
+        message: 'Verifikasi Dual-Scan Berhasil! Pengunjung dipersilakan masuk.',
+        tokenId: dto.tokenId,
+        walletAddress: dto.walletAddress,
+        txHash: hash,
+        blockNumber: Number(receipt.blockNumber),
+      };
+    } catch (error: any) {
+      console.error('[Dual-Scan] Verifikasi gagal:', error);
+      throw new BadRequestException(
+        error?.shortMessage || error?.message || 'Verifikasi tiket di gerbang gagal',
       );
     }
   }

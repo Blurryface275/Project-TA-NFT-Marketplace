@@ -22,6 +22,7 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 
 import crypto from 'crypto';
 import { MailService } from './mail.service';
+import { keccak256, stringToBytes } from 'viem';
 
 @Injectable()
 export class AuthService {
@@ -44,6 +45,22 @@ export class AuthService {
         'Anda sudah terdaftar menggunakan email ini. Silahkan login.',
       );
     } // kalau gaada lanjut step berikutnya
+
+    // Validasi & Hashing NIK KTP (UU PDP Compliance: NIK mentah di-hash lalu dibuang dari RAM)
+    const cleanNik = (registerDto.nik || '').trim();
+    if (!/^\d{16}$/.test(cleanNik)) {
+      throw new BadRequestException('NIK wajib terdiri dari 16 digit angka sesuai KTP fisik.');
+    }
+    const computedNikHash = keccak256(stringToBytes(cleanNik));
+
+    // Cegah 1 NIK didaftarkan untuk banyak akun (Anti-Sybil 1 NIK == 1 Akun)
+    const existingCustomerNik = await this.dataSource.query(
+      'SELECT id FROM customers WHERE nik_hash = ? LIMIT 1',
+      [computedNikHash],
+    );
+    if (existingCustomerNik && existingCustomerNik.length > 0) {
+      throw new ConflictException('NIK KTP ini sudah pernah terdaftar pada akun lain.');
+    }
 
     // hash password + salt
     const salt = await bcrypt.genSalt(10); // ini salt dihasilkan pakai algoritma CSPRNG
@@ -81,6 +98,7 @@ export class AuthService {
       // lanjut insert customer (walletAddress bisa null pada Tahap 1)
       const customer = manager.create(Customer, {
         walletAddress: registerDto.walletAddress || null,
+        nikHash: computedNikHash,
         usersId: savedUser.id,
       });
       const savedCustomer = await manager.save(customer);
