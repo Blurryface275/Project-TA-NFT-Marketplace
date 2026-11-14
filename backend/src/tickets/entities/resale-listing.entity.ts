@@ -9,7 +9,8 @@ import { TicketCache } from './ticket-cache.entity';
 
 export enum ResaleStatus {
     ACTIVE = 'ACTIVE', // Terdaftar di pasar sekunder, siap dibeli
-    SOLD = 'SOLD', // Pembayran sukses & NFT sudah pindah tangan dan sudah dicatat secara on-chain
+    LOCKED = 'LOCKED', // Sedang dalam checkout Midtrans (reservasi 10 menit)
+    SOLD = 'SOLD', // Pembayaran sukses & NFT sudah pindah tangan dan sudah dicatat secara on-chain
     CANCELLED = 'CANCELLED', // Dibatalkan oleh penjual
 }
 
@@ -62,4 +63,10 @@ export class ResaleListing{
     })
     buyerMidtransTransactionId: string | null;
 
+    @Column({
+        name: 'locked_until',
+        type: 'datetime',
+        nullable: true,
+    })
+    lockedUntil: Date | null;
 }

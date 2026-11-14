@@ -51,6 +51,20 @@ export class EventsController {
     return this.eventsService.findAll();
   }
 
+  // Method: GET /api/events/organizer/:organizersId
+  // Mengambil seluruh event yang dibuat oleh organizer tertentu beserta analitik penjualan
+  @Get('organizer/:organizersId')
+  findByOrganizer(@Param('organizersId', ParseIntPipe) organizersId: number) {
+    return this.eventsService.findByOrganizer(organizersId);
+  }
+
+  // Method: GET /api/events/user/:userId
+  // Mengambil seluruh event milik organizer berdasarkan users_id akun yang sedang login
+  @Get('user/:userId')
+  findByUserId(@Param('userId', ParseIntPipe) userId: number) {
+    return this.eventsService.findByUserId(userId);
+  }
+
   // Method: GET /api/events/:id
   // Mengambil 1 data event spesifik berdasarkan ID
   @Get(':id')

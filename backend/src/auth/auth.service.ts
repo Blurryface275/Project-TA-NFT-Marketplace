@@ -162,6 +162,7 @@ export class AuthService {
       walletAddress: user.customer?.walletAddress || '',
       role,
       organizersId: isOrganizer ? organizer[0].id : null,
+      organizationName: isOrganizer ? organizer[0].organization_name : null,
     };
   }
 

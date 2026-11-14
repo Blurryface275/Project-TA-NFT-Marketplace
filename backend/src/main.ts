@@ -21,12 +21,12 @@ async function bootstrap() {
   // Pasang prefix api untuk semua endpoint (misal: api/users/login)
   app.setGlobalPrefix('api');
 
-  // Izinkan CORS untukk Frotnend Next.js -> tujuannya supaya frontend bisa akses api di backend
+    // Izinkan CORS untuk frontend di localhost maupun IP lokal LAN
   app.enableCors({
-    origin: 'http://localhost:3000',
+    origin: true, // mengizinkan request dari origin manapun (termasuk akses via IP lokal HP)
     credentials: true,
   });
-
+  
   // Aktifkan validasi class-validator & class-transformer secara global
   app.useGlobalPipes(
     new ValidationPipe({
@@ -35,8 +35,8 @@ async function bootstrap() {
     }),
   );
 
-  const port = process.env.PORT || 3001;
-  await app.listen(port);
-  console.log(`Backend berjalan di http://localhost:${port}/api`);
+ const port = Number(process.env.PORT) || 3001;
+  await app.listen(port, '0.0.0.0');
+  console.log(`Backend berjalan di http://0.0.0.0:${port}/api`);
 }
 bootstrap();

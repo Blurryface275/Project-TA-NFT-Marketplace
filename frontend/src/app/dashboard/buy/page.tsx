@@ -2,7 +2,16 @@ import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import BuyTicketCard, { EventData, UserTicket } from "./BuyTicketCard";
 
-export default async function BuyTicketPage() {
+export default async function BuyTicketPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ eventId?: string }>;
+}) {
+  const resolvedParams = searchParams ? await searchParams : {};
+  const initialEventId = resolvedParams.eventId
+    ? Number(resolvedParams.eventId)
+    : null;
+
   // Ambil session jika ada (bisa null jg misalnya user blm login)
   const session = await getSession();
 
@@ -23,6 +32,8 @@ export default async function BuyTicketPage() {
         const tickets = await res.json();
         if (Array.isArray(tickets)) {
           userTickets = tickets;
+        } else if (tickets && Array.isArray((tickets as any).value)) {
+          userTickets = (tickets as any).value;
         }
       }
     } catch (err) {
@@ -52,6 +63,7 @@ export default async function BuyTicketPage() {
         isLoggedIn={isLoggedIn}
         events={events}
         userTickets={userTickets}
+        initialEventId={initialEventId}
       />
     </div>
   );

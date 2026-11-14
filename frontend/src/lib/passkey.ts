@@ -32,12 +32,16 @@ const publicClient = createPublicClient({
 
 // function untuk daftarin biometrik Passkey baru bagi user -> nanti dikirim ke frontend (formData)
 export async function registerPasskey(email: string) {
+  const currentHostname =
+    typeof window !== "undefined" ? window.location.hostname : "localhost";
+
   // Trigger prompt biometirk di browser (minta sidik jari / face id / pin hp / windwos hello)
   const webAuthnKey = await toWebAuthnKey({
     passkeyName: email, // email user
     passkeyServerUrl:
       process.env.NEXT_PUBLIC_PASSKEY_SERVER_URL || DEFAULT_PASSKEY_SERVER_URL, // link ke API Passkey
     mode: WebAuthnMode.Register, // mode register artinya kita mau daftarin biometrik baru buat akun
+    rpID: currentHostname,
     passkeyServerHeaders: {}, // ini bisa kosong karena session sudah ada
   });
 

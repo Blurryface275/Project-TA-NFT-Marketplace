@@ -5,6 +5,8 @@ import {
   Body,
   Param,
   ParseIntPipe,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { TicketsService } from './tickets.service';
 import { MintTicketDto } from './dto/mint-ticket.dto';
@@ -35,6 +37,13 @@ export class TicketsController {
     return this.ticketsService.verifyDualScanGate(dto);
   }
 
+  // Endpoint untuk mengambil status spesifik 1 tiket (digunakan untuk auto-update real-time tanpa refresh)
+  // GET http://localhost:3001/api/tickets/status/:tokenId
+  @Get('status/:tokenId')
+  async getTicketStatus(@Param('tokenId', ParseIntPipe) tokenId: number) {
+    return this.ticketsService.getTicketStatus(tokenId);
+  }
+
   // Endpoint untuk mengambil semua tiket punya alamat dompet tertentu
   // GET http://localhost:3001/api/tickets/my-tickets/:walletAddress
   @Get('my-tickets/:walletAddress')
@@ -47,6 +56,21 @@ export class TicketsController {
   @Get('order-status/:orderId')
   async getOrderStatus(@Param('orderId') orderId: string) {
     return this.ticketsService.getOrderStatus(orderId);
+  }
+
+  // Endpoint bypass simulasi pembayaran untuk keperluan development / testing cepat
+  // POST http://localhost:3001/api/tickets/simulate-pay/:orderId
+  @Post('simulate-pay/:orderId')
+  async simulatePayment(@Param('orderId') orderId: string) {
+    const order = await this.ticketsService.getOrderEntity(orderId);
+    return this.ticketsService.processPaidOrder(order, `SIMULATED-${Date.now()}`);
+  }
+
+  // Endpoint untuk mengambil detail 1 tiket resale berdasarkan listingId
+  // GET http://localhost:3001/api/tickets/resale/detail/:listingId
+  @Get('resale/detail/:listingId')
+  async getResaleListingDetail(@Param('listingId') listingId: string) {
+    return this.ticketsService.getResaleListingDetail(listingId);
   }
 
   // Endpoint untuk mengambil semua daftar tiket yang sedang dijual di pasar sekunder (ACTIVE)
@@ -110,6 +134,7 @@ export class TicketsController {
   // Endpoint Webhook Notifikasi Midtrans
   // POST http://localhost:3001/api/tickets/midtrans-webhook
   @Post('midtrans-webhook')
+  @HttpCode(HttpStatus.OK)
   async handleMidtransWebhook(@Body() notificationPayload: any) {
     return this.ticketsService.handleMidtransWebhook(notificationPayload);
   }

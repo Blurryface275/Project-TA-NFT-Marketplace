@@ -9,6 +9,22 @@ export default async function CreateEventPage() {
     redirect("/login");
   }
 
+  let organizersId = (session?.organizersId as number) || 1;
+  try {
+    const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
+    const res = await fetch(`${backendUrl}/api/events/user/${session.userId}`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.organizer?.id) {
+        organizersId = data.organizer.id;
+      }
+    }
+  } catch (e) {
+    console.error("Gagal ambil organizer id:", e);
+  }
+
   return (
     <div className="container max-w-6xl mx-auto px-4 py-8 sm:py-12 space-y-6">
       {/* Heading Halaman yang konsisten dengan halaman Beli Tiket */}
@@ -22,7 +38,7 @@ export default async function CreateEventPage() {
       </div>
 
       {/* Form Buat Event yang menggunakan struktur kartu dan ketebalan yang sama */}
-      <CreateEventForm />
+      <CreateEventForm organizersId={organizersId} />
     </div>
   );
 }

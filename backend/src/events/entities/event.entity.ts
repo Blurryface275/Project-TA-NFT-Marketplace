@@ -45,7 +45,10 @@ export class Event{
     ticketCategories: TicketCategory[];
 
     @Column({name: 'sale_start_time', type:'datetime', nullable: true})
-    saleStartTime: Date;
+    saleStartTime: Date | null;
+
+    @Column({name: 'sale_end_time', type:'datetime', nullable: true})
+    saleEndTime: Date | null;
 
     @Column({name: 'max_per_wallet', type: 'int', default: 1})
     maxPerWallet: number; // by default limitnya 1 tickets per user

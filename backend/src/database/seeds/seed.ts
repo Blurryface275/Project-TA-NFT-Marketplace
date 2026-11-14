@@ -29,13 +29,15 @@ async function runSeed() {
     //  Seed table users (Akun login untuk masing-masing Organizer)
     console.log('🌱 Seeding users for organizers...');
     await connection.query(`
-            INSERT INTO users (id, name, email, password, created_at, updated_at)
+            INSERT INTO users (id, name, email, password, is_email_verified, created_at, updated_at)
             VALUES
-            (10, 'Admin Event Master Pro', 'admin@eventmaster.com', '${hashedPassword}', NOW(), NOW()),
-            (11, 'Admin Konserindo', 'admin@konserindo.com', '${hashedPassword}', NOW(), NOW()),
-            (12, 'Admin Jakarta Live', 'admin@jakartalive.com', '${hashedPassword}', NOW(), NOW())
+            (10, 'Admin Event Master Pro', 'admin@eventmaster.com', '${hashedPassword}', 1, NOW(), NOW()),
+            (11, 'Admin Konserindo', 'admin@konserindo.com', '${hashedPassword}', 1, NOW(), NOW()),
+            (12, 'Admin Jakarta Live', 'admin@jakartalive.com', '${hashedPassword}', 1, NOW(), NOW())
             ON DUPLICATE KEY UPDATE 
                 name = VALUES(name),
+                password = VALUES(password),
+                is_email_verified = 1,
                 updated_at = NOW();
         `);
     console.log('✅ Users for organizers seeded successfully');
@@ -45,12 +47,13 @@ async function runSeed() {
     await connection.query(`
             INSERT INTO organizers (id, organization_name, status, created_at, users_id)
             VALUES
-            (1, 'Event Master Pro', 'Active', NOW(), 1),
-            (2, 'Konserindo', 'Active', NOW(), 2),
-            (3, 'Jakarta Live Entertainment', 'Active', NOW(), 3)
+            (1, 'Event Master Pro', 'Active', NOW(), 10),
+            (2, 'Konserindo', 'Active', NOW(), 11),
+            (3, 'Jakarta Live Entertainment', 'Active', NOW(), 12)
             ON DUPLICATE KEY UPDATE 
                 organization_name = VALUES(organization_name),
-                status = VALUES(status);
+                status = VALUES(status),
+                users_id = VALUES(users_id);
                 
         `);
     console.log('✅ Organizers seeded successfully');
@@ -58,11 +61,11 @@ async function runSeed() {
     // Seed table events
     console.log('🌱 Seeding events...');
     await connection.query(`
-            INSERT INTO events (id, on_chain_event_id, event_name, start_date, venue_location, category, capacity, image_ipfs_cid, organizers_id)
+            INSERT INTO events (id, on_chain_event_id, event_name, start_date, venue_location, category, capacity, image_ipfs_cid, organizers_id, max_per_wallet)
             VALUES
-            (1, 1, 'UBAYA Music Fest 2026', '2026-10-25 18:00:00', 'Lapangan Parkir Kampus II Tenggilis UBAYA', 'festival musik', 300, 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&w=1200&q=80', 1),
-            (2, 2, 'Rock in Indonesia 2026', '2026-12-10 19:00:00', 'Gelora Bung Karno Jakarta', 'konser musik', 1000, 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80', 2),
-            (3, 3, 'Art & Tech Expo 2026', '2026-12-15 10:00:00', 'Museum Nasional Indonesia', 'pameran berbayar', 500, 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80', 3)
+            (1, 1, 'UBAYA Music Fest 2026', '2026-12-25 18:00:00', 'Lapangan Parkir Kampus II Tenggilis UBAYA', 'festival musik', 300, 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&w=1200&q=80', 1, 1),
+            (2, 2, 'Rock in Indonesia 2026', '2026-12-10 19:00:00', 'Gelora Bung Karno Jakarta', 'konser musik', 1000, 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80', 2, 1),
+            (3, 3, 'Art & Tech Expo 2026', '2026-12-15 10:00:00', 'Museum Nasional Indonesia', 'pameran berbayar', 500, 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80', 3, 1)
             ON DUPLICATE KEY UPDATE 
                 on_chain_event_id = VALUES(on_chain_event_id),
                 event_name = VALUES(event_name),

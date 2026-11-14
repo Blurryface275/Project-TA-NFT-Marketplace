@@ -76,5 +76,13 @@ export class CreateEventDto {
   imageIpfsCid?: string;
 
   @IsOptional()
+  @IsDateString({}, { message: 'Format saleStartTime harus berupa ISO date string' })
+  saleStartTime?: string;
+
+  @IsOptional()
+  @IsDateString({}, { message: 'Format saleEndTime harus berupa ISO date string' })
+  saleEndTime?: string;
+
+  @IsOptional()
   ticketCategories?: string | TicketCategoryDto[];
 }

@@ -5,13 +5,14 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { createPublicClient, createWalletClient, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
 import { Event } from './entities/event.entity';
 import { TicketCategory } from './entities/ticket-category.entity';
+import { TicketCache } from '../tickets/entities/ticket-cache.entity';
 import { CreateEventDto, TicketCategoryDto } from './dto/create-event.dto';
 import { TICKET_CONTRACT_ABI } from '../tickets/ticket-abi';
 
@@ -27,7 +28,10 @@ export class EventsService {
     private readonly eventRepository: Repository<Event>,
     @InjectRepository(TicketCategory)
     private readonly ticketCategoryRepository: Repository<TicketCategory>,
+    @InjectRepository(TicketCache)
+    private readonly ticketCacheRepository: Repository<TicketCache>,
     private readonly configService: ConfigService,
+    private readonly dataSource: DataSource,
   ) {
     const RPC_URL = this.configService.get<string>('SEPOLIA_RPC_URL')!;
     const privateKey = this.configService.get<string>(
@@ -49,6 +53,59 @@ export class EventsService {
     });
   }
 
+  // Ambil seluruh event milik organizer tertentu beserta analitik kuota & check-in
+  async findByOrganizer(organizersId: number) {
+    const events = await this.eventRepository.find({
+      where: { organizersId },
+      relations: { ticketCategories: true },
+      order: { startDate: 'ASC' },
+    });
+
+    const enrichedEvents = await Promise.all(
+      events.map(async (evt) => {
+        const totalQuota = (evt.ticketCategories || []).reduce(
+          (sum, c) => sum + (Number(c.quota) || 0),
+          0,
+        );
+        const soldTickets = await this.ticketCacheRepository.count({
+          where: { eventsId: evt.id },
+        });
+        const usedTickets = await this.ticketCacheRepository.count({
+          where: { eventsId: evt.id, used: 1 },
+        });
+
+        return {
+          ...evt,
+          totalQuota: totalQuota || evt.capacity || 0,
+          soldTickets,
+          usedTickets,
+          checkInRate: soldTickets > 0 ? Math.round((usedTickets / soldTickets) * 100) : 0,
+        };
+      }),
+    );
+
+    return enrichedEvents;
+  }
+
+  // Ambil seluruh event milik organizer berdasarkan users_id akun yang sedang login
+  async findByUserId(userId: number) {
+    const organizer = await this.dataSource.query(
+      'SELECT id, organization_name FROM organizers WHERE users_id = ? LIMIT 1',
+      [userId],
+    );
+    if (!organizer || organizer.length === 0) {
+      return { organizer: null, events: [] };
+    }
+    const events = await this.findByOrganizer(organizer[0].id);
+    return {
+      organizer: {
+        id: organizer[0].id,
+        organizationName: organizer[0].organization_name,
+      },
+      events,
+    };
+  }
+
   // Method untuk mengambil seluruh event yang ada di tabel events
   async findAll() {
     return this.eventRepository.find({
@@ -67,7 +124,24 @@ export class EventsService {
       throw new NotFoundException(`Event dengan ID ${id} tidak ditemukan`);
     }
 
-    return event;
+    const totalQuota = (event.ticketCategories || []).reduce(
+      (sum, c) => sum + (Number(c.quota) || 0),
+      0,
+    );
+    const soldTickets = await this.ticketCacheRepository.count({
+      where: { eventsId: event.id },
+    });
+    const usedTickets = await this.ticketCacheRepository.count({
+      where: { eventsId: event.id, used: 1 },
+    });
+
+    return {
+      ...event,
+      totalQuota: totalQuota || event.capacity || 0,
+      soldTickets,
+      usedTickets,
+      checkInRate: soldTickets > 0 ? Math.round((usedTickets / soldTickets) * 100) : 0,
+    };
   }
 
   // Method untuk membuat event baru dan mendaftarkannya ke database serta smart contract Sepolia
@@ -139,6 +213,8 @@ export class EventsService {
       imageIpfsCid: imageIpfsCid,
       maxPerWallet: Number(dto.maxPerWallet || 2),
       organizersId: Number(dto.organizersId || 1),
+      saleStartTime: dto.saleStartTime ? new Date(dto.saleStartTime) : null,
+      saleEndTime: dto.saleEndTime ? new Date(dto.saleEndTime) : null,
     });
 
     const savedEvent = await this.eventRepository.save(newEvent);

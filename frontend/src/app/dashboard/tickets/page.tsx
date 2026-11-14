@@ -5,6 +5,8 @@ import { TicketData, EventData } from "./TicketCard";
 import Link from "next/link";
 import { PlusCircle } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export default async function MyTicketsPage() {
   // ambil session pengguna langsung di server
   const session = await getSession();
@@ -25,7 +27,12 @@ export default async function MyTicketsPage() {
         { cache: "no-store" },
       );
       if (res.ok) {
-        tickets = await res.json();
+        const data = await res.json();
+        tickets = Array.isArray(data)
+          ? data
+          : Array.isArray((data as any).value)
+            ? (data as any).value
+            : [];
       }
     } catch (error) {
       console.error("Error fetching tickets:", error);

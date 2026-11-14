@@ -3,33 +3,52 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  Ticket,
-  ShoppingBag,
-  History,
-  CheckCircle2,
-  ShieldCheck,
-  Copy,
-  Check,
-  ExternalLink,
-  ArrowRight,
-  Sparkles,
   Calendar,
-  Lock,
+  MapPin,
+  ArrowUpRight,
+  ShieldCheck,
   QrCode,
-  Flame,
+  Ticket,
+  Clock,
+  Sparkles,
+  Bookmark,
+  CheckCircle2,
+  ExternalLink,
+  ChevronRight,
+  ArrowRight,
 } from "lucide-react";
 
-interface EventItem {
+export interface TicketCategoryItem {
+  id?: string | number;
+  name?: string;
+  price?: number | string;
+  quota?: number;
+}
+
+export interface EventItem {
   id: string | number;
+  onChainEventId?: string | number;
   name?: string;
   eventName?: string;
   date?: string;
   startDate?: string;
   venue?: string;
   venueLocation?: string;
+  category?: string;
+  imageIpfsCid?: string;
   price?: number;
   priceIdr?: number;
   availableTickets?: number;
+  ticketCategories?: TicketCategoryItem[];
+}
+
+export interface UserTicketItem {
+  tokenId: number;
+  eventId: number;
+  categoryId: number;
+  originalPrice: number;
+  used: boolean;
+  owner: string;
 }
 
 interface DashboardClientProps {
@@ -39,25 +58,24 @@ interface DashboardClientProps {
   totalTickets: number;
   totalOrders: number;
   events: EventItem[];
+  userTickets?: UserTicketItem[];
 }
 
 export default function DashboardClient({
   userName,
-  userEmail,
-  walletAddress,
   totalTickets,
   totalOrders,
-  events,
+  events = [],
+  userTickets = [],
 }: DashboardClientProps) {
-  const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
 
-  const handleCopy = () => {
-    if (walletAddress) {
-      navigator.clipboard.writeText(walletAddress);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
+  const todayDateFormatted = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   const formatRupiah = (val?: number) => {
     if (!val) return "Rp 0";
@@ -68,376 +86,415 @@ export default function DashboardClient({
     }).format(val);
   };
 
-  const formatShortAddress = (addr: string) => {
-    if (!addr) return "Belum Ada Dompet";
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-  };
+  // Saved spotlight events for the sidebar
+  const savedSpotlights = [
+    {
+      id: "save-1",
+      month: "NOV",
+      day: "22",
+      title: "Sunset Jazz & Natural Wine",
+      venue: "La Brisa, Bali",
+      price: "Rp 320.000",
+    },
+    {
+      id: "save-2",
+      month: "DEC",
+      day: "04",
+      title: "Indie Pop: Feast & Hindia",
+      venue: "Tennis Indoor Senayan",
+      price: "Rp 450.000",
+    },
+    {
+      id: "save-3",
+      month: "DEC",
+      day: "19",
+      title: "MACAN Contemporary Biennial",
+      venue: "Museum MACAN, Jakarta",
+      price: "Rp 150.000",
+    },
+  ];
 
   return (
-    <div className="space-y-8">
-      {/* 1. Status Bar Smart Account & Peringatan Error Prevention (Heuristic 1 & 5) */}
-      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)] flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-teal-50 text-teal-700 border border-teal-100">
-              <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
-              Sepolia Testnet · ERC-4337
-            </span>
-            <span className="text-xs text-slate-400 font-medium">|</span>
-            <span className="text-xs text-slate-500 font-medium">
-              Gasless Paymaster Aktif
-            </span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-            Halo, <span className="text-coral-500">{userName}</span> 👋
+    <div className="space-y-8 max-w-7xl mx-auto">
+      {/* 1. Date Greeting Header (PDF Page 2 Style) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <span
+            suppressHydrationWarning
+            className="text-xs font-semibold text-[#736E65] tracking-wide uppercase"
+          >
+            {todayDateFormatted}
+          </span>
+          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-[#171717]">
+            Good to see you, {userName}.
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500">
-            Kelola tiket konser NFT resmi dan transaksi on-chain Anda dalam satu tempat.
+          <p className="text-sm text-[#736E65]">
+            A few good plans to look forward to.
           </p>
         </div>
 
-        {/* Smart Account Status Pill */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-slate-50/80 p-3 rounded-2xl border border-slate-100">
-          <div className="flex items-center gap-2 px-1">
-            <div className="w-8 h-8 rounded-xl bg-teal-100/70 text-teal-700 flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-            <div className="flex flex-col text-left">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Smart Account
-              </span>
-              <span className="font-mono text-xs font-semibold text-slate-800">
-                {formatShortAddress(walletAddress)}
-              </span>
-            </div>
-          </div>
-
-          {walletAddress ? (
-            <div className="flex items-center gap-1.5 self-end sm:self-auto border-t sm:border-t-0 sm:border-l border-slate-200/60 pt-2 sm:pt-0 sm:pl-3">
-              <button
-                type="button"
-                onClick={handleCopy}
-                title="Salin alamat dompet"
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white border border-slate-200/70 text-slate-700 hover:text-coral-500 hover:border-coral-200 text-xs font-medium shadow-2xs transition cursor-pointer"
-              >
-                {copied ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-teal-600" />
-                    <span className="text-teal-600 font-semibold">Tersalin</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Salin</span>
-                  </>
-                )}
-              </button>
-              <a
-                href={`https://sepolia.etherscan.io/address/${walletAddress}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Lihat di Etherscan"
-                className="p-1.5 rounded-xl bg-white border border-slate-200/70 text-slate-700 hover:text-coral-500 transition"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            </div>
-          ) : (
-            <span className="text-[11px] text-coral-600 font-semibold px-2">
-              Klik profil kanan atas untuk aktifkan
-            </span>
-          )}
-        </div>
+        <Link
+          href="/dashboard/buy"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#D94520] hover:bg-[#BF3B19] text-white text-xs sm:text-sm font-bold shadow-xs transition shrink-0 self-start sm:self-auto cursor-pointer"
+        >
+          <span>Explore events</span>
+          <ArrowUpRight className="w-4 h-4" />
+        </Link>
       </div>
 
-      {/* 2. Grid Metrik Utama (Diadaptasi dari 21st MCP Stat Card) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Tiket Saya */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:border-coral-200 hover:shadow-[0_8px_30px_rgba(255,90,54,0.06)] transition-all flex flex-col justify-between group">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Tiket Dimiliki</span>
-            <div className="w-9 h-9 rounded-2xl bg-coral-50 text-coral-500 border border-coral-100 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <Ticket className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                {totalTickets}
-              </span>
-              <span className="text-xs text-slate-400 font-medium">lembar</span>
-            </div>
-            <p className="text-[11px] text-slate-500 mt-1">
-              Tiket on-chain aktif di dompet
-            </p>
-          </div>
-        </div>
-
-        {/* Card 2: Total Transaksi Selesai */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:border-teal-200 hover:shadow-[0_8px_30px_rgba(13,148,136,0.06)] transition-all flex flex-col justify-between group">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Total Transaksi</span>
-            <div className="w-9 h-9 rounded-2xl bg-teal-50 text-teal-600 border border-teal-100 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <History className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                {totalOrders}
-              </span>
-              <span className="text-xs text-slate-400 font-medium">pesanan</span>
-            </div>
-            <p className="text-[11px] text-teal-600 font-medium mt-1">
-              Terverifikasi Midtrans Fiat
-            </p>
-          </div>
-        </div>
-
-        {/* Card 3: Event Tersedia */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:border-slate-300 transition-all flex flex-col justify-between group">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Event Aktif</span>
-            <div className="w-9 h-9 rounded-2xl bg-slate-50 text-slate-700 border border-slate-100 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <Calendar className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                {events.length}
-              </span>
-              <span className="text-xs text-slate-400 font-medium">acara</span>
-            </div>
-            <p className="text-[11px] text-slate-500 mt-1">
-              Siap dipesan langsung
-            </p>
-          </div>
-        </div>
-
-        {/* Card 4: Status Anti-Scalping */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:border-coral-200 transition-all flex flex-col justify-between group">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Proteksi Calo</span>
-            <div className="w-9 h-9 rounded-2xl bg-coral-50 text-coral-500 border border-coral-100 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-lg font-bold text-coral-600">
-                100% On-Chain
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500 mt-1">
-              Dynamic QR EIP-712 Aktif
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Quick Action Bar (Heuristic 7 - Flexibility and Efficiency of Use) */}
-      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)] space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base sm:text-lg font-bold text-slate-900">
-            Aksi Cepat
-          </h2>
-          <span className="text-xs text-slate-400">Pilih menu navigasi instan</span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          <Link
-            href="/dashboard/buy"
-            className="flex items-center gap-3.5 p-4 rounded-2xl bg-coral-500 hover:bg-coral-600 text-white shadow-sm shadow-coral-500/20 active:scale-[0.98] transition-all group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white shrink-0">
-              <ShoppingBag className="w-5 h-5" />
-            </div>
-            <div className="overflow-hidden">
-              <div className="font-bold text-sm leading-tight flex items-center gap-1">
-                <span>Beli Tiket</span>
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-              </div>
-              <span className="text-[11px] text-coral-100 block truncate mt-0.5">
-                Katalog konser resmi
-              </span>
-            </div>
-          </Link>
-
-          <Link
-            href="/dashboard/tickets"
-            className="flex items-center gap-3.5 p-4 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white shadow-sm shadow-teal-600/20 active:scale-[0.98] transition-all group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white shrink-0">
-              <Ticket className="w-5 h-5" />
-            </div>
-            <div className="overflow-hidden">
-              <div className="font-bold text-sm leading-tight flex items-center gap-1">
-                <span>Tiket Saya</span>
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-              </div>
-              <span className="text-[11px] text-teal-100 block truncate mt-0.5">
-                Lihat barcode & status
-              </span>
-            </div>
-          </Link>
-
-          <Link
-            href="/dashboard/orders"
-            className="flex items-center gap-3.5 p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200/70 text-slate-800 active:scale-[0.98] transition-all group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-700 flex items-center justify-center shrink-0">
-              <History className="w-5 h-5" />
-            </div>
-            <div className="overflow-hidden">
-              <div className="font-bold text-sm leading-tight flex items-center gap-1 text-slate-900">
-                <span>Riwayat Order</span>
-                <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-1 transition-transform" />
-              </div>
-              <span className="text-[11px] text-slate-500 block truncate mt-0.5">
-                Bukti bayar Midtrans
-              </span>
-            </div>
-          </Link>
-
-          <Link
-            href="/dashboard/verify"
-            className="flex items-center gap-3.5 p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200/70 text-slate-800 active:scale-[0.98] transition-all group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-700 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-            <div className="overflow-hidden">
-              <div className="font-bold text-sm leading-tight flex items-center gap-1 text-slate-900">
-                <span>Verifikasi</span>
-                <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-1 transition-transform" />
-              </div>
-              <span className="text-[11px] text-slate-500 block truncate mt-0.5">
-                Scan QR pintu masuk
-              </span>
-            </div>
-          </Link>
-        </div>
-      </div>
-
-      {/* 4. Katalog Event Terkini (Heuristic 6 & 8 - Recognition over Recall & Minimalist) */}
-      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-100 shadow-[0_4px_24px_rgba(0,0,0,0.03)] space-y-5">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-          <div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900">
-              Event Mendatang Pilihan
+      {/* 3. Main Two-Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* LEFT COLUMN: Your next good times (col-span-8) */}
+        <div className="lg:col-span-8 space-y-5">
+          <div className="flex items-center justify-between border-b border-black/[0.08] pb-3">
+            <h2 className="text-xl font-bold tracking-tight text-[#171717]">
+              Your next good times
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Dapatkan tiket resmi dengan kuota terlindungi smart contract.
-            </p>
+
+            {/* Filter Tabs */}
+            <div className="flex items-center gap-1 bg-[#F0EDE4] p-1 rounded-xl">
+              <button
+                onClick={() => setActiveTab("upcoming")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === "upcoming"
+                    ? "bg-white text-[#171717] shadow-xs"
+                    : "text-[#736E65] hover:text-[#171717]"
+                }`}
+              >
+                Upcoming
+              </button>
+              <button
+                onClick={() => setActiveTab("past")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === "past"
+                    ? "bg-white text-[#171717] shadow-xs"
+                    : "text-[#736E65] hover:text-[#171717]"
+                }`}
+              >
+                Past events
+              </button>
+            </div>
           </div>
-          <Link
-            href="/dashboard/buy"
-            className="inline-flex items-center gap-1 text-xs font-bold text-coral-500 hover:text-coral-600 transition"
-          >
-            <span>Lihat Semua</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
 
-        {events.length === 0 ? (
-          <div className="py-10 text-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-6 space-y-3">
-            <Calendar className="w-8 h-8 text-slate-300 mx-auto" />
-            <p className="text-xs text-slate-500">
-              Belum ada event yang aktif saat ini.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {events.slice(0, 3).map((evt) => {
-              const eventTitle = evt.name || evt.eventName || "Event Konser";
-              const eventDate = evt.date || (evt.startDate ? new Date(evt.startDate).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "Segera");
-              const eventVenue = evt.venue || evt.venueLocation || "Jakarta";
-              const eventPrice = evt.priceIdr || evt.price || 0;
+          {/* Ticket Cards List */}
+          {activeTab === "upcoming" ? (
+            <div className="space-y-4">
+              {userTickets.length > 0 ? (
+                userTickets.map((t) => {
+                  const matchedEvt = events.find(
+                    (e) =>
+                      Number(e.id) === Number(t.eventId) ||
+                      Number(e.onChainEventId) === Number(t.eventId),
+                  );
+                  const title = matchedEvt?.eventName || "Curated Event Pass";
+                  const dateStr = matchedEvt?.startDate
+                    ? new Date(matchedEvt.startDate).toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }) + " WIB"
+                    : "Confirmed Event Schedule";
+                  const venue = matchedEvt?.venueLocation || "Official Venue";
+                  const poster =
+                    matchedEvt?.imageIpfsCid ||
+                    "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&w=800&q=80";
 
-              return (
-                <div
-                  key={evt.id}
-                  className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-[0_2px_12px_rgba(0,0,0,0.02)] hover:border-coral-200 hover:shadow-md transition-all flex flex-col justify-between"
-                >
-                  <div className="space-y-2">
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-coral-50 text-coral-600">
-                      <Flame className="w-3 h-3 text-coral-500" />
-                      <span>Resmi On-Chain</span>
-                    </div>
-                    <h3 className="font-bold text-sm text-slate-900 line-clamp-1">
-                      {eventTitle}
-                    </h3>
-                    <div className="space-y-1 text-xs text-slate-500">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{eventDate}</span>
-                      </div>
-                      <p className="text-slate-400 text-[11px] truncate">
-                        📍 {eventVenue}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] text-slate-400 block">Mulai dari</span>
-                      <span className="text-xs font-bold text-slate-900">
-                        {formatRupiah(eventPrice)}
-                      </span>
-                    </div>
-                    <Link
-                      href={`/dashboard/buy`}
-                      className="px-3.5 py-1.5 rounded-xl bg-coral-500 hover:bg-coral-600 text-white text-xs font-bold transition shadow-xs"
+                  return (
+                    <div
+                      key={t.tokenId}
+                      className="rounded-2xl bg-white border border-black/[0.08] overflow-hidden shadow-xs hover:border-black/15 transition-all flex flex-col sm:flex-row"
                     >
-                      Beli Tiket
+                      {/* Poster / Thumbnail Left */}
+                      <div className="sm:w-56 h-48 sm:h-auto relative overflow-hidden bg-stone-100 shrink-0">
+                        <img
+                          src={poster}
+                          alt={title}
+                          className="w-full h-full object-cover"
+                        />
+                        <span className="absolute top-3 left-3 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-black/60 text-white backdrop-blur-md">
+                          {matchedEvt?.category || "Pass"}
+                        </span>
+                      </div>
+
+                      {/* Right Details */}
+                      <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
+                        <div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                              CONFIRMED
+                            </span>
+                            <span className="text-[11px] font-mono text-[#736E65]">
+                              #TKT-{t.tokenId}
+                            </span>
+                          </div>
+
+                          <h3 className="text-lg font-bold text-[#171717] mt-2">
+                            {title}
+                          </h3>
+
+                          <div className="mt-2 space-y-1 text-xs text-[#736E65]">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-3.5 h-3.5 text-[#D94520]" />
+                              <span>{dateStr}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-3.5 h-3.5 text-[#736E65]" />
+                              <span>{venue}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Ticket className="w-3.5 h-3.5 text-[#736E65]" />
+                              <span>
+                                Pass #{t.tokenId} • Rp{" "}
+                                {Number(t.originalPrice).toLocaleString("id-ID")}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pt-3 border-t border-black/[0.06] flex items-center justify-between">
+                          <Link
+                            href="/dashboard/tickets"
+                            className="inline-flex items-center gap-1 text-xs font-bold text-[#D94520] hover:text-[#BF3B19] transition"
+                          >
+                            <span>Lihat Tiket (QR Masuk)</span>
+                            <ArrowUpRight className="w-3.5 h-3.5" />
+                          </Link>
+
+                          <Link
+                            href="/dashboard/orders"
+                            className="px-3 py-1.5 rounded-lg border border-black/[0.08] hover:bg-stone-50 text-xs font-semibold text-[#171717] transition"
+                          >
+                            Riwayat Pesanan
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : events.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200/80 text-xs text-amber-900 flex items-center justify-between gap-3">
+                    <span>
+                      Belum ada tiket yang dipesan. Pilih event di bawah untuk membeli tiket resmi:
+                    </span>
+                    <Link
+                      href="/dashboard/buy"
+                      className="px-3 py-1 rounded-lg bg-[#D94520] text-white font-bold shrink-0 hover:bg-[#BF3B19] transition"
+                    >
+                      Katalog Lengkap
                     </Link>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
 
-      {/* 5. Kartu Edukasi & Bantuan (Heuristic 10 - Help and Documentation) */}
-      <div className="bg-slate-50/70 rounded-3xl p-6 sm:p-7 border border-slate-100 space-y-4">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-teal-600" />
-          <h2 className="text-sm font-bold text-slate-900">
-            Bagaimana Tiket NFT Melindungimu dari Calo?
-          </h2>
+                  {events.slice(0, 2).map((evt) => {
+                    const prices = (evt.ticketCategories || []).map((c) =>
+                      Number(c.price),
+                    );
+                    const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+                    const dateStr = evt.startDate
+                      ? new Date(evt.startDate).toLocaleDateString("id-ID", {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        })
+                      : "Jadwal Resmi";
+
+                    return (
+                      <div
+                        key={evt.id}
+                        className="rounded-2xl bg-white border border-black/[0.08] overflow-hidden shadow-xs hover:border-black/15 transition-all flex flex-col sm:flex-row"
+                      >
+                        <div className="sm:w-56 h-48 sm:h-auto relative overflow-hidden bg-stone-100 shrink-0">
+                          <img
+                            src={
+                              evt.imageIpfsCid ||
+                              "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&w=800&q=80"
+                            }
+                            alt={evt.eventName || "Event"}
+                            className="w-full h-full object-cover"
+                          />
+                          <span className="absolute top-3 left-3 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-black/60 text-white backdrop-blur-md">
+                            {evt.category || "Event"}
+                          </span>
+                        </div>
+
+                        <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
+                          <div>
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              TIKET TERSEDIA
+                            </span>
+
+                            <h3 className="text-lg font-bold text-[#171717] mt-2">
+                              {evt.eventName}
+                            </h3>
+
+                            <div className="mt-2 space-y-1 text-xs text-[#736E65]">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-3.5 h-3.5 text-[#D94520]" />
+                                <span>{dateStr}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <MapPin className="w-3.5 h-3.5 text-[#736E65]" />
+                                <span>{evt.venueLocation}</span>
+                              </div>
+                              <div className="flex items-center gap-2 font-mono font-bold text-[#171717]">
+                                <Ticket className="w-3.5 h-3.5 text-[#736E65]" />
+                                <span>Mulai {formatRupiah(minPrice)}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="pt-3 border-t border-black/[0.06] flex items-center justify-between">
+                            <Link
+                              href={`/dashboard/buy?eventId=${evt.id}`}
+                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#D94520] text-white hover:bg-[#BF3B19] text-xs font-bold transition shadow-xs"
+                            >
+                              <span>Pilih Kategori & Beli</span>
+                              <ArrowUpRight className="w-3.5 h-3.5" />
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-12 text-center rounded-2xl bg-white border border-dashed border-stone-200 p-8 space-y-2">
+                  <Ticket className="w-8 h-8 text-stone-300 mx-auto" />
+                  <h3 className="text-sm font-bold text-[#171717]">
+                    Belum Ada Tiket Aktif
+                  </h3>
+                  <p className="text-xs text-[#736E65]">
+                    Tiket yang Anda beli akan muncul di sini lengkap dengan barcode dinamis untuk pintu masuk.
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="py-12 text-center rounded-2xl bg-white border border-dashed border-stone-200 p-8 space-y-2">
+              <Calendar className="w-8 h-8 text-stone-300 mx-auto" />
+              <h3 className="text-sm font-bold text-[#171717]">
+                Belum Ada Riwayat Tiket Selesai
+              </h3>
+              <p className="text-xs text-[#736E65]">
+                Tiket yang sudah dipindai di pintu gerbang akan tersimpan di sini.
+              </p>
+            </div>
+          )}
+
+          {/* Browse More Events Link */}
+          <div className="pt-2 text-center sm:text-left">
+            <Link
+              href="/dashboard/buy"
+              className="inline-flex items-center gap-2 text-xs font-bold text-[#D94520] hover:underline"
+            >
+              <span>Explore more events in Jakarta & Bali</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-600">
-          <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-2xs space-y-1.5">
-            <div className="w-7 h-7 rounded-lg bg-coral-50 text-coral-500 flex items-center justify-center font-bold">
-              <QrCode className="w-4 h-4" />
+        {/* RIGHT COLUMN: Saved for later + Door QR Helper (col-span-4) */}
+        <div className="lg:col-span-4 space-y-6">
+          {/* "Saved for later" Card */}
+          <div className="rounded-2xl bg-white border border-black/[0.08] p-5 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-sm text-[#171717]">
+                Saved for later
+              </h3>
+              <span className="text-[11px] font-bold text-[#736E65]">
+                3 saved
+              </span>
             </div>
-            <h4 className="font-bold text-slate-900">Dynamic EIP-712 QR</h4>
-            <p className="text-[11px] text-slate-500 leading-relaxed">
-              QR Code berganti setiap beberapa detik. Screenshot calo otomatis tidak valid saat discan di pintu masuk.
-            </p>
+
+            <div className="divide-y divide-black/[0.06]">
+              {(events.length > 0
+                ? events.slice(0, 3).map((evt) => {
+                    const d = evt.startDate ? new Date(evt.startDate) : new Date();
+                    const month = d
+                      .toLocaleDateString("en-US", { month: "short" })
+                      .toUpperCase();
+                    const day = String(d.getDate()).padStart(2, "0");
+                    const prices = (evt.ticketCategories || []).map((c) =>
+                      Number(c.price),
+                    );
+                    const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+
+                    return {
+                      id: evt.id,
+                      month,
+                      day,
+                      title: evt.eventName || "Curated Event",
+                      venue: evt.venueLocation || "Jakarta",
+                      price: formatRupiah(minPrice),
+                    };
+                  })
+                : savedSpotlights
+              ).map((item) => (
+                <div key={item.id} className="py-3 flex items-center gap-3 group">
+                  {/* Date badge */}
+                  <div className="w-12 h-12 rounded-xl bg-[#F0EDE4] flex flex-col items-center justify-center shrink-0 text-[#171717]">
+                    <span className="text-[10px] font-bold text-[#D94520]">
+                      {item.month}
+                    </span>
+                    <span className="text-sm font-extrabold leading-none">
+                      {item.day}
+                    </span>
+                  </div>
+
+                  {/* Title & Price */}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-xs font-bold text-[#171717] truncate group-hover:text-[#D94520] transition-colors">
+                      {item.title}
+                    </h4>
+                    <p className="text-[11px] text-[#736E65] truncate">
+                      {item.venue}
+                    </p>
+                    <span className="text-[11px] font-extrabold text-[#171717]">
+                      {item.price}
+                    </span>
+                  </div>
+
+                  <Link
+                    href={`/dashboard/buy?eventId=${item.id}`}
+                    className="p-1.5 rounded-lg border border-black/[0.08] hover:bg-stone-50 text-[#736E65] hover:text-[#171717] transition cursor-pointer"
+                  >
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-2xs space-y-1.5">
-            <div className="w-7 h-7 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center font-bold">
-              <ShieldCheck className="w-4 h-4" />
+          {/* "All set for the door" Helper Box (Page 2 PDF style) */}
+          <div className="rounded-2xl bg-[#F0EDE4] border border-black/[0.08] p-5 space-y-3">
+            <div className="flex items-center gap-2 text-[#D94520]">
+              <QrCode className="w-5 h-5" />
+              <span className="text-xs font-bold uppercase tracking-wider">
+                Door Entry Guide
+              </span>
             </div>
-            <h4 className="font-bold text-slate-900">Smart Account ERC-4337</h4>
-            <p className="text-[11px] text-slate-500 leading-relaxed">
-              Tiket tersimpan aman di smart wallet dengan passkey biometrik. Tanpa perlu simpan seed phrase rumit.
-            </p>
-          </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-2xs space-y-1.5">
-            <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-bold">
-              <Lock className="w-4 h-4" />
-            </div>
-            <h4 className="font-bold text-slate-900">Batas Harga Jual Kembali</h4>
-            <p className="text-[11px] text-slate-500 leading-relaxed">
-              Smart contract membatasi harga resale maksimal 100% dari harga asli, membasmi spekulasi calo secara permanen.
+            <h3 className="text-base font-extrabold text-[#171717]">
+              All set for the door.
+            </h3>
+
+            <p className="text-xs text-[#736E65] leading-relaxed">
+              Have your dynamic QR code ready before reaching the entrance. Barcodes roll every 60 seconds to prevent ticket duplication. Static screenshots are not accepted by gate marshals.
             </p>
+
+            <div className="pt-1">
+              <Link
+                href="/dashboard/tickets"
+                className="inline-flex items-center justify-center gap-1.5 w-full px-4 py-2.5 rounded-xl bg-[#D94520] hover:bg-[#BF3B19] text-white text-xs font-bold shadow-xs transition"
+              >
+                <span>Open dynamic barcode</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
         </div>
       </div>

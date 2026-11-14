@@ -81,6 +81,25 @@ export type ResaleActionState = {
   lockedPrice?: number;
 };
 
+// Server Action untuk mengecek status tiket terkini secara real-time dari MySQL/Blockchain
+export async function checkTicketStatusAction(
+  tokenId: number,
+): Promise<{ used: boolean }> {
+  try {
+    const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
+    const res = await fetch(`${backendUrl}/api/tickets/status/${tokenId}`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return { used: Boolean(data.used) };
+    }
+  } catch (error) {
+    console.error("[CHECK TICKET STATUS ERROR]:", error);
+  }
+  return { used: false };
+}
+
 // Server Action untuk daftarin tiket ke Pasar Sekunder (harga dikunci = originalPrice nya)
 export async function listTicketForResaleAction(
   tokenId: number,

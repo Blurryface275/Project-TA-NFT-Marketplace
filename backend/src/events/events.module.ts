@@ -4,11 +4,12 @@ import { EventsController } from './events.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Event } from './entities/event.entity';
 import { TicketCategory } from './entities/ticket-category.entity';
+import { TicketCache } from '../tickets/entities/ticket-cache.entity';
 
 @Module({
   imports: [
     //registrasi entity ke TypeOrmModule
-    TypeOrmModule.forFeature([Event, TicketCategory]),
+    TypeOrmModule.forFeature([Event, TicketCategory, TicketCache]),
   ],
   providers: [EventsService],
   controllers: [EventsController],

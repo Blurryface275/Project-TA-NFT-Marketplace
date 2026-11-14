@@ -1,6 +1,7 @@
 import {
   Injectable,
   BadRequestException,
+  NotFoundException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -213,84 +214,148 @@ export class TicketsService {
   // 3. Eksekusi markUsed(tokenId) di smart contract
   async verifyDualScanGate(dto: DualScanVerifyDto) {
     try {
-      // 1. Validasi masa berlaku Dynamic QR Code (Maksimal 60 detik)
-      const signedTime = new Date(dto.signedAt).getTime();
-      const currentTime = Date.now();
-      const timeDiffSeconds = Math.floor((currentTime - signedTime) / 1000);
+      const isManualMode = dto.signature === '0xmanual' || !dto.walletAddress;
 
-      if (isNaN(signedTime) || timeDiffSeconds > 60 || timeDiffSeconds < -5) {
-        throw new BadRequestException(
-          'QR Code tiket sudah kedaluwarsa (masa aktif 60 detik). Minta pengunjung merefresh QR Code di HP-nya.',
-        );
+      // 1. Validasi masa berlaku Dynamic QR Code (Maksimal 60 detik) jika bukan mode manual
+      if (isManualMode) {
+        if (!dto.nik || dto.nik.trim().length !== 16) {
+          throw new BadRequestException('Verifikasi KTP Wajib: Masukkan 16 digit NIK fisik pengunjung.');
+        }
+      } else {
+        if (!dto.signedAt) {
+          throw new BadRequestException('Dynamic QR code tidak valid: timestamp penandatanganan tidak ditemukan.');
+        }
+        const signedTime = new Date(dto.signedAt).getTime();
+        const currentTime = Date.now();
+        const timeDiffSeconds = Math.floor((currentTime - signedTime) / 1000);
+
+        if (isNaN(signedTime) || timeDiffSeconds > 60 || timeDiffSeconds < -5) {
+          throw new BadRequestException(
+            'QR Code tiket sudah kedaluwarsa (masa aktif 60 detik). Minta pengunjung merefresh QR Code di HP-nya.',
+          );
+        }
       }
 
-      // 2. Ambil data tiket on-chain untuk cek status pemakaian & kepemilikan dompet
-      const ticket = await this.getTicket(dto.tokenId);
+      // 2. Ambil data tiket dan kunci baris MySQL dengan status used cek idempotensi
+      const cachedTicket = await this.ticketCacheRepository.findOne({
+        where: { tokenId: dto.tokenId },
+      });
 
-      if (ticket.used) {
+      if (cachedTicket && Boolean(cachedTicket.used)) {
         throw new BadRequestException(
           `Tiket #${dto.tokenId} sudah pernah digunakan (ALREADY USED). Akses masuk ditolak!`,
         );
       }
 
-      if (ticket.owner.toLowerCase() !== dto.walletAddress.toLowerCase()) {
+      // Ambil data tiket on-chain untuk cek status pemakaian & kepemilikan dompet
+      const ticket = await this.getTicket(dto.tokenId);
+
+      if (ticket.used) {
+        // Jika di on-chain sudah used tapi di DB belum, sinkronkan langsung
+        await this.ticketCacheRepository.update(
+          { tokenId: dto.tokenId },
+          { used: 1, syncedAt: new Date() },
+        );
+        throw new BadRequestException(
+          `Tiket #${dto.tokenId} sudah pernah digunakan (ALREADY USED). Akses masuk ditolak!`,
+        );
+      }
+
+      const targetWallet = (dto.walletAddress || ticket.owner).toLowerCase();
+
+      if (!isManualMode && dto.walletAddress && ticket.owner.toLowerCase() !== dto.walletAddress.toLowerCase()) {
         throw new BadRequestException(
           'Alamat dompet di QR Code tidak cocok dengan pemilik sah tiket di blockchain!',
         );
       }
 
-      // 3. Validasi KTP Fisik: Hitung keccak256(NIK) di RAM lalu langsung cocokkan ke Smart Contract
-      const computedNikHash = keccak256(stringToBytes(dto.nik));
-
-      const registeredNikHash = await this.publicClient.readContract({
-        address: this.contractAddress,
-        abi: TICKET_CONTRACT_ABI,
-        functionName: 'getUserIdentity',
-        args: [dto.walletAddress as `0x${string}`],
-      });
-
-      if (!registeredNikHash || registeredNikHash === '0x0000000000000000000000000000000000000000000000000000000000000000') {
-        // Jika belum KYC di on-chain, daftarkan on-chain secara otomatis saat verifikasi gate pertama kali
-        console.log(`[Dual-Scan] Akun ${dto.walletAddress} belum terikat identitas on-chain. Mendaftarkan KYC on-chain...`);
-        const registerTx = await this.walletClient.writeContract({
-          address: this.contractAddress,
-          abi: TICKET_CONTRACT_ABI,
-          functionName: 'registerIdentity',
-          args: [dto.walletAddress as `0x${string}`, computedNikHash],
-        });
-        await this.publicClient.waitForTransactionReceipt({ hash: registerTx });
-      } else if (registeredNikHash.toLowerCase() !== computedNikHash.toLowerCase()) {
+      // 3. Validasi KTP Fisik: Hitung keccak256(NIK) (Wajib untuk Dual-Scan Gate Admission)
+      if (!dto.nik || dto.nik.trim().length !== 16) {
         throw new BadRequestException(
-          'Verifikasi KTP Gagal: NIK KTP fisik yang diperiksa tidak cocok dengan pemilik sah tiket ini!',
+          'Verifikasi KTP Wajib: Masukkan 16 digit NIK fisik pengunjung untuk mencocokkan identitas pemilik tiket!',
         );
       }
 
-      // 4. Eksekusi markUsed(tokenId) on-chain
-      const hash = await this.walletClient.writeContract({
-        address: this.contractAddress,
-        abi: TICKET_CONTRACT_ABI,
-        functionName: 'markUsed',
-        args: [BigInt(dto.tokenId)],
+      const cleanNik = dto.nik.trim();
+      const computedNikHash = keccak256(stringToBytes(cleanNik));
+
+      // Cek dulu kecocokan NIK di tabel customer MySQL (sangat cepat <5ms)
+      const customer = await this.customerRepository.findOne({
+        where: { walletAddress: targetWallet },
       });
 
-      const receipt = await this.publicClient.waitForTransactionReceipt({
-        hash: hash,
-      });
+      if (customer && customer.nikHash) {
+        if (customer.nikHash.toLowerCase() !== computedNikHash.toLowerCase()) {
+          throw new BadRequestException(
+            'Verifikasi KTP Gagal: NIK KTP fisik tidak cocok dengan pemilik sah tiket ini!',
+          );
+        }
+      } else {
+        // Fallback ke Smart Contract jika customer di MySQL belum memiliki nikHash
+        const registeredNikHash = await this.publicClient.readContract({
+          address: this.contractAddress,
+          abi: TICKET_CONTRACT_ABI,
+          functionName: 'getUserIdentity',
+          args: [targetWallet as `0x${string}`],
+        });
 
-      // 5. Update cache database lokal agar sinkron
-      await this.ticketCacheRepository.update(
-        { tokenId: dto.tokenId },
-        { used: 1, syncedAt: new Date() },
-      );
+        if (
+          !registeredNikHash ||
+          registeredNikHash === '0x0000000000000000000000000000000000000000000000000000000000000000' ||
+          registeredNikHash.toLowerCase() !== computedNikHash.toLowerCase()
+        ) {
+          throw new BadRequestException(
+            'Verifikasi KTP Gagal: NIK KTP fisik tidak cocok dengan pemilik sah tiket ini di blockchain!',
+          );
+        }
+      }
 
-      return {
-        success: true,
-        message: 'Verifikasi Dual-Scan Berhasil! Pengunjung dipersilakan masuk.',
-        tokenId: dto.tokenId,
-        walletAddress: dto.walletAddress,
-        txHash: hash,
-        blockNumber: Number(receipt.blockNumber),
-      };
+      // 4. Atomic Pessimistic State Update:
+      // Cegah Race Condition (Double-scan serentak dalam milidetik di pintu gerbang yang berbeda)
+      // Jalankan update kondisional: Hanya berhasil jika used masih 0
+      const updateResult = await this.ticketCacheRepository
+        .createQueryBuilder()
+        .update()
+        .set({ used: 1, syncedAt: new Date() })
+        .where('tokenId = :tokenId AND used = 0', { tokenId: dto.tokenId })
+        .execute();
+
+      if (updateResult.affected === 0) {
+        throw new BadRequestException(
+          `Tiket #${dto.tokenId} sedang atau sudah diproses masuk di gerbang lain!`,
+        );
+      }
+
+      // 5. Eksekusi markUsed(tokenId) on-chain
+      let hash: `0x${string}`;
+      try {
+        hash = await this.walletClient.writeContract({
+          address: this.contractAddress,
+          abi: TICKET_CONTRACT_ABI,
+          functionName: 'markUsed',
+          args: [BigInt(dto.tokenId)],
+        });
+
+        const receipt = await this.publicClient.waitForTransactionReceipt({
+          hash: hash,
+        });
+
+        return {
+          success: true,
+          message: 'Verifikasi Berhasil! Pengunjung dipersilakan masuk.',
+          tokenId: dto.tokenId,
+          walletAddress: dto.walletAddress,
+          txHash: hash,
+          blockNumber: Number(receipt.blockNumber),
+        };
+      } catch (txError: any) {
+        // Rollback state DB lokal jika transaksi smart contract gagal
+        await this.ticketCacheRepository.update(
+          { tokenId: dto.tokenId },
+          { used: 0, syncedAt: new Date() },
+        );
+        throw txError;
+      }
     } catch (error: any) {
       console.error('[Dual-Scan] Verifikasi gagal:', error);
       throw new BadRequestException(
@@ -329,37 +394,83 @@ export class TicketsService {
     }
   }
 
-  // Mengambil seluruh tiket milik alamat dompet tertentu dari blockchain
+  // Mengambil status spesifik 1 tiket untuk auto-polling real-time
+  async getTicketStatus(tokenId: number) {
+    const cached = await this.ticketCacheRepository.findOne({
+      where: { tokenId },
+    });
+    if (!cached) {
+      throw new NotFoundException(`Tiket #${tokenId} tidak ditemukan`);
+    }
+    return {
+      tokenId: cached.tokenId,
+      used: Boolean(cached.used),
+      syncedAt: cached.syncedAt,
+    };
+  }
+
+  // Mengambil seluruh tiket milik dompet dari database cache lokal (MySQL)
   async getUserTickets(walletAddress: string) {
-    const userTickets = [];
-    // Pelacak urutan nomor kursi sequential per event dan kategori di blockchain
-    const eventCategoryCounters: Record<string, number> = {};
-
-    // loop memeriksa tokenId (misal: dari token #1 sampai token #50)
-    for (let i = 1; i <= 50; i++) {
-      try {
-        const ticket = await this.getTicket(i);
-
-        // Hitung urutan nomor kursi sequential khusus untuk kategori event tersebut
-        const key = `${ticket.eventId}-${ticket.categoryId}`;
-        eventCategoryCounters[key] = (eventCategoryCounters[key] || 0) + 1;
-        const seatIndex = eventCategoryCounters[key];
-
-        // cocokkan apakah pemilik token ini sama dengan walletAddress pengguna yang sedang login
-        // perbandingan string ke string harus persis, termasuk case sensitivity atau huruf kecil besar
-        if (ticket.owner.toLowerCase() === walletAddress.toLowerCase()) {
-          userTickets.push({
-            ...ticket,
-            seatIndex, // Urutan kursi ke-1, ke-2, dst dalam kategori event bersangkutan
-          });
+    // Sinkronkan order PAID milik user ini yang belum tercatat di ticket_cache (self-healing)
+    const customer = await this.customerRepository.findOne({
+      where: { walletAddress },
+    });
+    if (customer) {
+      const paidOrders = await this.orderRepository.find({
+        where: { customersId: customer.id, status: OrderStatus.PAID },
+        relations: { ticketCategory: true, customer: true },
+      });
+      for (const po of paidOrders) {
+        const hasTicket = await this.ticketCacheRepository.findOne({
+          where: { ordersId: po.id },
+        });
+        if (!hasTicket) {
+          try {
+            await this.processPaidOrder(po);
+          } catch (e) {
+            console.error(`Gagal mint tiket tertunda untuk order ${po.id}:`, e);
+          }
         }
-      } catch {
-        // Jika error (misalnya tiket belum pernah dibuat/minting) abaikan saja dan hentikan pencarian
-        break;
       }
     }
 
-    return userTickets;
+    // Sinkronkan transaksi resale yang masih berstatus LOCKED milik wallet ini jika sudah settlement di Midtrans
+    const pendingResales = await this.resaleListingRepository.find({
+      where: {
+        buyerWallet: walletAddress,
+        status: ResaleStatus.LOCKED,
+      },
+    });
+
+    for (const r of pendingResales) {
+      await this.reconcileMidtransResale(r);
+    }
+
+    const cachedTickets = await this.ticketCacheRepository.find({
+      where: { ownerWallet: walletAddress.toLowerCase() },
+      relations: { event: true },
+      order: { tokenId: 'ASC' },
+    });
+
+    // Ambil daftar token yang saat ini sedang aktif di pasar resale
+    const activeResales = await this.resaleListingRepository.find({
+      where: [
+        { status: ResaleStatus.ACTIVE },
+        { status: ResaleStatus.LOCKED },
+      ],
+    });
+    const listedTokenIds = new Set(activeResales.map((r) => r.ticketCacheTokenId));
+
+    return cachedTickets.map((t, index) => ({
+      tokenId: t.tokenId,
+      eventId: t.eventsId,
+      categoryId: 1,
+      originalPrice: Number(t.originalPrice),
+      used: Boolean(t.used),
+      owner: t.ownerWallet,
+      seatIndex: index + 1,
+      isListed: listedTokenIds.has(t.tokenId),
+    }));
   }
 
   async createSnapTransaction(dto: CreateSnapDto) {
@@ -542,14 +653,169 @@ export class TicketsService {
   }
   
 
-  // Method pembaca status untuk polling dari frontend
-  async getOrderStatus(orderId: string) {
+  /**
+   * Helper rekonsiliasi status pesanan langsung dengan API Midtrans.
+   * Digunakan saat polling atau sinkronisasi jika webhook Midtrans belum/tidak menjangkau localhost.
+   */
+  async reconcileMidtransOrder(order: Order): Promise<void> {
+    if (order.status !== OrderStatus.PENDING) {
+      return;
+    }
+
+    const serverKey = this.configService.get<string>('MIDTRANS_SERVER_KEY');
+    if (!serverKey) {
+      return;
+    }
+
+    try {
+      const basicAuth = Buffer.from(`${serverKey}:`).toString('base64');
+      const response = await fetch(`https://api.sandbox.midtrans.com/v2/${order.id}/status`, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          Authorization: `Basic ${basicAuth}`,
+        },
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const midtransData = await response.json();
+      const isPaymentSuccess =
+        midtransData.transaction_status === 'settlement' ||
+        (midtransData.transaction_status === 'capture' && midtransData.fraud_status === 'accept');
+
+      if (isPaymentSuccess) {
+        await this.processPaidOrder(order, midtransData.transaction_id);
+      } else if (['cancel', 'expire', 'deny'].includes(midtransData.transaction_status)) {
+        order.status =
+          midtransData.transaction_status === 'cancel'
+            ? OrderStatus.CANCELLED
+            : OrderStatus.FAILED;
+        order.midtransTransactionId =
+          midtransData.transaction_id || order.midtransTransactionId || null;
+        await this.orderRepository.save(order);
+      }
+    } catch (error) {
+      console.error(`[Midtrans Reconciliation] Gagal merekonsiliasi order ${order.id}:`, error);
+    }
+  }
+
+  /**
+   * Helper rekonsiliasi status resale langsung dengan API Midtrans (saat webhook belum sampai di localhost)
+   */
+  async reconcileMidtransResale(listing: ResaleListing): Promise<void> {
+    if (!listing.buyerMidtransTransactionId) return;
+
+    const serverKey = this.configService.get<string>('MIDTRANS_SERVER_KEY');
+    if (!serverKey) return;
+
+    try {
+      const basicAuth = Buffer.from(`${serverKey}:`).toString('base64');
+      const response = await fetch(
+        `https://api.sandbox.midtrans.com/v2/${listing.buyerMidtransTransactionId}/status`,
+        {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            Authorization: `Basic ${basicAuth}`,
+          },
+        },
+      );
+
+      if (!response.ok) return;
+
+      const midtransData = await response.json();
+      await this.handleResaleWebhook(
+        listing.buyerMidtransTransactionId,
+        midtransData.transaction_status,
+        midtransData.fraud_status,
+        midtransData.transaction_id || null,
+      );
+
+      // Refresh status listing terbaru
+      const updated = await this.resaleListingRepository.findOne({
+        where: { id: listing.id },
+      });
+      if (updated) {
+        listing.status = updated.status;
+      }
+    } catch (error) {
+      console.error(
+        `[Midtrans Resale Reconciliation] Gagal rekonsiliasi resale order ${listing.buyerMidtransTransactionId}:`,
+        error,
+      );
+    }
+  }
+
+  // Helper ambil entity order lengkap
+  async getOrderEntity(orderId: string): Promise<Order> {
     const order = await this.orderRepository.findOne({
       where: { id: orderId },
+      relations: {
+        customer: true,
+        ticketCategory: true,
+      },
     });
     if (!order) {
       throw new BadRequestException(`Order #${orderId} tidak ditemukan`);
     }
+    return order;
+  }
+
+  // Method pembaca status untuk polling dari frontend dengan rekonsiliasi Midtrans
+  async getOrderStatus(orderId: string) {
+    // Cabang khusus untuk order pasar sekunder (RESALE-...)
+    if (typeof orderId === 'string' && orderId.startsWith('RESALE-')) {
+      const listing = await this.resaleListingRepository.findOne({
+        where: { buyerMidtransTransactionId: orderId },
+        relations: { ticketCache: { event: true } },
+      });
+
+      if (!listing) {
+        throw new BadRequestException(`Order resale #${orderId} tidak ditemukan`);
+      }
+
+      if (listing.status === ResaleStatus.LOCKED) {
+        await this.reconcileMidtransResale(listing);
+      }
+
+      return {
+        orderId,
+        status: listing.status === ResaleStatus.SOLD ? OrderStatus.PAID : listing.status.toLowerCase(),
+        midtransTransactionId: listing.buyerMidtransTransactionId,
+        amount: 1,
+        totalPrice: Number(listing.lockedPrice) + (Number(listing.adminFee) || 0),
+        createdAt: listing.listedAt,
+      };
+    }
+
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId },
+      relations: {
+        customer: true,
+        ticketCategory: true,
+      },
+    });
+    if (!order) {
+      throw new BadRequestException(`Order #${orderId} tidak ditemukan`);
+    }
+
+    if (order.status === OrderStatus.PENDING) {
+      await this.reconcileMidtransOrder(order);
+      // Reload order dari DB untuk memastikan status terbaru (PAID / CANCELLED / FAILED)
+      const updatedOrder = await this.orderRepository.findOne({
+        where: { id: orderId },
+      });
+      if (updatedOrder) {
+        order.status = updatedOrder.status;
+        order.midtransTransactionId = updatedOrder.midtransTransactionId;
+      }
+    }
+
     return {
       orderId: order.id,
       status: order.status,
@@ -560,12 +826,97 @@ export class TicketsService {
     };
   }
 
+  /**
+   * Helper pemrosesan pesanan yang sudah lunas (PAID).
+   * Bertanggung jawab untuk update database, minting NFT tiket di blockchain Sepolia,
+   * dan mencatatnya ke tabel ticket_cache.
+   */
+  async processPaidOrder(order: Order, transactionId?: string | null) {
+    if (order.status === OrderStatus.PAID) {
+      const existingTicket = await this.ticketCacheRepository.findOne({
+        where: { ordersId: order.id },
+      });
+      if (existingTicket) {
+        return {
+          status: 'already_processed',
+          message: 'Transaksi sudah diproses sebelumnya',
+        };
+      }
+    }
+
+    const claimResult = await this.orderRepository.update(
+      { id: order.id, status: OrderStatus.PENDING },
+      {
+        status: OrderStatus.PAID,
+        midtransTransactionId: transactionId || order.midtransTransactionId || null,
+      },
+    );
+    if (!claimResult.affected) {
+      return {
+        status: 'already_processed',
+        message: 'Transaksi sudah diproses atau sedang diproses',
+      };
+    }
+    order.status = OrderStatus.PAID;
+    order.midtransTransactionId = transactionId || order.midtransTransactionId || null;
+
+    // Pastikan relasi customer dan ticketCategory tersedia jika order belum di-load secara lengkap
+    if (!order.customer || !order.ticketCategory) {
+      const fullOrder = await this.orderRepository.findOne({
+        where: { id: order.id },
+        relations: { customer: true, ticketCategory: true },
+      });
+      if (fullOrder) {
+        order.customer = fullOrder.customer;
+        order.ticketCategory = fullOrder.ticketCategory;
+      }
+    }
+
+    try {
+      console.log(`[TicketsService] Memulai minting on-chain untuk order #${order.id}...`);
+      const mintResult = await this.mintTicket({
+        walletAddress: order.customer.walletAddress!,
+        eventId: order.ticketCategory.eventsId,
+        categoryId: Number(order.ticketCategory.id),
+        quantity: order.amount,
+      });
+
+      // Simpan juga ke tabel ticket_cache sesuai ERD supaya query tiket & resale ga perlu looping RPC terus
+      if (mintResult.tokenId) {
+        await this.ticketCacheRepository.save({
+          tokenId: mintResult.tokenId,
+          ownerWallet: order.customer.walletAddress!,
+          originalPrice: Number(order.ticketCategory.price),
+          used: 0,
+          syncedAt: new Date(),
+          eventsId: order.ticketCategory.eventsId,
+          ordersId: order.id,
+        });
+        console.log(`[TicketsService] Berhasil minting tiket #${mintResult.tokenId} untuk order #${order.id}`);
+      }
+
+      return {
+        status: 'success',
+        message: 'Pembayaran sukses dan tiket telah dicetak dan dapat dilihat secara on-chain',
+        orderId: order.id,
+        mintResult,
+      };
+    } catch (err: any) {
+      console.error('Minting on-chain gagal setelah pembayaran karena ', err);
+      return {
+        status: 'paid_minting_failed',
+        orderId: order.id,
+        error: err.message,
+      };
+    }
+  }
+
   async handleMidtransWebhook(payload: any) {
     // buat serverKey dulu sesuai dokumentasi Midtrans
     const serverKey = this.configService.get<string>('MIDTRANS_SERVER_KEY');
-      if(!serverKey){
-        throw new Error('MIDTRANS_SERVER_KEY belum dikonfigurasi di file .env');
-      }
+    if (!serverKey) {
+      throw new Error('MIDTRANS_SERVER_KEY belum dikonfigurasi di file .env');
+    }
 
     // Susun parameter menjadi sebuah payload
     const {
@@ -577,7 +928,7 @@ export class TicketsService {
       fraud_status,
     } = payload;
 
-    // Verfiikasi keaslian webhook menggunakan SHA-512
+    // Verifikasi keaslian webhook menggunakan SHA-512
     const crypto = await import('crypto'); // buat secure hash
     const signaturePayload = `${order_id}${status_code}${gross_amount}${serverKey}`;
     const calculatedSignature = crypto
@@ -585,12 +936,12 @@ export class TicketsService {
       .update(signaturePayload)
       .digest('hex');
 
-    if (signature_key !== calculatedSignature){
+    if (signature_key !== calculatedSignature) {
       throw new BadRequestException('Signature key Midtrans tidak valid');
     }
 
     // Handle tombol 'Test Notificiation URL' buat dashboard simulator biar ga error
-     if (
+    if (
       order_id &&
       typeof order_id === 'string' &&
       order_id.startsWith('payment_notif_test_')
@@ -614,16 +965,21 @@ export class TicketsService {
     // Ambil data order dari Database beserta relasinya
     const order = await this.orderRepository.findOne({
       where: {
-        id: order_id
+        id: order_id,
       },
       relations: {
         customer: true,
-        ticketCategory: true  
+        ticketCategory: true,
       },
     });
 
-     if (!order) {
-      throw new BadRequestException(`Order #${order_id} tidak ditemukan`);
+    if (!order) {
+      console.warn(`[TicketsService] Webhook diabaikan: Order #${order_id} tidak ditemukan di database lokal`);
+      return {
+        status: 'ignored_order_not_found',
+        orderId: order_id,
+        message: 'Order tidak ditemukan di database lokal',
+      };
     }
 
     // Proteksi idempotensi : biar ga ada double minting jika webhook terkirim 2x
@@ -637,49 +993,13 @@ export class TicketsService {
     // Re-check status pembayaran dari Midtrans
     // 'settlement' digunakan untuk QRIS / VA / E-Wallet 
     // 'capture' dan 'fraud_status === 'accept' digunakan untuk Kartu Kredit / Debit
-    const isPaymentSuccess = transaction_status === 'settlement' || (transaction_status === 'capture' && fraud_status === 'accept');
+    const isPaymentSuccess =
+      transaction_status === 'settlement' ||
+      (transaction_status === 'capture' && fraud_status === 'accept');
 
-    if (isPaymentSuccess){
-      order.status = OrderStatus.PAID;
-      order.midtransTransactionId = payload.transaction_id || null;
-      await this.orderRepository.save(order);
-
-      try {
-        const mintResult = await this.mintTicket({
-          walletAddress: order.customer.walletAddress!,
-          eventId: order.ticketCategory.eventsId,
-          categoryId: Number(order.ticketCategory.id),
-          quantity: order.amount,
-        });
-
-        // Simpan juga ke tabel ticket_cache sesuai ERD supaya baca tiket & resale ga perlu looping RPC terus
-        if (mintResult.tokenId) {
-          await this.ticketCacheRepository.save({
-            tokenId: mintResult.tokenId,
-            ownerWallet: order.customer.walletAddress!,
-            originalPrice: Number(order.ticketCategory.price),
-            used: 0,
-            syncedAt: new Date(),
-            eventsId: order.ticketCategory.eventsId,
-            ordersId: order.id,
-          });
-        }
-
-        return {
-          status: 'success',
-          message: 'Pembayaran sukses dan tiket telah dicetak dan dapat dilihat secara on-chain',
-          orderId: order_id, mintResult,
-        };
-      }
-      catch (err:any){
-        console.error('Minting on-chain gagal setelah pembayaran karena ', err);
-        return{
-          status: 'paid_minting_failed',
-          orderId: order_id,
-          error: err.message,
-        };
-      }
-    } else if (['cancel','expire','deny'].includes(transaction_status)){
+    if (isPaymentSuccess) {
+      return this.processPaidOrder(order, payload.transaction_id || null);
+    } else if (['cancel', 'expire', 'deny'].includes(transaction_status)) {
       order.status = transaction_status === 'cancel' ? OrderStatus.CANCELLED : OrderStatus.FAILED;
       order.midtransTransactionId = payload.transaction_id || null;
       await this.orderRepository.save(order);
@@ -691,13 +1011,11 @@ export class TicketsService {
       };
     }
 
-     return {
+    return {
       status: 'pending',
       orderId: order_id,
       message: `Transaksi berstatus ${transaction_status}, menunggu pembayaran`,
-    };  
-    
-
+    };
   }
 
   // Mengambil seluruh order transaksi milik pembeli berdasarkan alamat dompet
@@ -710,15 +1028,24 @@ export class TicketsService {
       return [];
     }
 
-    return this.orderRepository.find({
+    const orders = await this.orderRepository.find({
       where: { customersId: customer.id },
       relations: {
+        customer: true,
         ticketCategory: {
           event: true,
         },
       },
       order: { createdAt: 'DESC' },
     });
+
+    for (const order of orders) {
+      if (order.status === OrderStatus.PENDING) {
+        await this.reconcileMidtransOrder(order);
+      }
+    }
+
+    return orders;
   }
 
   // ===========================================================================
@@ -846,15 +1173,35 @@ export class TicketsService {
 
   // 3. Ambil seluruh daftar tiket resale yang sedang ACTIVE untuk halaman katalog /dashboard/resale
   async getActiveResaleListings() {
-    return this.resaleListingRepository.find({
-      where: { status: ResaleStatus.ACTIVE },
+    const now = new Date();
+    // Tampilkan yang ACTIVE, atau yang LOCKED tapi batas waktu reservasi (lockedUntil) sudah kedaluwarsa
+    return this.resaleListingRepository
+      .createQueryBuilder('listing')
+      .leftJoinAndSelect('listing.ticketCache', 'ticketCache')
+      .leftJoinAndSelect('ticketCache.event', 'event')
+      .where('listing.status = :active', { active: ResaleStatus.ACTIVE })
+      .orWhere('(listing.status = :locked AND listing.lockedUntil < :now)', {
+        locked: ResaleStatus.LOCKED,
+        now,
+      })
+      .orderBy('listing.listedAt', 'DESC')
+      .getMany();
+  }
+
+  // 3b. Ambil detail 1 tiket resale berdasarkan listingId
+  async getResaleListingDetail(listingId: string) {
+    const listing = await this.resaleListingRepository.findOne({
+      where: { id: listingId },
       relations: {
         ticketCache: {
           event: true,
         },
       },
-      order: { listedAt: 'DESC' },
     });
+    if (!listing) {
+      throw new NotFoundException('Tiket resale tidak ditemukan atau sudah tidak aktif.');
+    }
+    return listing;
   }
 
   // 4. Buat transaksi Midtrans Snap saat pembeli baru klik "Beli Tiket Resale"
@@ -869,9 +1216,19 @@ export class TicketsService {
       },
     });
 
-    // Kalau statusnya bukan ACTIVE (misal sudah SOLD atau CANCELLED), tolak!
-    if (!listing || listing.status !== ResaleStatus.ACTIVE) {
+    if (!listing || listing.status === ResaleStatus.SOLD || listing.status === ResaleStatus.CANCELLED) {
       throw new BadRequestException('Tiket resale sudah laku atau tidak tersedia');
+    }
+
+    // Cek apakah tiket sedang di-lock oleh pembeli lain yang belum kedaluwarsa (< 10 menit)
+    const now = new Date();
+    const isLockedByOther =
+      listing.status === ResaleStatus.LOCKED &&
+      listing.lockedUntil &&
+      listing.lockedUntil > now;
+
+    if (isLockedByOther) {
+      throw new BadRequestException('Tiket resale sedang dalam proses pembayaran oleh pembeli lain. Silakan coba beberapa saat lagi.');
     }
 
     // Penjual ga boleh beli tiketnya sendiri
@@ -899,7 +1256,9 @@ export class TicketsService {
     // Buat order_id khusus dengan awalan 'RESALE-' supaya webhook Midtrans tahu ini transaksi pasar sekunder
     const midtransOrderId = `RESALE-${listing.ticketCacheTokenId}-${Date.now()}`;
 
-    // Simpan data calon pembeli & ID transaksi Midtrans (status tetap ACTIVE sampai pembayaran benar-benar lunas)
+    // Kunci tiket dengan status LOCKED selama 10 menit
+    listing.status = ResaleStatus.LOCKED;
+    listing.lockedUntil = new Date(Date.now() + 10 * 60 * 1000);
     listing.buyerWallet = buyerWallet;
     listing.adminFee = totalAdminFee;
     listing.buyerMidtransTransactionId = midtransOrderId;
@@ -949,7 +1308,9 @@ export class TicketsService {
 
     const data = await response.json();
     if (!response.ok) {
-      // Kalau gagal bikin Snap Token di Midtrans, bersihkan kembali data calon pembeli
+      // Kalau gagal bikin Snap Token di Midtrans, bersihkan kembali status lock
+      listing.status = ResaleStatus.ACTIVE;
+      listing.lockedUntil = null;
       listing.buyerWallet = null;
       listing.buyerMidtransTransactionId = null;
       await this.resaleListingRepository.save(listing);
@@ -968,8 +1329,8 @@ export class TicketsService {
     };
   }
 
-  // 5. Method internal buat memproses webhook Midtrans khusus transaksi Pasar Sekunder (RESALE-)
-  private async handleResaleWebhook(
+  // 5. Method buat memproses webhook / rekonsiliasi Midtrans khusus transaksi Pasar Sekunder (RESALE-)
+  async handleResaleWebhook(
     midtransOrderId: string,
     transactionStatus: string,
     fraudStatus: string,
@@ -981,7 +1342,12 @@ export class TicketsService {
     });
 
     if (!listing) {
-      throw new BadRequestException(`Resale order #${midtransOrderId} tidak ditemukan`);
+      console.warn(`[TicketsService] Resale webhook diabaikan: Order #${midtransOrderId} tidak ditemukan di database lokal`);
+      return {
+        status: 'ignored_resale_order_not_found',
+        orderId: midtransOrderId,
+        message: 'Resale order tidak ditemukan di database lokal',
+      };
     }
 
     // Proteksi idempotensi: kalau sudah SOLD jangan dieksekusi 2x
@@ -1014,9 +1380,6 @@ export class TicketsService {
 
         // Update status listing dari ACTIVE langsung jadi SOLD
         listing.status = ResaleStatus.SOLD;
-        if (transactionId) {
-          listing.buyerMidtransTransactionId = transactionId;
-        }
         await this.resaleListingRepository.save(listing);
 
         // Update juga alamat pemilik baru di tabel ticket_cache MySQL
@@ -1044,7 +1407,9 @@ export class TicketsService {
         };
       }
     } else if (['cancel', 'expire', 'deny'].includes(transactionStatus)) {
-      // Kalau pembayaran batal atau kedaluwarsa, kosongkan kembali calon pembeli (status tetap ACTIVE)
+      // Kalau pembayaran batal atau kedaluwarsa, buka kembali lock (status kembali ACTIVE)
+      listing.status = ResaleStatus.ACTIVE;
+      listing.lockedUntil = null;
       listing.buyerWallet = null;
       listing.buyerMidtransTransactionId = null;
       await this.resaleListingRepository.save(listing);

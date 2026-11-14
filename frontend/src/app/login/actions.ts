@@ -86,6 +86,8 @@ export async function login(
     resData.walletAddress,
     resData.email,
     resData.role,
+    resData.organizersId,
+    resData.organizationName,
   );
   
   redirect("/dashboard");

@@ -11,10 +11,10 @@ export interface DualScanState {
 
 export async function verifyDualScanAction(payload: {
   tokenId: number;
-  walletAddress: string;
-  signedAt: string;
-  signature: string;
-  nik: string;
+  walletAddress?: string;
+  signedAt?: string;
+  signature?: string;
+  nik?: string;
 }): Promise<DualScanState> {
   try {
     const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";

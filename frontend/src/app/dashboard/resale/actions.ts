@@ -54,3 +54,18 @@ export async function buyResaleTicketAction(listingId: string) {
   }
 }
 
+// Cek status pembayaran order resale untuk auto-polling & rekonsiliasi
+export async function checkResaleOrderStatusAction(orderId: string) {
+  const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
+  try {
+    const response = await fetch(`${backendUrl}/api/tickets/order-status/${orderId}`, {
+      method: "GET",
+      cache: "no-store",
+    });
+    if (!response.ok) return { success: false, status: "unknown" };
+    return { success: true, ...(await response.json()) };
+  } catch (err) {
+    return { success: false, status: "unknown" };
+  }
+}
+

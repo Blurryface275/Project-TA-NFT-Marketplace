@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsString, Length } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class DualScanVerifyDto {
   @IsNumber()
@@ -6,19 +6,18 @@ export class DualScanVerifyDto {
   tokenId: number;
 
   @IsString()
-  @IsNotEmpty()
-  walletAddress: string;
+  @IsOptional()
+  walletAddress?: string;
 
   @IsString()
-  @IsNotEmpty()
-  signedAt: string;
+  @IsOptional()
+  signedAt?: string;
 
   @IsString()
-  @IsNotEmpty()
-  signature: string;
+  @IsOptional()
+  signature?: string;
 
   @IsString()
-  @IsNotEmpty()
-  @Length(16, 16, { message: 'NIK wajib 16 digit angka sesuai KTP' })
-  nik: string;
+  @IsOptional()
+  nik?: string;
 }
