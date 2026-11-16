@@ -28,7 +28,6 @@ uploads/
 scratch/
 
 # Explanation & Video Assets
-explanation/
 video_assets/
 media/
 openmontage/
@@ -47,3 +46,5 @@ skills/
 
 # Teaching workspace & mini-projects
 learning/
+plans/
+scratch/
