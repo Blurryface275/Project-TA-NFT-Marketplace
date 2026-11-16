@@ -108,7 +108,7 @@ graph TB
     %% Network Connections
     UI -->|Panggil Server Action| ActionSnap
     ActionSnap -->|HTTP POST JSON| Controller
-    Service -->|HTTPS Basic Auth (Base64)| SnapAPI
+    Service -->|"HTTPS Basic Auth (Base64)"| SnapAPI
     SnapAPI -.->|Return snapToken & redirectUrl| Service
     Service -.->|Return Paket Transaksi| ActionSnap
     ActionSnap -.->|Kirim Token| UI

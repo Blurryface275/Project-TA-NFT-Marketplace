@@ -66,7 +66,7 @@ graph TB
         NonceGen --> TypedData
         Svc --> TypedData
         TypedData --> ViemSigner
-        ViemSigner -->|Hasil Signature 65 Bytes (r, s, v)| Svc
+        ViemSigner -->|"Hasil Signature 65 Bytes (r, s, v)"| Svc
     end
 
     subgraph TransportTier ["2. Network Transport Boundary (Ethereum JSON-RPC)"]
@@ -109,7 +109,7 @@ graph TB
         RecoverEngine --> SignerCheck
 
         SignerCheck -->|Tidak Cocok| RevertSig["Revert InvalidSignature()"]
-        SignerCheck -->|Cocok (Resmi Backend)| MarkNonce
+        SignerCheck -->|"Cocok (Resmi Backend)"| MarkNonce
         
         MarkNonce --> UpdateQuota
         UpdateQuota --> StoreTicket

@@ -79,7 +79,7 @@ graph TB
 
     Decoder -->|Operasi Aritmatika & Kontrol Alur| Stack
     Decoder -->|Alokasi Struktur Sementara| Memory
-    Decoder -->|Baca Argumen Fungsi (external)| Calldata
+    Decoder -->|"Baca Argumen Fungsi (external)"| Calldata
     Decoder -->|Instruksi SLOAD / SSTORE| Storage
 ```
 

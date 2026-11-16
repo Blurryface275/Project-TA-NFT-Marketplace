@@ -100,7 +100,7 @@ graph TB
         P2PTransfer["Transfer Manual Dompet ke Dompet (Direct ERC-721 Transfer)"]
     end
 
-    AllowlistState <===>|Izin Transfer Eksklusif (Dual Handshake)| SecondaryMarketplaceContract
+    AllowlistState <===>|"Izin Transfer Eksklusif (Dual Handshake)"| SecondaryMarketplaceContract
     TicketMasterContract --x|REVERT: Unauthorized Transfer Gate| BlockedMarkets
     TicketMasterContract --x|REVERT: Unauthorized Transfer Gate| P2PTransfer
 ```

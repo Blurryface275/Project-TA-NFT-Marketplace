@@ -99,8 +99,8 @@ graph TB
         RPCNode["Sepolia RPC Node (Alchemy Infrastructure)"]
         TicketContract["TicketContract.sol (0x4A6e...F9b3)"]
         
-        PublicClient -->|eth_call / getLogs (Gratis Gas)| RPCNode
-        WalletClient -->|eth_sendRawTransaction (Bayar Gas Admin)| RPCNode
+        PublicClient -->|"eth_call / getLogs (Gratis Gas)"| RPCNode
+        WalletClient -->|"eth_sendRawTransaction (Bayar Gas Admin)"| RPCNode
         RPCNode <--> TicketContract
     end
 

@@ -93,8 +93,8 @@ graph TB
     subgraph LogicSharedLayer ["5. Shared Logic & Validator Layer (Singleton On-Chain)"]
         KernelImpl["Kernel Implementation v3.3 (Logika Inti Eksekusi)"]
         PasskeyVal["PasskeyValidator (0x7ab16Ff354AcB328452F1D445b3Ddee9a91e9e69)"]
-        ProxyAccount -->|DELEGATECALL (Eksekusi Logika)| KernelImpl
-        ProxyAccount -->|DELEGATECALL (Verifikasi P-256)| PasskeyVal
+        ProxyAccount -->|"DELEGATECALL (Eksekusi Logika)"| KernelImpl
+        ProxyAccount -->|"DELEGATECALL (Verifikasi P-256)"| PasskeyVal
     end
 ```
 
