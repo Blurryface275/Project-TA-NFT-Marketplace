@@ -1,10 +1,12 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { SetupWalletDto } from './dto/setup-wallet.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { InternalApiGuard } from '../common/internal-api-guard';
 
+@UseGuards(InternalApiGuard)
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}

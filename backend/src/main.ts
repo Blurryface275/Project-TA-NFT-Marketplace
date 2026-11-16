@@ -21,19 +21,26 @@ async function bootstrap() {
   // Pasang prefix api untuk semua endpoint (misal: api/users/login)
   app.setGlobalPrefix('api');
 
-    // Izinkan CORS untuk frontend di localhost maupun IP lokal LAN
+  // Pipeline pengamana
+  const allowedOrigins = (process.env.FRONTEND_ORIGINS || 'http://localhost:3000').split(',').map((o)=> o.trim());
+
   app.enableCors({
-    origin: true, // mengizinkan request dari origin manapun (termasuk akses via IP lokal HP)
+    origin: (origin, cb) => {
+      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(new Error('Origin tidak diizinkan oleh CORS'), false);
+    },
     credentials: true,
   });
-  
-  // Aktifkan validasi class-validator & class-transformer secara global
-  app.useGlobalPipes(
+
+   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // otomatis membuang field yang tidak ada di DTO
-      transform: true, // otomatis konversi tipe data (misal string → number)
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
     }),
   );
+
+
 
  const port = Number(process.env.PORT) || 3001;
   await app.listen(port, '0.0.0.0');

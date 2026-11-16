@@ -274,6 +274,15 @@ Dua pendekatan arsitektural yang diterapkan untuk menyelesaikan masalah ini:
 | **Cross-Site Request Forgery (CSRF)** | Situs eksternal memicu aksi tidak sah atas nama sesi korban | Konfigurasi `SameSite=Lax` melarang peramban melampirkan cookie pada request POST lintas situs |
 | **Man-in-the-middle Eavesdropping** | Intersepsi paket jaringan pada jaringan Wi-Fi publik | Penerapan atribut `Secure` menjamin transmisi cookie hanya dapat dilakukan melalui kanal TLS/HTTPS terenkripsi |
 | **Credential Stuffing** | Penyerang mencoba daftar kombinasi kata sandi hasil kebocoran data eksternal | Penerapan algoritma `bcrypt` dengan faktor kerja (*salt rounds*) 10 untuk memperlambat upaya komputasi brute-force |
+| **Bypass Frontend ke API Auth** | Penyerang menembak langsung endpoint `/api/auth/*` tanpa melalui Next.js Server Actions | `AuthController` dilindungi `@UseGuards(InternalApiGuard)` (*fail-closed* via `x-internal-key`). Rincian lengkap di [27-backend-trust-boundary-and-internal-api-guard.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/27-backend-trust-boundary-and-internal-api-guard.md) |
+
+### Alur Kerja Proteksi Gerbang Autentikasi (`InternalApiGuard`)
+
+1. Peramban mengirim form login/register ke **Next.js Server Action** (bukan langsung ke port `3001` NestJS).
+2. Next.js Server Action meneruskan request ke `POST /api/auth/*` dengan menyisipkan header `x-internal-key` dari `process.env.INTERNAL_API_KEY`.
+3. `InternalApiGuard` di `AuthController` mencegat request **sebelum** `ValidationPipe` dan membandingkan `x-internal-key` menggunakan `crypto.timingSafeEqual`.
+4. Jika header tidak ada, salah, atau `INTERNAL_API_KEY` belum diset, NestJS langsung mengembalikan `401 Unauthorized` sehingga DTO dan `AuthService` tidak pernah dieksekusi.
+5. Jika cocok, request berlanjut ke `ValidationPipe` (DTO) lalu diproses oleh `AuthController` dan `AuthService`.
 
 ---
 

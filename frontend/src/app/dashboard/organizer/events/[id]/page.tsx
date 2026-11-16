@@ -11,7 +11,6 @@ import {
   QrCode,
   ShieldCheck,
   Tag,
-  Sparkles,
   ExternalLink,
   Zap,
   Clock,
@@ -163,35 +162,53 @@ export default async function OrganizerEventDetailPage({ params }: PageProps) {
           <span>Kembali ke Portal Promotor</span>
         </Link>
 
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-semibold uppercase tracking-wider px-3 py-1 rounded-full bg-coral-50 dark:bg-coral-950/40 text-coral-600 dark:text-coral-400 border border-coral-100 dark:border-coral-800/50">
                 {event.category || "Konser Musik"}
               </span>
-              <span className="text-xs font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700">
-                On-Chain ID #{event.onChainEventId || event.id}
+              <span className="text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 tabular-nums">
+                ID Acara #{event.onChainEventId || event.id}
               </span>
             </div>
 
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
               Penyelenggara: <strong className="text-slate-700 dark:text-slate-200">{organizerName}</strong>
             </span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            {event.eventName}
-          </h1>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div className="space-y-3">
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                {event.eventName}
+              </h1>
 
-          <div className="flex flex-wrap items-center gap-5 text-xs text-slate-600 dark:text-slate-300 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-coral-500" />
-              <span>{formattedDate()}</span>
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-600 dark:text-slate-300">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-coral-500 shrink-0" />
+                  <span>{formattedDate()}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-coral-500 shrink-0" />
+                  <span>{event.venueLocation}</span>
+                </div>
+                {typeof event.maxPerWallet === "number" && event.maxPerWallet > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-coral-500 shrink-0" />
+                    <span>Maks. {formatNumber(event.maxPerWallet)} tiket/akun</span>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-coral-500" />
-              <span>{event.venueLocation}</span>
-            </div>
+
+            <Link
+              href={`/dashboard/verify?eventId=${event.onChainEventId || event.id}`}
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-coral-500 hover:bg-coral-600 text-white font-bold text-xs sm:text-sm transition shadow-xs shrink-0 active:scale-[0.99]"
+            >
+              <QrCode className="w-4 h-4" />
+              <span>Buka Scanner Gate</span>
+            </Link>
           </div>
         </div>
       </div>
@@ -276,43 +293,36 @@ export default async function OrganizerEventDetailPage({ params }: PageProps) {
       </div>
 
       {/* 2.5 Status Jadwal Flash Sale yang Diatur Penyelenggara */}
-      <div className="bg-white rounded-2xl p-6 border border-black/[0.08] shadow-xs space-y-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#FBECE7] text-[#D94520] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-coral-50 dark:bg-coral-950/40 text-coral-600 dark:text-coral-400 flex items-center justify-center">
               <Zap className="w-4 h-4 fill-current" />
             </div>
             <div>
-              <h3 className="font-bold text-[#171717] text-sm">
+              <h3 className="font-bold text-slate-900 dark:text-white text-sm">
                 Status Jadwal Flash Sale Event
               </h3>
-              <p className="text-xs text-[#736E65]">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Dikelola langsung oleh pihak penyelenggara untuk sesi drop eksklusif
               </p>
             </div>
           </div>
 
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>Tersinkronisasi</span>
           </span>
         </div>
 
-        <div className="p-4 rounded-xl bg-[#F0EDE4]/60 border border-black/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
           <div className="space-y-1">
-            <span className="text-[#736E65] block font-medium">Waktu Pembukaan Flash Sale:</span>
-            <div className="flex items-center gap-1.5 font-bold text-[#171717]">
-              <Clock className="w-3.5 h-3.5 text-[#D94520]" />
+            <span className="text-slate-500 dark:text-slate-400 block font-medium">Waktu Pembukaan Flash Sale:</span>
+            <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white">
+              <Clock className="w-3.5 h-3.5 text-coral-500 shrink-0" />
               <span>
                 {event.startDate
-                  ? new Date(event.startDate).toLocaleDateString("id-ID", {
-                      weekday: "long",
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }) + " WIB (Drop Khusus)"
+                  ? `${formattedDate()} (Drop Khusus)`
                   : "Dibuka otomatis saat sesi flash sale publik dimulai"}
               </span>
             </div>
@@ -320,7 +330,7 @@ export default async function OrganizerEventDetailPage({ params }: PageProps) {
 
           <Link
             href="/dashboard/flash-sale"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#D94520] text-white hover:bg-[#BF3B19] font-bold text-xs transition shadow-xs self-start sm:self-auto"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-coral-500 hover:bg-coral-600 text-white font-bold text-xs transition shadow-xs self-start sm:self-auto"
           >
             <span>Lihat Halaman Flash Sale</span>
             <ExternalLink className="w-3.5 h-3.5" />
@@ -335,38 +345,50 @@ export default async function OrganizerEventDetailPage({ params }: PageProps) {
             <Tag className="w-4 h-4 text-coral-500" />
             <span>Alokasi Kategori Tiket</span>
           </h3>
-          <span className="text-xs text-slate-400 font-medium">
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium tabular-nums">
             {categories.length} Kategori Terdaftar
           </span>
         </div>
 
-        <div className="divide-y divide-slate-100 dark:divide-slate-800">
-          {categories.map((cat, idx) => (
-            <div
-              key={cat.id || idx}
-              className="py-3 flex items-center justify-between gap-4 text-xs"
-            >
-              <div className="space-y-0.5">
-                <span className="font-bold text-slate-900 dark:text-white">
-                  {cat.name}
-                </span>
-                <p className="text-slate-400">
-                  Harga Resmi:{" "}
-                  <strong className="text-slate-700 dark:text-slate-300">
-                    {formatRupiah(Number(cat.price))}
-                  </strong>
-                </p>
-              </div>
+        {categories.length === 0 ? (
+          <div className="py-8 text-center rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+            Belum ada kategori tiket yang terdaftar untuk acara ini.
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {categories.map((cat, idx) => {
+              const quotaNum = Number(cat.quota || 0);
+              const sharePercent = totalQuota > 0 ? Math.round((quotaNum / totalQuota) * 100) : 0;
+              return (
+                <div
+                  key={cat.id || idx}
+                  className="py-3 px-2 -mx-2 rounded-xl hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors flex items-center justify-between gap-4 text-xs"
+                >
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      {cat.name}
+                    </span>
+                    <p className="text-slate-500 dark:text-slate-400 tabular-nums">
+                      Harga Resmi:{" "}
+                      <strong className="text-slate-700 dark:text-slate-300">
+                        {formatRupiah(Number(cat.price))}
+                      </strong>
+                    </p>
+                  </div>
 
-              <div className="text-right">
-                <span className="font-bold text-slate-900 dark:text-white">
-                  {formatNumber(Number(cat.quota))} Kuota
-                </span>
-                <p className="text-[11px] text-slate-400">Alokasi on-chain</p>
-              </div>
-            </div>
-          ))}
-        </div>
+                  <div className="text-right tabular-nums">
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      {formatNumber(quotaNum)} Kuota
+                    </span>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      {totalQuota > 0 ? `${sharePercent}% dari total` : "Alokasi resmi"}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* 4. Big Call to Action: Buka Pintu Masuk / Scanner QR Gate */}

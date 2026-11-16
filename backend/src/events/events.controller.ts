@@ -9,7 +9,9 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
+import { InternalApiGuard } from '../common/internal-api-guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
@@ -41,6 +43,7 @@ const fileFilter = (req: any, file: any, cb: any) => {
   }
 };
 
+@UseGuards(InternalApiGuard)
 @Controller('events') // Route prefix: /api/events (karena ada global prefix 'api' di main.ts)
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}

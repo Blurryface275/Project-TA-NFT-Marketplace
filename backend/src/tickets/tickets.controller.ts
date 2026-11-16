@@ -7,13 +7,16 @@ import {
   ParseIntPipe,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
+import { InternalApiGuard, Public } from '../common/internal-api-guard';
 import { TicketsService } from './tickets.service';
 import { MintTicketDto } from './dto/mint-ticket.dto';
 import { RedeemTicketDto } from './dto/redeem-ticket.dto';
 import { CreateSnapDto } from './dto/create-snap.dto';
 import { DualScanVerifyDto } from './dto/dual-scan-verify.dto';
 
+@UseGuards(InternalApiGuard)
 @Controller('tickets')
 export class TicketsController {
   constructor(private readonly ticketsService: TicketsService) {}
@@ -131,8 +134,9 @@ export class TicketsController {
     return this.ticketsService.createSnapTransaction(createSnapDto);
   }
 
-  // Endpoint Webhook Notifikasi Midtrans
+  // Endpoint Webhook Notifikasi Midtrans (dipanggil server Midtrans, diverifikasi via signature_key)
   // POST http://localhost:3001/api/tickets/midtrans-webhook
+  @Public()
   @Post('midtrans-webhook')
   @HttpCode(HttpStatus.OK)
   async handleMidtransWebhook(@Body() notificationPayload: any) {

@@ -38,6 +38,10 @@ Seluruh dokumen disusun berstandar akademik dan rekayasa perangkat lunak (siap d
   * **Judul:** Desain dan spesifikasi teknis integrasi Viem pada NestJS, validasi DTO, dan standar ABI smart contract.
   * **Topik inti:** Jembatan Web2 ke Web3 via Viem, gerbang validasi DTO `class-validator`, konversi JSON ABI ke selektor calldata 4-byte, urgensi asersi tipe statis `as const`, dan penanganan topik event log `indexed`.
 
+* [27-backend-trust-boundary-and-internal-api-guard.md](file:///d:/STEVE/Project-TA-NFT-Marketplace/explanation/27-backend-trust-boundary-and-internal-api-guard.md)
+  * **Judul:** Desain dan spesifikasi teknis batas kepercayaan backend (`InternalApiGuard`).
+  * **Topik inti:** Isolasi controller NestJS dari akses langsung klien luar (*fail-closed* `x-internal-key` + `timingSafeEqual`), justifikasi pemisahan Next.js + NestJS pada prototipe keamanan, pengecualian `@Public()` untuk `midtrans-webhook`, dan larangan `NEXT_PUBLIC_`.
+
 ---
 
 ### 3. Modul smart contract dan infrastruktur blockchain
