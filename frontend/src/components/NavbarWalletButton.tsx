@@ -110,7 +110,7 @@ export default function NavbarWalletButton({
         title="Open profile menu"
         className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-full hover:bg-stone-200/50 border border-black/[0.08] transition cursor-pointer focus:outline-none"
       >
-        <div className="w-7 h-7 rounded-full bg-[#FBECE7] text-[#D94520] border border-[#D94520]/20 flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
+        <div className="w-7 h-7 rounded-full bg-[#FFF5F2] text-[#FF5A36] border border-[#FF5A36]/20 flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
           {(userName || "U").charAt(0).toUpperCase()}
         </div>
         <span className="text-xs font-semibold text-[#171717] max-w-[130px] truncate hidden sm:inline-block">
@@ -123,7 +123,7 @@ export default function NavbarWalletButton({
         <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-black/[0.08] bg-white p-3 shadow-xl z-50 animate-in fade-in zoom-in-95">
           {/* Header */}
           <div className="flex items-center gap-3 px-1 py-1">
-            <div className="w-8 h-8 rounded-full bg-[#FBECE7] text-[#D94520] border border-[#D94520]/20 flex items-center justify-center font-bold text-xs shrink-0">
+            <div className="w-8 h-8 rounded-full bg-[#FFF5F2] text-[#FF5A36] border border-[#FF5A36]/20 flex items-center justify-center font-bold text-xs shrink-0">
               {(userName || "U").charAt(0).toUpperCase()}
             </div>
             <div className="flex flex-col text-left overflow-hidden">
@@ -140,7 +140,7 @@ export default function NavbarWalletButton({
           <div className="p-2.5 rounded-xl bg-[#F0EDE4] border border-black/[0.06] my-2">
             <div className="text-[11px] font-medium text-[#736E65] mb-1 flex items-center justify-between">
               <span className="flex items-center gap-1.5 font-bold text-[#171717]">
-                <Wallet className="w-3.5 h-3.5 text-[#D94520]" />
+                <Wallet className="w-3.5 h-3.5 text-[#FF5A36]" />
                 <span>Ticket Passkey ID</span>
               </span>
               {walletAddress ? (
@@ -148,7 +148,7 @@ export default function NavbarWalletButton({
                   Active
                 </span>
               ) : (
-                <span className="text-[10px] text-[#D94520] font-semibold bg-[#FBECE7] px-1.5 py-0.5 rounded">
+                <span className="text-[10px] text-[#FF5A36] font-semibold bg-[#FFF5F2] px-1.5 py-0.5 rounded">
                   Unactivated
                 </span>
               )}
@@ -184,12 +184,12 @@ export default function NavbarWalletButton({
                 </div>
               </div>
             ) : (
-              <div className="pt-1">
+              <div className="pt-1 space-y-2">
                 <button
                   type="button"
                   onClick={handleActivate}
                   disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-xs text-white bg-[#D94520] hover:bg-[#BF3B19] disabled:opacity-50 transition cursor-pointer shadow-xs"
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-xs text-white bg-[#FF5A36] hover:bg-[#E54823] disabled:opacity-50 transition cursor-pointer shadow-xs"
                 >
                   {isLoading ? (
                     <>
@@ -203,6 +203,14 @@ export default function NavbarWalletButton({
                     </>
                   )}
                 </button>
+                {errorMessage && (
+                  <p
+                    role="alert"
+                    className="rounded-lg bg-rose-50 border border-rose-200 px-2.5 py-1.5 text-[11px] font-medium text-rose-700 leading-snug"
+                  >
+                    {errorMessage}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -249,9 +257,9 @@ export default function NavbarWalletButton({
               <Link
                 href="/dashboard/admin/events/new"
                 onClick={() => setIsOpen(false)}
-                className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[#FBECE7] text-xs text-[#D94520] font-medium transition"
+                className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[#FFF5F2] text-xs text-[#FF5A36] font-medium transition"
               >
-                <CalendarPlus className="w-4 h-4 text-[#D94520]" />
+                <CalendarPlus className="w-4 h-4 text-[#FF5A36]" />
                 <span>Create Event</span>
               </Link>
             )}

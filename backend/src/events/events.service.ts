@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -115,13 +116,23 @@ export class EventsService {
   }
 
   // Ambil 1 event spesifik berdasarkan ID dan seluruh kategorinya
-  async findOne(id: number) {
+  async findOne(id: number, userId?: number) {
     const event = await this.eventRepository.findOne({
       where: { id },
       relations: { ticketCategories: true },
     });
     if (!event) {
       throw new NotFoundException(`Event dengan ID ${id} tidak ditemukan`);
+    }
+
+    if (userId !== undefined && !Number.isNaN(userId)) {
+      const organizer = await this.dataSource.query(
+        'SELECT id FROM organizers WHERE users_id = ? LIMIT 1',
+        [userId],
+      );
+      if (!organizer || organizer.length === 0 || Number(event.organizersId) !== Number(organizer[0].id)) {
+        throw new ForbiddenException('Anda tidak memiliki akses ke event ini');
+      }
     }
 
     const totalQuota = (event.ticketCategories || []).reduce(
@@ -147,6 +158,18 @@ export class EventsService {
   // Method untuk membuat event baru dan mendaftarkannya ke database serta smart contract Sepolia
   async create(dto: CreateEventDto, file?: Express.Multer.File) {
     console.log('🎪 [EventsService] Memulai pembuatan event baru:', dto.eventName);
+
+    const orgId = Number(dto.organizersId);
+    if (!orgId || Number.isNaN(orgId)) {
+      throw new BadRequestException('organizersId wajib diisi');
+    }
+    const organizerRows = await this.dataSource.query(
+      'SELECT id FROM organizers WHERE id = ? LIMIT 1',
+      [orgId],
+    );
+    if (!organizerRows || organizerRows.length === 0) {
+      throw new BadRequestException(`Organizer dengan ID ${orgId} tidak ditemukan`);
+    }
 
     // 1. Tentukan URL / path gambar background tiket
     let imageIpfsCid = dto.imageIpfsCid || null;
@@ -212,7 +235,7 @@ export class EventsService {
       capacity: Number(dto.capacity),
       imageIpfsCid: imageIpfsCid,
       maxPerWallet: Number(dto.maxPerWallet || 2),
-      organizersId: Number(dto.organizersId || 1),
+      organizersId: orgId,
       saleStartTime: dto.saleStartTime ? new Date(dto.saleStartTime) : null,
       saleEndTime: dto.saleEndTime ? new Date(dto.saleEndTime) : null,
     });

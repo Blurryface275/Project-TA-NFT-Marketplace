@@ -4,6 +4,7 @@ import {
   Post,
   Body,
   Param,
+  Query,
   ParseIntPipe,
   UseInterceptors,
   UploadedFile,
@@ -68,8 +69,11 @@ export class EventsController {
   // Method: GET /api/events/:id
   // Mengambil 1 data event spesifik berdasarkan ID
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.eventsService.findOne(id);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('userId') userId?: string,
+  ) {
+    return this.eventsService.findOne(id, userId ? Number(userId) : undefined);
   }
 
   // Method: POST /api/events

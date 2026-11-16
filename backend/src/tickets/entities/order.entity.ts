@@ -20,6 +20,7 @@ export enum OrderStatus {
   PAID = 'paid', // Pembayaran berhasil diterima
   FAILED = 'failed', // Pembayaran gagal atau timeout
   CANCELLED = 'cancelled', // Pesanan dibatalkan oleh sistem (karena timeout) atau user
+  REFUNDED = 'refunded', // Dana telah dikembalikan karena kegagalan pasca-bayar (misal minting gagal)
 }
 
 @Entity('orders')
@@ -71,4 +72,7 @@ export class Order {
 
   @Column({ name: 'admin_fee', type: 'decimal', precision: 12, scale: 2 })
   adminFee: number; //biaya admin 2.5% per transaksi
+
+  @Column({ name: 'tx_hash', type: 'varchar', length: 66, nullable: true })
+  txHash: string | null;
 }

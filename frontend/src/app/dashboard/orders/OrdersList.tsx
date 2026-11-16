@@ -9,6 +9,8 @@ import {
   RefreshCw,
   Receipt,
   ArrowUpRight,
+  ExternalLink,
+  Ticket,
 } from "lucide-react";
 import { checkOrderStatusAction } from "../buy/actions";
 import Link from "next/link";
@@ -18,9 +20,10 @@ export interface OrderItem {
   amount: number;
   totalPrice: number | string;
   adminFee: number | string;
-  status: "pending" | "paid" | "failed" | "cancelled";
+  status: "pending" | "paid" | "failed" | "cancelled" | "refunded";
   createdAt: string;
   midtransTransactionId: string | null;
+  txHash?: string | null;
   ticketCategory: {
     id: string;
     name: string;
@@ -29,6 +32,7 @@ export interface OrderItem {
       id: number;
       eventName: string;
       location?: string;
+      imageIpfsCid?: string | null;
     };
   };
 }
@@ -38,7 +42,10 @@ interface OrdersListProps {
   walletAddress: string;
 }
 
-export default function OrdersList({ initialOrders }: OrdersListProps) {
+export default function OrdersList({
+  initialOrders,
+  walletAddress,
+}: OrdersListProps) {
   const [orders, setOrders] = useState<OrderItem[]>(initialOrders);
   const [filter, setFilter] = useState<string>("all");
   const [checkingOrderId, setCheckingOrderId] = useState<string | null>(null);
@@ -64,6 +71,7 @@ export default function OrdersList({ initialOrders }: OrdersListProps) {
                   status: res.status,
                   midtransTransactionId:
                     res.midtransTransactionId || o.midtransTransactionId,
+                  txHash: res.txHash ?? o.txHash,
                 }
               : o,
           ),
@@ -78,6 +86,9 @@ export default function OrdersList({ initialOrders }: OrdersListProps) {
 
   const filteredOrders = orders.filter((o) => {
     if (filter === "all") return true;
+    if (filter === "failed") {
+      return o.status === "failed" || o.status === "refunded";
+    }
     return o.status === filter;
   });
 
@@ -95,6 +106,13 @@ export default function OrdersList({ initialOrders }: OrdersListProps) {
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#FFFBEB] text-[#92400E] border border-[#FEF3C7]">
             <Clock className="w-3.5 h-3.5 text-amber-600" />
             <span>Awaiting Settlement</span>
+          </span>
+        );
+      case "refunded":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+            <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+            <span>Refunded (Transaksi Gagal)</span>
           </span>
         );
       case "cancelled":
@@ -122,7 +140,7 @@ export default function OrdersList({ initialOrders }: OrdersListProps) {
           { key: "all", label: "All Receipts" },
           { key: "paid", label: "Paid" },
           { key: "pending", label: "Pending" },
-          { key: "failed", label: "Failed" },
+          { key: "failed", label: "Failed / Refunded" },
         ].map((f) => (
           <button
             key={f.key}
@@ -177,17 +195,46 @@ export default function OrdersList({ initialOrders }: OrdersListProps) {
               </div>
 
               {/* Breakdown */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                <div>
-                  <span className="text-[#736E65] block text-[10px] font-bold uppercase tracking-wider">
-                    Event & Tier:
-                  </span>
-                  <span className="font-extrabold text-[#171717] text-sm mt-0.5 block">
-                    {order.ticketCategory?.event?.eventName || "Curated Event"}
-                  </span>
-                  <span className="text-[#D94520] block font-bold mt-0.5">
-                    {order.ticketCategory?.name} ({order.amount}x Pass)
-                  </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs items-center">
+                <div className="flex items-center gap-3.5">
+                  {(() => {
+                    const rawImage = order.ticketCategory?.event?.imageIpfsCid;
+                    const backendUrl =
+                      process.env.NEXT_PUBLIC_BACKEND_URL ||
+                      "http://localhost:3001";
+                    const thumbSrc = rawImage
+                      ? rawImage.startsWith("/")
+                        ? `${backendUrl}${rawImage}`
+                        : rawImage
+                      : null;
+
+                    return thumbSrc ? (
+                      <img
+                        src={thumbSrc}
+                        alt={
+                          order.ticketCategory?.event?.eventName ||
+                          "Event Thumbnail"
+                        }
+                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover border border-black/[0.08] shrink-0"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl border border-black/[0.08] shrink-0 bg-gradient-to-br from-[#FAF9F6] to-stone-100 flex items-center justify-center text-[#736E65]">
+                        <Ticket className="w-6 h-6 text-[#D94520]/70" />
+                      </div>
+                    );
+                  })()}
+                  <div className="min-w-0">
+                    <span className="text-[#736E65] block text-[10px] font-bold uppercase tracking-wider">
+                      Event & Tier:
+                    </span>
+                    <span className="font-extrabold text-[#171717] text-sm mt-0.5 block truncate">
+                      {order.ticketCategory?.event?.eventName ||
+                        "Curated Event"}
+                    </span>
+                    <span className="text-[#D94520] block font-bold mt-0.5">
+                      {order.ticketCategory?.name} ({order.amount}x Pass)
+                    </span>
+                  </div>
                 </div>
 
                 <div>
@@ -211,6 +258,28 @@ export default function OrdersList({ initialOrders }: OrdersListProps) {
                   </span>
                 </div>
               </div>
+
+              {order.status === "paid" && (order.txHash || walletAddress) && (
+                <div className="pt-3 flex justify-end border-t border-black/[0.06]">
+                  <a
+                    href={
+                      order.txHash
+                        ? `https://sepolia.etherscan.io/tx/${order.txHash}`
+                        : `https://sepolia.etherscan.io/address/${walletAddress}`
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-black/[0.08] bg-white hover:bg-stone-50 text-xs font-bold text-[#171717] hover:text-[#D94520] transition shadow-xs"
+                  >
+                    <span>
+                      {order.txHash
+                        ? "Lihat Transaksi Sepolia"
+                        : "Lihat Dompet di Sepolia"}
+                    </span>
+                    <ExternalLink className="w-3.5 h-3.5 text-[#D94520]" />
+                  </a>
+                </div>
+              )}
 
               {order.status === "pending" && (
                 <div className="pt-2 flex justify-end border-t border-black/[0.06]">

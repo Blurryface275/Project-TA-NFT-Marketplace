@@ -146,20 +146,20 @@ export default function ResaleCatalogClient({
         {/* Anti-Scalping Price-Lock Guarantee Box */}
         <div className="p-5 rounded-2xl bg-white border border-black/[0.08] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start sm:items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-[#FBECE7] text-[#D94520] flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[#FBECE7] text-[#FF5A36] flex items-center justify-center shrink-0">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div className="space-y-0.5">
               <h3 className="font-bold text-sm text-[#171717]">
-                Price-Lock Guarantee™ (Anti-Scalping Rule)
+                Jaminan Harga Resmi (Anti-Calo)
               </h3>
               <p className="text-xs text-[#736E65] leading-relaxed">
-                Tickets listed on this secondary exchange are locked at exact face value. Markups are contractually blocked.
+                Tiket yang dijual di pasar resale resmi ini dikunci pada harga asli. Kenaikan harga di atas nominal resmi diblokir oleh sistem.
               </p>
             </div>
           </div>
           <span className="self-start sm:self-auto inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-[#F0EDE4] text-[#171717] border border-black/[0.06] shrink-0">
-            100% Price Ceiling
+            Harga Maksimal 100%
           </span>
         </div>
 
@@ -186,17 +186,17 @@ export default function ResaleCatalogClient({
               <Repeat className="w-6 h-6" />
             </div>
             <h3 className="text-base font-bold text-[#171717]">
-              No Resale Tickets Currently Listed
+              Belum Ada Tiket Resale Tersedia
             </h3>
             <p className="text-xs text-[#736E65] max-w-md mx-auto">
-              Attendees can list their verified passes here if they cannot attend. Check back periodically or browse the primary catalog.
+              Pemilik tiket terverifikasi dapat menjual tiketnya di sini jika berhalangan hadir. Cek kembali secara berkala atau lihat katalog event utama.
             </p>
             <div className="pt-2">
               <Link
                 href="/dashboard/buy"
-                className="inline-flex items-center gap-1 px-4 py-2 rounded-xl bg-[#D94520] hover:bg-[#BF3B19] text-white text-xs font-bold transition"
+                className="inline-flex items-center gap-1 px-4 py-2 rounded-xl bg-[#FF5A36] hover:bg-[#E54823] text-white text-xs font-bold transition"
               >
-                <span>Browse Primary Catalog</span>
+                <span>Lihat Katalog Event</span>
                 <ArrowUpRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -231,15 +231,15 @@ export default function ResaleCatalogClient({
                   <div className="p-4 bg-[#171717] text-white space-y-2">
                     <div className="flex items-center justify-between text-xs">
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-white/10 text-white text-[11px] font-bold backdrop-blur-xs">
-                        <Ticket className="w-3 h-3 text-[#D94520]" />
+                        <Ticket className="w-3 h-3 text-[#FF5A36]" />
                         Pass #{item.ticketCacheTokenId}
                       </span>
-                      <span className="text-[11px] text-[#D94520] font-semibold flex items-center gap-1">
+                      <span className="text-[11px] text-[#FF5A36] font-semibold flex items-center gap-1">
                         <ShieldCheck className="w-3.5 h-3.5" />
-                        <span>Price Locked</span>
+                        <span>Harga Terkunci</span>
                       </span>
                     </div>
-                    <h3 className="text-base font-bold text-white line-clamp-1 group-hover:text-[#D94520] transition-colors">
+                    <h3 className="text-base font-bold text-white line-clamp-1 group-hover:text-[#FF5A36] transition-colors">
                       {eventTitle}
                     </h3>
                   </div>
@@ -247,22 +247,25 @@ export default function ResaleCatalogClient({
                   <div className="p-5 space-y-4 flex-1 flex flex-col justify-between">
                     <div className="space-y-2 text-xs text-[#736E65]">
                       <div className="flex items-center gap-2">
-                        <Calendar className="w-3.5 h-3.5 text-[#D94520] shrink-0" />
+                        <Calendar className="w-3.5 h-3.5 text-[#FF5A36] shrink-0" />
                         <span>{eventDate}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <MapPin className="w-3.5 h-3.5 text-[#736E65] shrink-0" />
                         <span className="truncate">{venue}</span>
                       </div>
-                      <div className="pt-2 text-[11px] font-mono text-[#736E65] border-t border-black/[0.06]">
-                        Seller: {item.sellerWallet.slice(0, 6)}...{item.sellerWallet.slice(-4)}
+                      <div className="pt-2 border-t border-black/[0.06]">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[11px] font-semibold">
+                          <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                          <span>Penjual Terverifikasi</span>
+                        </span>
                       </div>
                     </div>
 
                     <div className="pt-3 border-t border-black/[0.06] flex items-center justify-between">
                       <div>
                         <span className="text-[10px] text-[#736E65] font-bold block uppercase tracking-wider">
-                          Locked Face Value
+                          Harga Asli Terkunci
                         </span>
                         <span className="text-base font-extrabold text-[#171717] font-mono">
                           Rp {Number(item.lockedPrice).toLocaleString("id-ID")}
@@ -271,21 +274,21 @@ export default function ResaleCatalogClient({
 
                       {isOwnTicket ? (
                         <span className="px-3 py-1.5 rounded-xl bg-stone-100 text-[#736E65] text-xs font-bold">
-                          Your Listing
+                          Tiket Anda
                         </span>
                       ) : (
                         <button
                           type="button"
                           onClick={() => handleBuyResale(item)}
                           disabled={loadingId === item.id}
-                          className="inline-flex items-center gap-1 px-4 py-2 rounded-xl bg-[#D94520] hover:bg-[#BF3B19] text-white text-xs font-bold transition shadow-xs disabled:opacity-50 cursor-pointer"
+                          className="inline-flex items-center gap-1 px-4 py-2 rounded-xl bg-[#FF5A36] hover:bg-[#E54823] text-white text-xs font-bold transition shadow-xs disabled:opacity-50 cursor-pointer"
                         >
                           {loadingId === item.id ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           ) : (
                             <ShoppingBag className="w-3.5 h-3.5" />
                           )}
-                          <span>Buy Pass</span>
+                          <span>Beli Tiket Resale</span>
                         </button>
                       )}
                     </div>

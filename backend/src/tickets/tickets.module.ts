@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TicketsService } from './tickets.service';
 import { TicketsController } from './tickets.controller';
 import { EventsModule } from '../events/events.module';
+import { AuthModule } from '../auth/auth.module';
 import { Order } from './entities/order.entity';
 import { Customer } from '../customers/entities/customer.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -18,6 +19,7 @@ import { ResaleListing } from './entities/resale-listing.entity';
   imports: [
     TypeOrmModule.forFeature([Order, TicketCache, ResaleListing, Customer]), // daftarin entity
     EventsModule, // harus di import spy service bisa akses data event/kuota
+    AuthModule, // untuk akses MailService
   ],
   controllers: [TicketsController],
   providers: [TicketsService],

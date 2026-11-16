@@ -33,49 +33,7 @@ export default function RootLayout({
       lang="id"
       className={`${jakartaSans.variable} ${geistSans.variable} ${geistMono.variable}`}
     >
-      <head>
-        <style>{`
-          :root {
-            --canvas-bg: #F7F5EE;
-            --surface-white: #FFFFFF;
-            --surface-subtle: #F0EDE4;
-            --brand-primary: #D94520;
-            --brand-hover: #BF3B19;
-            --brand-tint: #FBECE7;
-            --text-main: #171717;
-            --text-muted: #736E65;
-            --border-hairline: rgba(0, 0, 0, 0.08);
-
-            --background: #F7F5EE;
-            --foreground: #171717;
-            --card: #FFFFFF;
-            --card-foreground: #171717;
-            --popover: #FFFFFF;
-            --popover-foreground: #171717;
-            --primary: #D94520;
-            --primary-foreground: #FFFFFF;
-            --secondary: #F0EDE4;
-            --secondary-foreground: #171717;
-            --muted: #F0EDE4;
-            --muted-foreground: #736E65;
-            --accent: #FBECE7;
-            --accent-foreground: #D94520;
-            --border: rgba(0, 0, 0, 0.08);
-            --input: rgba(0, 0, 0, 0.08);
-            --ring: #D94520;
-          }
-          body {
-            background-color: #F7F5EE !important;
-            color: #171717 !important;
-            font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-          }
-          ::selection {
-            background-color: #D94520;
-            color: #FFFFFF;
-          }
-        `}</style>
-      </head>
-      <body className="font-sans antialiased bg-[#F7F5EE] text-[#171717] min-h-screen">
+      <body className="font-sans antialiased bg-[#FAF9F6] text-[#171717] min-h-screen selection:bg-[#FF5A36] selection:text-white">
         {children}
       </body>
     </html>

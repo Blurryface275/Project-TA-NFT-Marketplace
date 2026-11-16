@@ -70,6 +70,109 @@ export default function DashboardClient({
 }: DashboardClientProps) {
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
 
+  const upcomingTickets = userTickets.filter((t) => !t.used);
+  const pastTickets = userTickets.filter((t) => t.used);
+
+  const renderTicketCard = (t: UserTicketItem, isPast: boolean) => {
+    const matchedEvt = events.find(
+      (e) =>
+        Number(e.id) === Number(t.eventId) ||
+        Number(e.onChainEventId) === Number(t.eventId),
+    );
+    const title = matchedEvt?.eventName || "Curated Event Pass";
+    const dateStr = matchedEvt?.startDate
+      ? new Date(matchedEvt.startDate).toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }) + " WIB"
+      : "Confirmed Event Schedule";
+    const venue = matchedEvt?.venueLocation || "Official Venue";
+    const poster =
+      matchedEvt?.imageIpfsCid ||
+      "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&w=800&q=80";
+
+    return (
+      <div
+        key={t.tokenId}
+        className="rounded-2xl bg-white border border-black/[0.08] overflow-hidden shadow-xs hover:border-black/15 transition-all flex flex-col sm:flex-row"
+      >
+        {/* Poster / Thumbnail Left */}
+        <div className="sm:w-56 h-48 sm:h-auto relative overflow-hidden bg-stone-100 shrink-0">
+          <img
+            src={poster}
+            alt={title}
+            className={`w-full h-full object-cover ${isPast ? "grayscale opacity-80" : ""}`}
+          />
+          <span className="absolute top-3 left-3 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-black/60 text-white backdrop-blur-md">
+            {matchedEvt?.category || "Pass"}
+          </span>
+        </div>
+
+        {/* Right Details */}
+        <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              {isPast ? (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-stone-100 text-[#736E65] border border-black/[0.08]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-stone-400" />
+                  USED
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  CONFIRMED
+                </span>
+              )}
+              <span className="text-[11px] font-mono text-[#736E65]">
+                #TKT-{t.tokenId}
+              </span>
+            </div>
+
+            <h3 className="text-lg font-bold text-[#171717] mt-2">{title}</h3>
+
+            <div className="mt-2 space-y-1 text-xs text-[#736E65]">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-3.5 h-3.5 text-[#FF5A36]" />
+                <span>{dateStr}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <MapPin className="w-3.5 h-3.5 text-[#736E65]" />
+                <span>{venue}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Ticket className="w-3.5 h-3.5 text-[#736E65]" />
+                <span>
+                  Pass #{t.tokenId} • Rp{" "}
+                  {Number(t.originalPrice).toLocaleString("id-ID")}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-black/[0.06] flex items-center justify-between">
+            <Link
+              href="/dashboard/tickets"
+              className="inline-flex items-center gap-1 text-xs font-bold text-[#FF5A36] hover:text-[#E54823] transition"
+            >
+              <span>{isPast ? "Detail Tiket" : "Lihat Tiket (QR Masuk)"}</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </Link>
+
+            <Link
+              href="/dashboard/orders"
+              className="px-3 py-1.5 rounded-lg border border-black/[0.08] hover:bg-stone-50 text-xs font-semibold text-[#171717] transition"
+            >
+              Riwayat Pesanan
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const todayDateFormatted = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -135,7 +238,7 @@ export default function DashboardClient({
 
         <Link
           href="/dashboard/buy"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#D94520] hover:bg-[#BF3B19] text-white text-xs sm:text-sm font-bold shadow-xs transition shrink-0 self-start sm:self-auto cursor-pointer"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#FF5A36] hover:bg-[#E54823] text-white text-xs sm:text-sm font-bold shadow-xs transition shrink-0 self-start sm:self-auto cursor-pointer"
         >
           <span>Explore events</span>
           <ArrowUpRight className="w-4 h-4" />
@@ -179,101 +282,8 @@ export default function DashboardClient({
           {/* Ticket Cards List */}
           {activeTab === "upcoming" ? (
             <div className="space-y-4">
-              {userTickets.length > 0 ? (
-                userTickets.map((t) => {
-                  const matchedEvt = events.find(
-                    (e) =>
-                      Number(e.id) === Number(t.eventId) ||
-                      Number(e.onChainEventId) === Number(t.eventId),
-                  );
-                  const title = matchedEvt?.eventName || "Curated Event Pass";
-                  const dateStr = matchedEvt?.startDate
-                    ? new Date(matchedEvt.startDate).toLocaleDateString("id-ID", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      }) + " WIB"
-                    : "Confirmed Event Schedule";
-                  const venue = matchedEvt?.venueLocation || "Official Venue";
-                  const poster =
-                    matchedEvt?.imageIpfsCid ||
-                    "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&w=800&q=80";
-
-                  return (
-                    <div
-                      key={t.tokenId}
-                      className="rounded-2xl bg-white border border-black/[0.08] overflow-hidden shadow-xs hover:border-black/15 transition-all flex flex-col sm:flex-row"
-                    >
-                      {/* Poster / Thumbnail Left */}
-                      <div className="sm:w-56 h-48 sm:h-auto relative overflow-hidden bg-stone-100 shrink-0">
-                        <img
-                          src={poster}
-                          alt={title}
-                          className="w-full h-full object-cover"
-                        />
-                        <span className="absolute top-3 left-3 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-black/60 text-white backdrop-blur-md">
-                          {matchedEvt?.category || "Pass"}
-                        </span>
-                      </div>
-
-                      {/* Right Details */}
-                      <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
-                        <div>
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                              CONFIRMED
-                            </span>
-                            <span className="text-[11px] font-mono text-[#736E65]">
-                              #TKT-{t.tokenId}
-                            </span>
-                          </div>
-
-                          <h3 className="text-lg font-bold text-[#171717] mt-2">
-                            {title}
-                          </h3>
-
-                          <div className="mt-2 space-y-1 text-xs text-[#736E65]">
-                            <div className="flex items-center gap-2">
-                              <Calendar className="w-3.5 h-3.5 text-[#D94520]" />
-                              <span>{dateStr}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <MapPin className="w-3.5 h-3.5 text-[#736E65]" />
-                              <span>{venue}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Ticket className="w-3.5 h-3.5 text-[#736E65]" />
-                              <span>
-                                Pass #{t.tokenId} • Rp{" "}
-                                {Number(t.originalPrice).toLocaleString("id-ID")}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="pt-3 border-t border-black/[0.06] flex items-center justify-between">
-                          <Link
-                            href="/dashboard/tickets"
-                            className="inline-flex items-center gap-1 text-xs font-bold text-[#D94520] hover:text-[#BF3B19] transition"
-                          >
-                            <span>Lihat Tiket (QR Masuk)</span>
-                            <ArrowUpRight className="w-3.5 h-3.5" />
-                          </Link>
-
-                          <Link
-                            href="/dashboard/orders"
-                            className="px-3 py-1.5 rounded-lg border border-black/[0.08] hover:bg-stone-50 text-xs font-semibold text-[#171717] transition"
-                          >
-                            Riwayat Pesanan
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
+              {upcomingTickets.length > 0 ? (
+                upcomingTickets.map((t) => renderTicketCard(t, false))
               ) : events.length > 0 ? (
                 <div className="space-y-4">
                   <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200/80 text-xs text-amber-900 flex items-center justify-between gap-3">
@@ -282,7 +292,7 @@ export default function DashboardClient({
                     </span>
                     <Link
                       href="/dashboard/buy"
-                      className="px-3 py-1 rounded-lg bg-[#D94520] text-white font-bold shrink-0 hover:bg-[#BF3B19] transition"
+                      className="px-3 py-1 rounded-lg bg-[#FF5A36] text-white font-bold shrink-0 hover:bg-[#E54823] transition"
                     >
                       Katalog Lengkap
                     </Link>
@@ -333,7 +343,7 @@ export default function DashboardClient({
 
                             <div className="mt-2 space-y-1 text-xs text-[#736E65]">
                               <div className="flex items-center gap-2">
-                                <Calendar className="w-3.5 h-3.5 text-[#D94520]" />
+                                <Calendar className="w-3.5 h-3.5 text-[#FF5A36]" />
                                 <span>{dateStr}</span>
                               </div>
                               <div className="flex items-center gap-2">
@@ -350,7 +360,7 @@ export default function DashboardClient({
                           <div className="pt-3 border-t border-black/[0.06] flex items-center justify-between">
                             <Link
                               href={`/dashboard/buy?eventId=${evt.id}`}
-                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#D94520] text-white hover:bg-[#BF3B19] text-xs font-bold transition shadow-xs"
+                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#FF5A36] text-white hover:bg-[#E54823] text-xs font-bold transition shadow-xs"
                             >
                               <span>Pilih Kategori & Beli</span>
                               <ArrowUpRight className="w-3.5 h-3.5" />
@@ -373,6 +383,10 @@ export default function DashboardClient({
                 </div>
               )}
             </div>
+          ) : pastTickets.length > 0 ? (
+            <div className="space-y-4">
+              {pastTickets.map((t) => renderTicketCard(t, true))}
+            </div>
           ) : (
             <div className="py-12 text-center rounded-2xl bg-white border border-dashed border-stone-200 p-8 space-y-2">
               <Calendar className="w-8 h-8 text-stone-300 mx-auto" />
@@ -389,9 +403,9 @@ export default function DashboardClient({
           <div className="pt-2 text-center sm:text-left">
             <Link
               href="/dashboard/buy"
-              className="inline-flex items-center gap-2 text-xs font-bold text-[#D94520] hover:underline"
+              className="inline-flex items-center gap-2 text-xs font-bold text-[#FF5A36] hover:underline"
             >
-              <span>Explore more events in Jakarta & Bali</span>
+              <span>Explore more events</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -437,7 +451,7 @@ export default function DashboardClient({
                 <div key={item.id} className="py-3 flex items-center gap-3 group">
                   {/* Date badge */}
                   <div className="w-12 h-12 rounded-xl bg-[#F0EDE4] flex flex-col items-center justify-center shrink-0 text-[#171717]">
-                    <span className="text-[10px] font-bold text-[#D94520]">
+                    <span className="text-[10px] font-bold text-[#FF5A36]">
                       {item.month}
                     </span>
                     <span className="text-sm font-extrabold leading-none">
@@ -447,7 +461,7 @@ export default function DashboardClient({
 
                   {/* Title & Price */}
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-xs font-bold text-[#171717] truncate group-hover:text-[#D94520] transition-colors">
+                    <h4 className="text-xs font-bold text-[#171717] truncate group-hover:text-[#FF5A36] transition-colors">
                       {item.title}
                     </h4>
                     <p className="text-[11px] text-[#736E65] truncate">
@@ -471,7 +485,7 @@ export default function DashboardClient({
 
           {/* "All set for the door" Helper Box (Page 2 PDF style) */}
           <div className="rounded-2xl bg-[#F0EDE4] border border-black/[0.08] p-5 space-y-3">
-            <div className="flex items-center gap-2 text-[#D94520]">
+            <div className="flex items-center gap-2 text-[#FF5A36]">
               <QrCode className="w-5 h-5" />
               <span className="text-xs font-bold uppercase tracking-wider">
                 Door Entry Guide
@@ -489,7 +503,7 @@ export default function DashboardClient({
             <div className="pt-1">
               <Link
                 href="/dashboard/tickets"
-                className="inline-flex items-center justify-center gap-1.5 w-full px-4 py-2.5 rounded-xl bg-[#D94520] hover:bg-[#BF3B19] text-white text-xs font-bold shadow-xs transition"
+                className="inline-flex items-center justify-center gap-1.5 w-full px-4 py-2.5 rounded-xl bg-[#FF5A36] hover:bg-[#E54823] text-white text-xs font-bold shadow-xs transition"
               >
                 <span>Open dynamic barcode</span>
                 <ArrowUpRight className="w-3.5 h-3.5" />

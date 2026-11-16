@@ -114,6 +114,23 @@ export default function ResaleDetailClient({
               return;
             }
 
+            if (
+              pollRes.success &&
+              (pollRes.status === "failed" ||
+                pollRes.status === "refunded" ||
+                pollRes.status === "cancelled")
+            ) {
+              clearInterval(interval);
+              setIsBuying(false);
+              setStatusMsg({
+                type: "error",
+                text:
+                  pollRes.message ||
+                  "Transaksi Gagal — Dana Anda sedang/telah dikembalikan.",
+              });
+              return;
+            }
+
             if (attempts >= maxAttempts) {
               clearInterval(interval);
               setIsBuying(false);

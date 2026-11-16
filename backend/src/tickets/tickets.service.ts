@@ -1,8 +1,10 @@
 import {
   Injectable,
   BadRequestException,
+  ForbiddenException,
   NotFoundException,
   InternalServerErrorException,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createPublicClient, createWalletClient, http, keccak256, toHex, stringToBytes } from 'viem';
@@ -22,6 +24,7 @@ import * as crypto from 'crypto';
 import { parseEventLogs } from 'viem';
 import { ResaleListing, ResaleStatus } from './entities/resale-listing.entity';
 import { TicketCache } from './entities/ticket-cache.entity';
+import { MailService } from '../auth/mail.service';
 
 @Injectable()
 export class TicketsService {
@@ -30,6 +33,10 @@ export class TicketsService {
   private account;
   private contractAddress: `0x${string}`;
   private marketplaceAddress: `0x${string}`;
+  private failedResaleOrders = new Map<
+    string,
+    { status: 'refunded' | 'failed'; message: string; amount: number }
+  >();
 
   constructor(
     private configService: ConfigService,
@@ -42,6 +49,8 @@ export class TicketsService {
     private resaleListingRepository: Repository<ResaleListing>,
     @InjectRepository(Customer)
     private customerRepository: Repository<Customer>,
+    @Optional()
+    private readonly mailService?: MailService,
   ) {
     // Ambil konfigurasi dari backend/.env via NestJS ConfigService
     const RPC_URL = this.configService.get<string>('SEPOLIA_RPC_URL')!;
@@ -72,6 +81,80 @@ export class TicketsService {
       chain: sepolia,
       transport: http(RPC_URL),
     });
+  }
+
+  private async executeWithRetry<T>(
+    fn: () => Promise<T>,
+    maxRetries = 2,
+    delayMs = 2000,
+  ): Promise<T> {
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (err) {
+        lastError = err;
+        if (attempt < maxRetries) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+      }
+    }
+    throw lastError;
+  }
+
+  private async refundMidtransTransaction(
+    orderId: string,
+    amount: number,
+    reason: string,
+  ): Promise<{ refunded: boolean; detail: string }> {
+    const serverKey = this.configService.get<string>('MIDTRANS_SERVER_KEY');
+    if (!serverKey) {
+      return {
+        refunded: false,
+        detail: 'MIDTRANS_SERVER_KEY tidak dikonfigurasi',
+      };
+    }
+
+    try {
+      const authString = Buffer.from(`${serverKey}:`).toString('base64');
+      const response = await fetch(
+        `https://api.sandbox.midtrans.com/v2/${encodeURIComponent(orderId)}/refund`,
+        {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            Authorization: `Basic ${authString}`,
+          },
+          body: JSON.stringify({
+            refund_key: `REFUND-${orderId}`,
+            amount: Math.round(amount),
+            reason,
+          }),
+        },
+      );
+
+      const data = await response.json().catch(() => ({} as any));
+      if (
+        !response.ok ||
+        (data?.status_code && !String(data.status_code).startsWith('2'))
+      ) {
+        return {
+          refunded: false,
+          detail: data?.status_message || `Midtrans HTTP ${response.status}`,
+        };
+      }
+
+      return {
+        refunded: true,
+        detail: data?.status_message || 'Refund otomatis Midtrans berhasil',
+      };
+    } catch (err: any) {
+      return {
+        refunded: false,
+        detail: err?.message || 'Gagal menghubungi API refund Midtrans',
+      };
+    }
   }
 
   async mintTicket(dto: MintTicketDto) {
@@ -250,6 +333,35 @@ export class TicketsService {
       // Ambil data tiket on-chain untuk cek status pemakaian & kepemilikan dompet
       const ticket = await this.getTicket(dto.tokenId);
 
+      // Isolasi akses organizer: pastikan tiket milik event dari organizer yang sedang login
+      if (dto.organizerUserId !== undefined && dto.organizerUserId !== null) {
+        const organizerRows = await this.orderRepository.manager.query(
+          'SELECT id FROM organizers WHERE users_id = ? LIMIT 1',
+          [dto.organizerUserId],
+        );
+        const eventRows = cachedTicket?.eventsId
+          ? await this.orderRepository.manager.query(
+              'SELECT id, organizers_id FROM events WHERE id = ? LIMIT 1',
+              [cachedTicket.eventsId],
+            )
+          : await this.orderRepository.manager.query(
+              'SELECT id, organizers_id FROM events WHERE on_chain_event_id = ? LIMIT 1',
+              [String(ticket.eventId)],
+            );
+
+        if (
+          !organizerRows ||
+          organizerRows.length === 0 ||
+          !eventRows ||
+          eventRows.length === 0 ||
+          Number(eventRows[0].organizers_id) !== Number(organizerRows[0].id)
+        ) {
+          throw new ForbiddenException(
+            'Akses ditolak: Tiket ini bukan milik event organizer Anda.',
+          );
+        }
+      }
+
       if (ticket.used) {
         // Jika di on-chain sudah used tapi di DB belum, sinkronkan langsung
         await this.ticketCacheRepository.update(
@@ -358,6 +470,9 @@ export class TicketsService {
       }
     } catch (error: any) {
       console.error('[Dual-Scan] Verifikasi gagal:', error);
+      if (error instanceof ForbiddenException || error instanceof BadRequestException) {
+        throw error;
+      }
       throw new BadRequestException(
         error?.shortMessage || error?.message || 'Verifikasi tiket di gerbang gagal',
       );
@@ -776,6 +891,17 @@ export class TicketsService {
       });
 
       if (!listing) {
+        const failedInfo = this.failedResaleOrders.get(orderId);
+        if (failedInfo) {
+          return {
+            orderId,
+            status: failedInfo.status,
+            refunded: failedInfo.status === 'refunded',
+            message: failedInfo.message,
+            amount: 1,
+            totalPrice: failedInfo.amount,
+          };
+        }
         throw new BadRequestException(`Order resale #${orderId} tidak ditemukan`);
       }
 
@@ -816,13 +942,29 @@ export class TicketsService {
       }
     }
 
+    const isFailedOrRefunded =
+      order.status === OrderStatus.REFUNDED || order.status === OrderStatus.FAILED;
+    const failureMessage =
+      order.status === OrderStatus.REFUNDED
+        ? 'Transaksi Gagal — Dana Anda telah dikembalikan otomatis.'
+        : order.status === OrderStatus.FAILED
+          ? 'Transaksi Gagal — Pengembalian dana sedang diproses manual.'
+          : undefined;
+
     return {
       orderId: order.id,
       status: order.status,
       midtransTransactionId: order.midtransTransactionId,
+      txHash: order.txHash,
       amount: order.amount,
       totalPrice: order.totalPrice,
       createdAt: order.createdAt,
+      ...(isFailedOrRefunded
+        ? {
+            refunded: order.status === OrderStatus.REFUNDED,
+            message: failureMessage,
+          }
+        : {}),
     };
   }
 
@@ -860,11 +1002,11 @@ export class TicketsService {
     order.status = OrderStatus.PAID;
     order.midtransTransactionId = transactionId || order.midtransTransactionId || null;
 
-    // Pastikan relasi customer dan ticketCategory tersedia jika order belum di-load secara lengkap
-    if (!order.customer || !order.ticketCategory) {
+    // Pastikan relasi customer (beserta user) dan ticketCategory tersedia jika order belum di-load secara lengkap
+    if (!order.customer || !order.customer.user || !order.ticketCategory) {
       const fullOrder = await this.orderRepository.findOne({
         where: { id: order.id },
-        relations: { customer: true, ticketCategory: true },
+        relations: { customer: { user: true }, ticketCategory: true },
       });
       if (fullOrder) {
         order.customer = fullOrder.customer;
@@ -874,12 +1016,22 @@ export class TicketsService {
 
     try {
       console.log(`[TicketsService] Memulai minting on-chain untuk order #${order.id}...`);
-      const mintResult = await this.mintTicket({
-        walletAddress: order.customer.walletAddress!,
-        eventId: order.ticketCategory.eventsId,
-        categoryId: Number(order.ticketCategory.id),
-        quantity: order.amount,
-      });
+      const mintResult = await this.executeWithRetry(
+        () =>
+          this.mintTicket({
+            walletAddress: order.customer.walletAddress!,
+            eventId: order.ticketCategory.eventsId,
+            categoryId: Number(order.ticketCategory.id),
+            quantity: order.amount,
+          }),
+        2,
+        2000,
+      );
+
+      if (mintResult?.txHash) {
+        order.txHash = mintResult.txHash;
+        await this.orderRepository.save(order);
+      }
 
       // Simpan juga ke tabel ticket_cache sesuai ERD supaya query tiket & resale ga perlu looping RPC terus
       if (mintResult.tokenId) {
@@ -903,10 +1055,47 @@ export class TicketsService {
       };
     } catch (err: any) {
       console.error('Minting on-chain gagal setelah pembayaran karena ', err);
+      const refundAmount = Number(order.totalPrice);
+      const refundResult = await this.refundMidtransTransaction(
+        order.id,
+        refundAmount,
+        err?.message || 'Minting on-chain gagal',
+      );
+
+      order.status = refundResult.refunded
+        ? OrderStatus.REFUNDED
+        : OrderStatus.FAILED;
+      await this.orderRepository.save(order);
+
+      const buyerEmail = order.customer?.user?.email;
+      const buyerName = order.customer?.user?.name || 'Pelanggan';
+      if (buyerEmail && this.mailService) {
+        try {
+          await this.mailService.sendTransactionFailedEmail(
+            buyerEmail,
+            buyerName,
+            order.id,
+            refundAmount,
+            refundResult.refunded,
+          );
+        } catch (mailErr) {
+          console.error(
+            '[TicketsService] Gagal mengirim email notifikasi transaksi gagal:',
+            mailErr,
+          );
+        }
+      }
+
+      const failureMessage = refundResult.refunded
+        ? 'Transaksi Gagal — Dana Anda telah dikembalikan otomatis.'
+        : 'Transaksi Gagal — Pengembalian dana sedang diproses manual.';
+
       return {
-        status: 'paid_minting_failed',
+        status: refundResult.refunded ? 'refunded' : 'failed',
         orderId: order.id,
-        error: err.message,
+        refunded: refundResult.refunded,
+        message: failureMessage,
+        error: err?.message,
       };
     }
   }
@@ -1366,17 +1555,23 @@ export class TicketsService {
       try {
         // Eksekusi pemindahan NFT on-chain dari penjual ke pembeli baru via MarketplaceContract.executeResale
         console.log(`[TicketsService] Mengeksekusi executeResale untuk tokenId #${listing.ticketCacheTokenId} ke ${listing.buyerWallet}...`);
-        const hash = await this.walletClient.writeContract({
-          address: this.marketplaceAddress,
-          abi: MARKETPLACE_CONTRACT_ABI,
-          functionName: 'executeResale',
-          args: [
-            BigInt(listing.ticketCacheTokenId),
-            listing.buyerWallet! as `0x${string}`,
-          ],
-        });
-
-        await this.publicClient.waitForTransactionReceipt({ hash });
+        const hash = await this.executeWithRetry(
+          async () => {
+            const txHash = await this.walletClient.writeContract({
+              address: this.marketplaceAddress,
+              abi: MARKETPLACE_CONTRACT_ABI,
+              functionName: 'executeResale',
+              args: [
+                BigInt(listing.ticketCacheTokenId),
+                listing.buyerWallet! as `0x${string}`,
+              ],
+            });
+            await this.publicClient.waitForTransactionReceipt({ hash: txHash });
+            return txHash;
+          },
+          2,
+          2000,
+        );
 
         // Update status listing dari ACTIVE langsung jadi SOLD
         listing.status = ResaleStatus.SOLD;
@@ -1400,10 +1595,63 @@ export class TicketsService {
         };
       } catch (err: any) {
         console.error('Eksekusi executeResale on-chain gagal setelah pembayaran:', err);
+        const refundAmount =
+          Number(listing.lockedPrice) + (Number(listing.adminFee) || 0);
+        const buyerWallet = listing.buyerWallet;
+        const refundResult = await this.refundMidtransTransaction(
+          midtransOrderId,
+          refundAmount,
+          err?.message || 'Eksekusi resale on-chain gagal',
+        );
+
+        listing.status = ResaleStatus.ACTIVE;
+        listing.lockedUntil = null;
+        listing.buyerWallet = null;
+        listing.buyerMidtransTransactionId = null;
+        await this.resaleListingRepository.save(listing);
+
+        const failureStatus = refundResult.refunded ? 'refunded' : 'failed';
+        const failureMessage = refundResult.refunded
+          ? 'Transaksi Gagal — Dana Anda telah dikembalikan otomatis.'
+          : 'Transaksi Gagal — Pengembalian dana sedang diproses manual.';
+
+        this.failedResaleOrders.set(midtransOrderId, {
+          status: failureStatus,
+          message: failureMessage,
+          amount: refundAmount,
+        });
+
+        if (buyerWallet && this.mailService) {
+          try {
+            const buyerCustomer = await this.customerRepository.findOne({
+              where: { walletAddress: buyerWallet },
+              relations: { user: true },
+            });
+            const buyerEmail = buyerCustomer?.user?.email;
+            const buyerName = buyerCustomer?.user?.name || 'Pelanggan';
+            if (buyerEmail) {
+              await this.mailService.sendTransactionFailedEmail(
+                buyerEmail,
+                buyerName,
+                midtransOrderId,
+                refundAmount,
+                refundResult.refunded,
+              );
+            }
+          } catch (mailErr) {
+            console.error(
+              '[TicketsService] Gagal mengirim email notifikasi transaksi resale gagal:',
+              mailErr,
+            );
+          }
+        }
+
         return {
-          status: 'paid_resale_execution_failed',
+          status: failureStatus,
           orderId: midtransOrderId,
-          error: err.message,
+          refunded: refundResult.refunded,
+          message: failureMessage,
+          error: err?.message,
         };
       }
     } else if (['cancel', 'expire', 'deny'].includes(transactionStatus)) {

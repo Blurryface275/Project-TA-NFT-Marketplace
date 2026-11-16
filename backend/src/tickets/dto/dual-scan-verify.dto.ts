@@ -20,4 +20,8 @@ export class DualScanVerifyDto {
   @IsString()
   @IsOptional()
   nik?: string;
+
+  @IsNumber()
+  @IsOptional()
+  organizerUserId?: number;
 }

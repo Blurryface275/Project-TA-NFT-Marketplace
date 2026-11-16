@@ -62,7 +62,7 @@ export function getCategoryMeta(categoryId: number, tokenId: number) {
     case 1:
       return {
         name: "VIP Pass",
-        badgeColor: "text-[#D94520]",
+        badgeColor: "text-[#FF5A36]",
         seatNumber: `VIP-A${String(tokenId).padStart(2, "0")}`,
         area: "Front Stage Area",
       };
@@ -379,14 +379,27 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
           isUsed ? "opacity-70 bg-stone-50" : ""
         }`}
       >
-        {/* 1. Ticket Header with Terracotta/Espresso Warmth */}
-        <div className="w-full p-5 bg-[#171717] text-white flex flex-col justify-between min-h-[140px] relative overflow-hidden">
+        {/* 1. Ticket Header with Event Banner or Clean Dark Fallback */}
+        <div
+          className="w-full p-5 bg-[#171717] bg-cover bg-center text-white flex flex-col justify-between min-h-[140px] relative overflow-hidden"
+          style={
+            currentEvent?.imageIpfsCid
+              ? {
+                  backgroundImage: `linear-gradient(to top, rgba(23,23,23,0.9) 0%, rgba(23,23,23,0.35) 100%), url(${
+                    currentEvent.imageIpfsCid.startsWith("/")
+                      ? `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001"}${currentEvent.imageIpfsCid}`
+                      : currentEvent.imageIpfsCid
+                  })`,
+                }
+              : undefined
+          }
+        >
           <div className="flex items-center justify-between">
             <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-white/10 text-white backdrop-blur-xs border border-white/10">
               {categoryName}
             </span>
             {isListedOnResale ? (
-              <span className="bg-[#FBECE7] text-[#D94520] border border-[#D94520]/30 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+              <span className="bg-[#FBECE7] text-[#FF5A36] border border-[#FF5A36]/30 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                 Sedang Dijual
               </span>
             ) : isUsed && (
@@ -479,7 +492,7 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
                   />
                 ) : (
                   <div className="w-56 h-56 flex flex-col items-center justify-center bg-stone-50 text-[#736E65] rounded-lg p-4 space-y-2">
-                    <AlertCircle className="w-8 h-8 text-[#D94520]" />
+                    <AlertCircle className="w-8 h-8 text-[#FF5A36]" />
                     <span className="text-xs font-bold text-[#171717]">
                       QR Expired
                     </span>
@@ -494,12 +507,12 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
               <div className="w-full max-w-xs space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="flex items-center gap-1.5 text-[#736E65] font-medium">
-                    <Timer className="w-3.5 h-3.5 text-[#D94520]" />
+                    <Timer className="w-3.5 h-3.5 text-[#FF5A36]" />
                     <span>Dynamic Validity:</span>
                   </span>
                   <span
                     className={`font-mono font-bold ${
-                      timeLeft <= 10 ? "text-rose-600" : "text-[#D94520]"
+                      timeLeft <= 10 ? "text-rose-600" : "text-[#FF5A36]"
                     }`}
                   >
                     {timeLeft > 0 ? `${timeLeft}s remaining` : "Expired"}
@@ -509,7 +522,7 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
                 <div className="w-full h-1.5 bg-stone-200 rounded-full overflow-hidden">
                   <div
                     className={`h-full transition-all duration-1000 ease-linear ${
-                      timeLeft <= 10 ? "bg-rose-500" : "bg-[#D94520]"
+                      timeLeft <= 10 ? "bg-rose-500" : "bg-[#FF5A36]"
                     }`}
                     style={{ width: `${(timeLeft / 60) * 100}%` }}
                   />
@@ -519,24 +532,12 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
                   <button
                     type="button"
                     onClick={handleToggleQR}
-                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#D94520] text-white hover:bg-[#BF3B19] text-xs font-bold transition cursor-pointer"
+                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FF5A36] text-white hover:bg-[#E54823] text-xs font-bold transition cursor-pointer"
                   >
                     <RefreshCw className="w-3 h-3" />
                     <span>Refresh Barcode</span>
                   </button>
                 )}
-              </div>
-
-              {/* Gate Marshal Simulation */}
-              <div className="pt-2 border-t border-black/[0.06] w-full">
-                <button
-                  type="button"
-                  onClick={handleRedeem}
-                  disabled={isLoading || isUsed}
-                  className="text-[11px] text-[#736E65] hover:text-[#171717] underline decoration-dotted transition-colors cursor-pointer"
-                >
-                  {isLoading ? "Verifying Gate Entry..." : "Marshal simulation: Scan & Check-In"}
-                </button>
               </div>
             </div>
           )}
@@ -567,11 +568,11 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
                 type="button"
                 onClick={handleCancelResale}
                 disabled={isListingResale}
-                className="w-full bg-[#FBECE7] hover:bg-[#FBECE7]/80 text-[#D94520] border border-[#D94520]/30 font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
+                className="w-full bg-[#FBECE7] hover:bg-[#FBECE7]/80 text-[#FF5A36] border border-[#FF5A36]/30 font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
               >
                 {isListingResale ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin text-[#D94520]" />
+                    <Loader2 className="w-4 h-4 animate-spin text-[#FF5A36]" />
                     <span>Membatalkan Resale...</span>
                   </>
                 ) : (
@@ -584,7 +585,7 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
                   type="button"
                   onClick={handleToggleQR}
                   disabled={isSigning || isUsed}
-                  className="flex-[2] bg-[#D94520] hover:bg-[#BF3B19] text-white font-semibold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
+                  className="flex-[2] bg-[#FF5A36] hover:bg-[#E54823] text-white font-semibold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
                 >
                   {isSigning ? (
                     <>
@@ -626,7 +627,7 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
           <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-xl border border-black/[0.08] overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-black/[0.06] bg-[#F0EDE4]">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-[#FBECE7] text-[#D94520] flex items-center justify-center font-bold">
+                <div className="w-8 h-8 rounded-lg bg-[#FBECE7] text-[#FF5A36] flex items-center justify-center font-bold">
                   <Repeat className="w-4 h-4" />
                 </div>
                 <h3 className="text-base font-bold text-[#171717]">
@@ -645,7 +646,7 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
             <form onSubmit={handleConfirmResaleSubmit} className="p-6 space-y-4 text-left">
               <div className="p-3.5 rounded-xl bg-stone-50 border border-black/[0.06] space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-[#D94520] uppercase tracking-wider">
+                  <span className="text-[11px] font-bold text-[#FF5A36] uppercase tracking-wider">
                     Ticket #{ticket.tokenId} · {categoryName}
                   </span>
                   <span className="text-xs font-semibold text-[#736E65]">
@@ -673,7 +674,7 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t border-black/[0.06]">
                   <span className="font-bold text-[#171717]">Uang yang Diterima:</span>
-                  <span className="font-extrabold text-[#D94520] text-sm">
+                  <span className="font-extrabold text-[#FF5A36] text-sm">
                     Rp {Math.max(0, Number(ticket.originalPrice) - (5000 + Math.round(Number(ticket.originalPrice) * 0.025))).toLocaleString("id-ID")}
                   </span>
                 </div>
@@ -692,7 +693,7 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
                     <select
                       value={bankName}
                       onChange={(e) => setBankName(e.target.value)}
-                      className="w-full px-2.5 py-2 rounded-xl border border-black/[0.08] bg-white text-xs font-semibold text-[#171717] focus:outline-none focus:border-[#D94520]"
+                      className="w-full px-2.5 py-2 rounded-xl border border-black/[0.08] bg-white text-xs font-semibold text-[#171717] focus:outline-none focus:border-[#FF5A36]"
                     >
                       <option value="BCA">BCA</option>
                       <option value="Mandiri">Mandiri</option>
@@ -711,7 +712,7 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
                       placeholder="e.g. 1234567890"
                       value={accountNumber}
                       onChange={(e) => setAccountNumber(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-black/[0.08] bg-white text-xs text-[#171717] focus:outline-none focus:border-[#D94520]"
+                      className="w-full px-3 py-2 rounded-xl border border-black/[0.08] bg-white text-xs text-[#171717] focus:outline-none focus:border-[#FF5A36]"
                     />
                   </div>
                 </div>
@@ -726,7 +727,7 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
                     placeholder="Full name matching bank account"
                     value={accountHolder}
                     onChange={(e) => setAccountHolder(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-black/[0.08] bg-white text-xs text-[#171717] focus:outline-none focus:border-[#D94520]"
+                    className="w-full px-3 py-2 rounded-xl border border-black/[0.08] bg-white text-xs text-[#171717] focus:outline-none focus:border-[#FF5A36]"
                   />
                 </div>
               </div>
@@ -737,7 +738,7 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
                     type="checkbox"
                     checked={agreeTerms}
                     onChange={(e) => setAgreeTerms(e.target.checked)}
-                    className="mt-0.5 rounded text-[#D94520] focus:ring-[#D94520]"
+                    className="mt-0.5 rounded text-[#FF5A36] focus:ring-[#FF5A36]"
                   />
                   <span>
                     I agree that this ticket will be atomically transferred to the buyer once payment settles via Midtrans.
@@ -763,7 +764,7 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
                 <button
                   type="submit"
                   disabled={isListingResale}
-                  className="flex-[2] py-2.5 px-4 rounded-xl bg-[#D94520] hover:bg-[#BF3B19] text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                  className="flex-[2] py-2.5 px-4 rounded-xl bg-[#FF5A36] hover:bg-[#E54823] text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                 >
                   {isListingResale ? (
                     <>

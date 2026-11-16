@@ -83,4 +83,79 @@ export class MailService {
       return false;
     }
   }
+
+  async sendTransactionFailedEmail(
+    to: string,
+    name: string,
+    orderId: string,
+    amount: number,
+    refunded: boolean,
+  ): Promise<void> {
+    try {
+      const formattedAmount = `Rp ${Number(amount).toLocaleString('id-ID')}`;
+      const refundStatusText = refunded
+        ? 'Dana Anda telah dikembalikan secara otomatis melalui Midtrans. Proses pencairan ke metode pembayaran Anda mengikuti ketentuan masing-masing penyedia pembayaran.'
+        : 'Pengembalian dana Anda sedang diproses secara manual oleh tim kami. Tim support akan segera menghubungi Anda atau memproses refund ke rekening/metode pembayaran Anda.';
+
+      const mailOptions = {
+        from:
+          process.env.MAIL_FROM ||
+          '"Web3 NFT Marketplace" <noreply@nftmarketplace.local>',
+        to,
+        subject: `Transaksi Gagal - Pengembalian Dana Order #${orderId}`,
+        html: `
+          <div style="background-color: #f3f4f6; padding: 40px 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            <div style="max-width: 480px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+              <div style="background-color: #dc2626; padding: 22px 20px; text-align: center;">
+                <h1 style="color: #ffffff; font-size: 20px; font-weight: 700; margin: 0;">
+                  Transaksi Gagal
+                </h1>
+              </div>
+
+              <div style="padding: 32px 28px; color: #374151; font-size: 14px; line-height: 1.6;">
+                <p style="margin-top: 0; margin-bottom: 16px; font-weight: 600; color: #111827;">
+                  Halo ${name},
+                </p>
+                <p style="margin-bottom: 16px; color: #4b5563;">
+                  Mohon maaf, proses pencetakan/transfer tiket NFT untuk pesanan <strong>#${orderId}</strong> gagal diproses pada jaringan blockchain setelah pembayaran diterima.
+                </p>
+
+                <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 14px 18px; margin: 20px 0;">
+                  <p style="margin: 0 0 6px 0; color: #991b1b; font-weight: 600;">
+                    Detail Pengembalian Dana
+                  </p>
+                  <p style="margin: 0; color: #7f1d1d;">
+                    Order ID: <strong>#${orderId}</strong><br/>
+                    Nominal: <strong>${formattedAmount}</strong><br/>
+                    Status: <strong>${refunded ? 'Dana Dikembalikan Otomatis' : 'Dalam Proses Refund Manual'}</strong>
+                  </p>
+                </div>
+
+                <p style="margin-bottom: 16px; color: #4b5563;">
+                  ${refundStatusText}
+                </p>
+                <p style="margin: 0; color: #374151; font-weight: 500;">
+                  Terima kasih atas pengertian Anda.
+                </p>
+              </div>
+
+              <div style="background-color: #f9fafb; padding: 16px; text-align: center; border-top: 1px solid #f3f4f6; font-size: 12px; color: #9ca3af;">
+                &copy; ${new Date().getFullYear()} Web3 NFT Marketplace. All rights reserved.
+              </div>
+            </div>
+          </div>
+        `,
+      };
+
+      await this.transporter.sendMail(mailOptions);
+      this.logger.log(
+        `📧 [Mailtrap] Berhasil mengirimkan email transaksi gagal untuk order #${orderId} ke ${to}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `❌ [Mailtrap] Gagal mengirimkan email transaksi gagal untuk order #${orderId} ke ${to}:`,
+        error,
+      );
+    }
+  }
 }

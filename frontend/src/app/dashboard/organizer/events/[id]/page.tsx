@@ -53,18 +53,43 @@ export default async function OrganizerEventDetailPage({ params }: PageProps) {
     redirect("/login");
   }
 
+  if (session.role !== "ORGANIZER") {
+    redirect("/dashboard");
+  }
+
   const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
   let event: EventDetail | null = null;
+  let isForbidden = false;
 
   try {
-    const res = await fetch(`${backendUrl}/api/events/${id}`, {
+    const res = await fetch(`${backendUrl}/api/events/${id}?userId=${session.userId}`, {
       cache: "no-store",
     });
-    if (res.ok) {
+    if (res.status === 403) {
+      isForbidden = true;
+    } else if (res.ok) {
       event = await res.json();
     }
   } catch (err) {
     console.error("[ORGANIZER EVENT DETAIL] Gagal mengambil detail event:", err);
+  }
+
+  if (isForbidden) {
+    return (
+      <div className="container max-w-4xl mx-auto px-4 py-16 text-center space-y-4">
+        <h2 className="text-xl font-bold text-slate-800">Akses Ditolak</h2>
+        <p className="text-sm text-slate-500">
+          Event ini milik organizer lain. Anda tidak memiliki izin untuk melihat atau mengelola event ini.
+        </p>
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-coral-500 text-white text-xs font-semibold hover:bg-coral-600 transition"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Kembali ke Dashboard</span>
+        </Link>
+      </div>
+    );
   }
 
   if (!event) {

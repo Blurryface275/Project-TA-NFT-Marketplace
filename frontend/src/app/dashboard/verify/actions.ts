@@ -1,5 +1,7 @@
 "use server";
 
+import { getSession } from "@/lib/session";
+
 export interface DualScanState {
   success: boolean;
   message: string;
@@ -18,13 +20,17 @@ export async function verifyDualScanAction(payload: {
 }): Promise<DualScanState> {
   try {
     const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
+    const session = await getSession();
 
     const response = await fetch(`${backendUrl}/api/tickets/verify-dual-scan`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        ...payload,
+        organizerUserId: session?.userId ? Number(session.userId) : undefined,
+      }),
       cache: "no-store",
     });
 

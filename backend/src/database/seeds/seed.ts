@@ -65,7 +65,10 @@ async function runSeed() {
             VALUES
             (1, 1, 'UBAYA Music Fest 2026', '2026-12-25 18:00:00', 'Lapangan Parkir Kampus II Tenggilis UBAYA', 'festival musik', 300, 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&w=1200&q=80', 1, 1),
             (2, 2, 'Rock in Indonesia 2026', '2026-12-10 19:00:00', 'Gelora Bung Karno Jakarta', 'konser musik', 1000, 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80', 2, 1),
-            (3, 3, 'Art & Tech Expo 2026', '2026-12-15 10:00:00', 'Museum Nasional Indonesia', 'pameran berbayar', 500, 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80', 3, 1)
+            (3, 3, 'Art & Tech Expo 2026', '2026-12-15 10:00:00', 'Museum Nasional Indonesia', 'pameran berbayar', 500, 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80', 3, 1),
+            (4, 4, 'Indonesia Web3 & Security Summit 2026', '2026-12-18 09:00:00', 'Dyandra Convention Center Surabaya', 'seminar', 400, 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80', 1, 2),
+            (5, 5, 'Tawa Merdeka Comedy Night 2026', '2026-12-20 19:30:00', 'Balai Sarbini Jakarta', 'stand up comedy', 350, 'https://images.unsplash.com/photo-1585699324551-f6c309eedeca?auto=format&fit=crop&w=1200&q=80', 2, 2),
+            (6, 6, 'Garuda Champions Badminton Open 2026', '2026-12-28 13:00:00', 'Istora Senayan Jakarta', 'olahraga', 800, 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&w=1200&q=80', 3, 2)
             ON DUPLICATE KEY UPDATE 
                 on_chain_event_id = VALUES(on_chain_event_id),
                 event_name = VALUES(event_name),
@@ -74,7 +77,8 @@ async function runSeed() {
                 category = VALUES(category),
                 capacity = VALUES(capacity),
                 image_ipfs_cid = VALUES(image_ipfs_cid),
-                organizers_id = VALUES(organizers_id);
+                organizers_id = VALUES(organizers_id),
+                max_per_wallet = VALUES(max_per_wallet);
         `);
     console.log('✅ Events seeded successfully');
 
@@ -88,7 +92,13 @@ async function runSeed() {
             ('3', 'FESTIVAL', 75000.00, 150, 1),
             ('4', 'VIP Rock', 250000.00, 100, 2),
             ('5', 'Festival Rock', 120000.00, 300, 2),
-            ('6', 'Regular Pass', 50000.00, 200, 3)
+            ('6', 'Regular Pass', 50000.00, 200, 3),
+            ('7', 'Early Bird Pass', 100000.00, 150, 4),
+            ('8', 'VIP Executive', 250000.00, 250, 4),
+            ('9', 'Tribune Laugh', 85000.00, 200, 5),
+            ('10', 'Front Row VIP', 175000.00, 150, 5),
+            ('11', 'Court Side VIP', 300000.00, 200, 6),
+            ('12', 'Regular Arena', 125000.00, 600, 6)
             ON DUPLICATE KEY UPDATE
                 events_id = VALUES(events_id),
                 name = VALUES(name),

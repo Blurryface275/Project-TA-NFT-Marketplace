@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { registerPasskey } from "@/lib/passkey";
 import {
@@ -84,6 +85,7 @@ export default function BuyTicketCard({
   event,
   initialEventId,
 }: BuyTicketCardProps) {
+  const router = useRouter();
   const allEvents = events.length > 0 ? events : event ? [event] : [];
 
   const [selectedEventId, setSelectedEventId] = useState<number | null>(
@@ -423,12 +425,18 @@ export default function BuyTicketCard({
 
               if (
                 orderStatus.success &&
-                (orderStatus.status === "failed" || orderStatus.status === "cancelled")
+                (orderStatus.status === "failed" ||
+                  orderStatus.status === "cancelled" ||
+                  orderStatus.status === "refunded")
               ) {
                 clearInterval(interval);
                 setResult({
                   success: false,
-                  message: "Pembayaran dibatalkan atau gagal diproses.",
+                  message:
+                    orderStatus.message ||
+                    (orderStatus.status === "refunded"
+                      ? "Transaksi Gagal — Dana Anda telah dikembalikan otomatis."
+                      : "Transaksi Gagal — Pembayaran dibatalkan atau pengembalian dana diproses manual."),
                 });
                 setIsLoading(false);
                 return;
@@ -445,7 +453,7 @@ export default function BuyTicketCard({
                 setResult({
                   success: true,
                   message:
-                    "Pembayaran diterima. Tiket sedang dicetak on-chain, silakan periksa 'Tiket Saya' segera.",
+                    "Pembayaran diterima. Tiket sedang diterbitkan, silakan periksa 'Tiket Saya' segera.",
                 });
                 setShowSuccessModal(true);
                 return;
@@ -506,14 +514,14 @@ export default function BuyTicketCard({
   const content = (!selectedEventId || !currentEvent) ? (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8">
       <div className="space-y-1">
-        <span className="text-xs font-bold text-[#D94520] uppercase tracking-wider">
+        <span className="text-xs font-bold text-[#FF5A36] uppercase tracking-wider">
           Explore Events
         </span>
         <h1 className="text-2xl sm:text-4xl font-extrabold text-[#171717] tracking-tight">
           Curated Events & Experiences
         </h1>
         <p className="text-sm text-[#736E65]">
-          Guaranteed authentic tickets with 100% price lock protection directly from verified curators.
+          Get your original and verified event tickets.
         </p>
       </div>
 
@@ -532,7 +540,7 @@ export default function BuyTicketCard({
               onClick={() => setCatalogCategory(pill.id)}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
                 catalogCategory === pill.id
-                  ? "bg-[#D94520] text-white border-[#D94520] shadow-xs"
+                  ? "bg-[#FF5A36] text-white border-[#FF5A36] shadow-xs"
                   : "bg-white text-[#736E65] border-black/[0.08] hover:border-black/20 hover:text-[#171717]"
               }`}
             >
@@ -541,13 +549,35 @@ export default function BuyTicketCard({
           ))}
         </div>
 
-        <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#FBECE7] text-[#D94520] border border-[#D94520]/20">
+        <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#FBECE7] text-[#FF5A36] border border-[#FF5A36]/20">
           {filteredEvents.length} Events Found
         </span>
       </div>
 
       {/* Hairline 16:9 Event Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {filteredEvents.length === 0 ? (
+        <div className="py-16 text-center rounded-2xl border border-dashed border-stone-200 bg-white p-8 space-y-3">
+          <div className="w-12 h-12 rounded-xl bg-stone-100 flex items-center justify-center mx-auto text-[#736E65]">
+            <Ticket className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-bold text-[#171717]">
+            Belum ada event di kategori ini
+          </h3>
+          <p className="text-xs text-[#736E65] max-w-md mx-auto">
+            Coba pilih kategori lain atau tampilkan semua event yang tersedia.
+          </p>
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => setCatalogCategory("ALL")}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#FF5A36] hover:bg-[#E54823] text-white text-xs font-bold transition cursor-pointer"
+            >
+              <span>Lihat semua event</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredEvents.map((evt) => {
           const ownedInThisEvent = ownedTickets.filter(
             (t) => t.eventId === Number(evt.onChainEventId || evt.id),
@@ -592,7 +622,7 @@ export default function BuyTicketCard({
                     className={`px-2.5 py-1 rounded-full font-bold text-[10px] backdrop-blur-md border uppercase tracking-wider ${
                       isEventFull
                         ? "bg-black/80 text-stone-200 border-white/20"
-                        : "bg-[#D94520]/90 text-white border-white/20"
+                        : "bg-[#FF5A36]/90 text-white border-white/20"
                     }`}
                   >
                     {isEventFull ? "Already Owned" : "Max 1 Ticket / Person"}
@@ -602,13 +632,13 @@ export default function BuyTicketCard({
 
               <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                 <div className="space-y-2">
-                  <h3 className="text-base font-extrabold text-[#171717] group-hover:text-[#D94520] transition-colors line-clamp-2">
+                  <h3 className="text-base font-extrabold text-[#171717] group-hover:text-[#FF5A36] transition-colors line-clamp-2">
                     {evt.eventName}
                   </h3>
 
                   <div className="space-y-1 text-xs text-[#736E65]">
                     <div className="flex items-center gap-2">
-                      <Calendar className="w-3.5 h-3.5 text-[#D94520] shrink-0" />
+                      <Calendar className="w-3.5 h-3.5 text-[#FF5A36] shrink-0" />
                       <span>{formattedDate}</span>
                     </div>
                     <div className="flex items-center gap-2 truncate">
@@ -628,7 +658,7 @@ export default function BuyTicketCard({
                     </span>
                   </div>
 
-                  <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#D94520] group-hover:bg-[#BF3B19] text-white text-xs font-bold transition shadow-xs">
+                  <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#FF5A36] group-hover:bg-[#E54823] text-white text-xs font-bold transition shadow-xs">
                     <span>Reserve</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </span>
@@ -637,7 +667,8 @@ export default function BuyTicketCard({
             </Link>
           );
         })}
-      </div>
+        </div>
+      )}
     </div>
   ) : (
     <>
@@ -651,7 +682,7 @@ export default function BuyTicketCard({
                 setSelectedEventId(null);
                 setResult(null);
               }}
-              className="hover:text-[#D94520] transition flex items-center gap-1.5 font-semibold cursor-pointer"
+              className="hover:text-[#FF5A36] transition flex items-center gap-1.5 font-semibold cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>All Events</span>
@@ -693,7 +724,7 @@ export default function BuyTicketCard({
                       Date & Time
                     </span>
                     <div className="flex items-center gap-2 text-[#171717] font-semibold">
-                      <Calendar className="w-3.5 h-3.5 text-[#D94520] shrink-0" />
+                      <Calendar className="w-3.5 h-3.5 text-[#FF5A36] shrink-0" />
                       <span>{eventDateFormatted}</span>
                     </div>
                   </div>
@@ -703,7 +734,7 @@ export default function BuyTicketCard({
                       Venue Location
                     </span>
                     <div className="flex items-center gap-2 text-[#171717] font-semibold">
-                      <MapPin className="w-3.5 h-3.5 text-[#D94520] shrink-0" />
+                      <MapPin className="w-3.5 h-3.5 text-[#FF5A36] shrink-0" />
                       <span className="truncate">{currentEvent.venueLocation}</span>
                     </div>
                   </div>
@@ -731,7 +762,7 @@ export default function BuyTicketCard({
                         onClick={() => setSelectedCategoryId(cat.id)}
                         className={`p-4 rounded-xl border transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                           isSelected
-                            ? "border-[#D94520] bg-[#FBECE7]/40 ring-1 ring-[#D94520] shadow-xs"
+                            ? "border-[#FF5A36] bg-[#FBECE7]/40 ring-1 ring-[#FF5A36] shadow-xs"
                             : "border-black/[0.08] hover:border-black/20 hover:bg-stone-50"
                         }`}
                       >
@@ -739,7 +770,7 @@ export default function BuyTicketCard({
                           <div className="flex items-center gap-2">
                             <h3
                               className={`text-sm font-bold ${
-                                isSelected ? "text-[#D94520]" : "text-[#171717]"
+                                isSelected ? "text-[#FF5A36]" : "text-[#171717]"
                               }`}
                             >
                               {cat.name}
@@ -772,7 +803,7 @@ export default function BuyTicketCard({
                               Owned
                             </span>
                           ) : isSelected ? (
-                            <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#D94520] text-white text-xs font-bold shadow-xs">
+                            <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#FF5A36] text-white text-xs font-bold shadow-xs">
                               <Check className="w-3.5 h-3.5" />
                               <span>Selected</span>
                             </div>
@@ -780,7 +811,7 @@ export default function BuyTicketCard({
                             <button
                               type="button"
                               onClick={() => setSelectedCategoryId(cat.id)}
-                              className="px-4 py-1.5 rounded-xl text-xs font-semibold border border-[#D94520] text-[#D94520] hover:bg-[#D94520] hover:text-white transition cursor-pointer"
+                              className="px-4 py-1.5 rounded-xl text-xs font-semibold border border-[#FF5A36] text-[#FF5A36] hover:bg-[#FF5A36] hover:text-white transition cursor-pointer"
                             >
                               Choose
                             </button>
@@ -822,14 +853,14 @@ export default function BuyTicketCard({
                     </span>
                   </div>
                   <div className="flex justify-between text-[#736E65]">
-                    <span>Biaya Layanan & Admin On-Chain</span>
+                    <span>Biaya Layanan & Pemrosesan Tiket</span>
                     <span className="font-semibold text-[#171717] font-mono">
                       Rp {(5000 + Math.round(pricePerTicket * 0.025)).toLocaleString("id-ID")}
                     </span>
                   </div>
                   <div className="flex justify-between items-baseline pt-2 border-t border-black/[0.06] font-bold">
                     <span className="text-[#171717] text-sm">Total Due</span>
-                    <span className="text-lg font-extrabold text-[#D94520] font-mono">
+                    <span className="text-lg font-extrabold text-[#FF5A36] font-mono">
                       Rp {(pricePerTicket + 5000 + Math.round(pricePerTicket * 0.025)).toLocaleString("id-ID")}
                     </span>
                   </div>
@@ -837,8 +868,8 @@ export default function BuyTicketCard({
 
                 <div className="p-2.5 rounded-xl bg-[#F0EDE4] border border-black/[0.06] text-xs flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-[#736E65]">
-                    <Wallet className="w-3.5 h-3.5 text-[#D94520] shrink-0" />
-                    <span>Recipient Wallet:</span>
+                    <Wallet className="w-3.5 h-3.5 text-[#FF5A36] shrink-0" />
+                    <span>ID Akun Tiket:</span>
                   </div>
                   <span className="font-mono font-semibold text-[#171717] text-[11px] truncate max-w-[140px]">
                     {activeWallet
@@ -863,16 +894,16 @@ export default function BuyTicketCard({
                 {!isLoggedIn ? (
                   <Link
                     href="/login"
-                    className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-white bg-[#D94520] hover:bg-[#BF3B19] transition shadow-xs text-xs sm:text-sm cursor-pointer"
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-white bg-[#FF5A36] hover:bg-[#E54823] transition shadow-xs text-xs sm:text-sm cursor-pointer"
                   >
                     <span>Sign in to purchase</span>
                     <ArrowRight className="w-4 h-4" />
                   </Link>
                 ) : !activeWallet ? (
                   <div className="space-y-2">
-                    <div className="p-3 rounded-xl bg-[#FBECE7] border border-[#D94520]/20 text-xs space-y-1">
-                      <div className="flex items-center gap-1.5 font-semibold text-[#D94520]">
-                        <Key className="w-3.5 h-3.5 text-[#D94520]" />
+                    <div className="p-3 rounded-xl bg-[#FBECE7] border border-[#FF5A36]/20 text-xs space-y-1">
+                      <div className="flex items-center gap-1.5 font-semibold text-[#FF5A36]">
+                        <Key className="w-3.5 h-3.5 text-[#FF5A36]" />
                         <span>Passkey Authentication Required</span>
                       </div>
                       <p className="text-[#736E65] text-[11px]">
@@ -884,7 +915,7 @@ export default function BuyTicketCard({
                       type="button"
                       onClick={handleActivateWallet}
                       disabled={isActivatingWallet}
-                      className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-white bg-[#D94520] hover:bg-[#BF3B19] disabled:opacity-50 transition shadow-xs text-xs sm:text-sm cursor-pointer"
+                      className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-white bg-[#FF5A36] hover:bg-[#E54823] disabled:opacity-50 transition shadow-xs text-xs sm:text-sm cursor-pointer"
                     >
                       {isActivatingWallet ? (
                         <>
@@ -930,9 +961,9 @@ export default function BuyTicketCard({
                     )}
 
                     {isFlashSaleLive && (
-                      <div className="p-3 rounded-xl bg-[#FBECE7] border border-[#D94520]/20 text-xs text-[#171717] space-y-1">
-                        <div className="flex items-center gap-1.5 font-bold text-[#D94520]">
-                          <Zap className="w-3.5 h-3.5 fill-[#D94520]" />
+                      <div className="p-3 rounded-xl bg-[#FBECE7] border border-[#FF5A36]/20 text-xs text-[#171717] space-y-1">
+                        <div className="flex items-center gap-1.5 font-bold text-[#FF5A36]">
+                          <Zap className="w-3.5 h-3.5 fill-[#FF5A36]" />
                           <span>Periode Flash Sale Eksklusif</span>
                         </div>
                         <p className="text-[11px] text-[#736E65]">
@@ -988,7 +1019,7 @@ export default function BuyTicketCard({
                         type="button"
                         onClick={handleBuyTicket}
                         disabled={isLoading}
-                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-white bg-[#D94520] hover:bg-[#BF3B19] disabled:opacity-50 disabled:cursor-not-allowed transition text-xs sm:text-sm shadow-xs cursor-pointer"
+                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-white bg-[#FF5A36] hover:bg-[#E54823] disabled:opacity-50 disabled:cursor-not-allowed transition text-xs sm:text-sm shadow-xs cursor-pointer"
                       >
                         {isLoading ? (
                           <>
@@ -1028,7 +1059,7 @@ export default function BuyTicketCard({
       {showSuccessModal && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-2xl p-6 flex flex-col items-center text-center gap-4 shadow-xl border border-black/[0.08] animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-12 h-12 rounded-full bg-[#FBECE7] flex items-center justify-center text-[#D94520]">
+            <div className="w-12 h-12 rounded-full bg-[#FBECE7] flex items-center justify-center text-[#FF5A36]">
               <Check className="w-6 h-6 stroke-[2.5]" />
             </div>
 
@@ -1037,7 +1068,7 @@ export default function BuyTicketCard({
                 Booking Confirmed!
               </h3>
               <p className="text-xs text-[#736E65]">
-                Your pass has been minted and secured.
+                Tiket resmi Anda berhasil diterbitkan dan siap digunakan.
               </p>
             </div>
 
@@ -1056,23 +1087,23 @@ export default function BuyTicketCard({
               </div>
               <div className="flex justify-between items-baseline pt-1.5 border-t border-black/[0.06]">
                 <span className="text-[#736E65] font-medium">Total Settled</span>
-                <span className="font-extrabold text-[#D94520] font-mono text-sm">
+                <span className="font-extrabold text-[#FF5A36] font-mono text-sm">
                   Rp {(confirmedOrderSummary?.totalAmount || pricePerTicket).toLocaleString("id-ID")}
                 </span>
               </div>
             </div>
 
             <div className="w-full space-y-2 pt-1">
-              <Link
-                href="/dashboard/tickets"
+              <button
+                type="button"
                 onClick={() => {
                   setShowSuccessModal(false);
-                  window.location.href = "/dashboard/tickets";
+                  router.push("/dashboard/tickets");
                 }}
-                className="w-full flex items-center justify-center py-2.5 px-4 rounded-xl bg-[#D94520] hover:bg-[#BF3B19] text-white text-xs font-semibold transition shadow-xs"
+                className="w-full flex items-center justify-center py-2.5 px-4 rounded-xl bg-[#FF5A36] hover:bg-[#E54823] text-white text-xs font-semibold transition shadow-xs cursor-pointer"
               >
                 View My Tickets
-              </Link>
+              </button>
               <button
                 type="button"
                 onClick={() => setShowSuccessModal(false)}

@@ -5,6 +5,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import * as crypto from 'crypto';
 import { Customer } from '../customers/entities/customer.entity';
 import { EventsService } from '../events/events.service';
+import { MailService } from '../auth/mail.service';
 import { Order, OrderStatus } from './entities/order.entity';
 import { ResaleListing } from './entities/resale-listing.entity';
 import { TicketCache } from './entities/ticket-cache.entity';
@@ -25,6 +26,9 @@ describe('TicketsService - Midtrans webhook & idempotency', () => {
   let resaleListingRepository: {
     findOne: jest.Mock;
     save: jest.Mock;
+  };
+  let mailService: {
+    sendTransactionFailedEmail: jest.Mock;
   };
 
   const serverKey = 'SB-Mid-server-test-key';
@@ -49,6 +53,9 @@ describe('TicketsService - Midtrans webhook & idempotency', () => {
     resaleListingRepository = {
       findOne: jest.fn(),
       save: jest.fn(),
+    };
+    mailService = {
+      sendTransactionFailedEmail: jest.fn().mockResolvedValue(undefined),
     };
 
     const configMap: Record<string, string> = {
@@ -87,6 +94,10 @@ describe('TicketsService - Midtrans webhook & idempotency', () => {
         {
           provide: getRepositoryToken(Customer),
           useValue: {},
+        },
+        {
+          provide: MailService,
+          useValue: mailService,
         },
       ],
     }).compile();
@@ -177,5 +188,80 @@ describe('TicketsService - Midtrans webhook & idempotency', () => {
       { status: OrderStatus.PAID, midtransTransactionId: 'TRX-123' },
     );
     expect(mintSpy).not.toHaveBeenCalled();
+  });
+
+  it('rolls back order.status to REFUNDED and sends failed email when mintTicket fails across retries', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest
+      .spyOn(global, 'setTimeout')
+      .mockImplementation((cb: (...args: any[]) => void) => {
+        cb();
+        return 0 as any;
+      });
+
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status_code: '200',
+        status_message: 'Success, refund request is approved',
+      }),
+    } as Response);
+
+    orderRepository.update.mockResolvedValue({ affected: 1 });
+    orderRepository.save.mockImplementation(async (o) => o);
+    const mintSpy = jest
+      .spyOn(service, 'mintTicket')
+      .mockRejectedValue(new Error('RPC timeout'));
+
+    const order = {
+      id: 'ORDER-FAIL-1',
+      status: OrderStatus.PENDING,
+      amount: 2,
+      totalPrice: 250000,
+      midtransTransactionId: null,
+      customer: {
+        walletAddress: `0x${'a'.repeat(40)}`,
+        user: {
+          email: 'buyer@example.com',
+          name: 'Budi',
+        },
+      },
+      ticketCategory: {
+        id: '1',
+        eventsId: 'EVT-1',
+        price: 120000,
+      },
+    } as unknown as Order;
+
+    const result = await service.processPaidOrder(order, 'TRX-FAIL-1');
+
+    expect(mintSpy).toHaveBeenCalledTimes(3);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'https://api.sandbox.midtrans.com/v2/ORDER-FAIL-1/refund',
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    );
+    expect(orderRepository.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'ORDER-FAIL-1',
+        status: OrderStatus.REFUNDED,
+      }),
+    );
+    expect(mailService.sendTransactionFailedEmail).toHaveBeenCalledWith(
+      'buyer@example.com',
+      'Budi',
+      'ORDER-FAIL-1',
+      250000,
+      true,
+    );
+    expect(result).toEqual({
+      status: 'refunded',
+      orderId: 'ORDER-FAIL-1',
+      refunded: true,
+      message: 'Transaksi Gagal — Dana Anda telah dikembalikan otomatis.',
+      error: 'RPC timeout',
+    });
   });
 });
