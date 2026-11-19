@@ -7,6 +7,7 @@ export const TICKET_CONTRACT_ABI = [
       { name: 'organizer', type: 'address' },
       { name: 'eventTimestamp', type: 'uint64' },
       { name: 'maxPerWallet', type: 'uint32' },
+      { name: 'eventURI', type: 'string' },
     ],
     outputs: [],
     stateMutability: 'nonpayable',

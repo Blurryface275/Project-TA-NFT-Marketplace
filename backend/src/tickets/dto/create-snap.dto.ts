@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString, Min } from "class-validator";
+import { IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from "class-validator";
 
 export class CreateSnapDto{
     @IsNumber()
@@ -11,6 +11,7 @@ export class CreateSnapDto{
 
     @IsNumber()
     @Min(1)
+    @Max(1, { message: 'Maksimal pembelian adalah 1 tiket per transaksi' })
     quantity: number;
 
     @IsString()

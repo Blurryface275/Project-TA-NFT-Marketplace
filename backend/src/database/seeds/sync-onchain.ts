@@ -31,6 +31,7 @@ const TICKET_CONTRACT_ABI = [
       { name: 'organizer', type: 'address' },
       { name: 'eventTimestamp', type: 'uint64' },
       { name: 'maxPerWallet', type: 'uint32' },
+      { name: 'eventURI', type: 'string' },
     ],
     outputs: [],
     stateMutability: 'nonpayable',
@@ -133,7 +134,7 @@ async function syncEventsToBlockchain() {
           address: contractAddress,
           abi: TICKET_CONTRACT_ABI,
           functionName: 'createEvent',
-          args: [onChainEventId, adminAccount.address, eventTimestamp, maxPerWallet],
+          args: [onChainEventId, adminAccount.address, eventTimestamp, maxPerWallet, evt.image_ipfs_cid || ''],
         });
         const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
         console.log(`✅ Event #${onChainEventId} terdaftar di Sepolia! (Blok #${receipt.blockNumber})`);

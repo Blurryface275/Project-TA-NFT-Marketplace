@@ -1,3 +1,4 @@
+import { backendFetch } from "@/lib/backend";
 import { getSession } from "@/lib/session";
 import FlashSaleClient, { FlashSaleEvent } from "./FlashSaleClient";
 
@@ -8,8 +9,7 @@ export default async function FlashSalePage() {
 
   let events: FlashSaleEvent[] = [];
   try {
-    const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
-    const res = await fetch(`${backendUrl}/api/events`, {
+    const res = await backendFetch("/api/events", {
       cache: "no-store",
     });
     if (res.ok) {

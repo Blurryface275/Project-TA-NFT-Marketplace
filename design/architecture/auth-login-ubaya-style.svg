@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1900 1480" width="1900" height="1480" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <title>Gambar 4.2 Rancangan Arsitektur Login, Session JWT, dan Proteksi Middleware (Detail Lengkap)</title>
+  <desc>Diagram arsitektur 5 kolom dengan 4 pengecekan auth.service.ts, JOIN users+customers+organizers, User DTO utuh, JWT HS256 HttpOnly cookie, dan middleware</desc>
+
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#111827"/></marker>
+    <marker id="arr-ok" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#059669"/></marker>
+    <marker id="arr-err" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#DC2626"/></marker>
+    <filter id="yed-shadow" x="-15%" y="-15%" width="135%" height="135%"><feDropShadow dx="1.5" dy="2.5" stdDeviation="2" flood-color="#000000" flood-opacity="0.18"/></filter>
+    <radialGradient id="g-skin" cx="35%" cy="30%" r="65%"><stop offset="0%" stop-color="#FFE0BD"/><stop offset="100%" stop-color="#E5A97C"/></radialGradient>
+    <linearGradient id="g-shirt" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#60A5FA"/><stop offset="100%" stop-color="#1E3A8A"/></linearGradient>
+    <linearGradient id="g-shield" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#60A5FA"/><stop offset="100%" stop-color="#1D4ED8"/></linearGradient>
+    <linearGradient id="g-gear" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FB7185"/><stop offset="100%" stop-color="#9F1239"/></linearGradient>
+    <linearGradient id="g-db" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#7DD3FC"/><stop offset="50%" stop-color="#0284C7"/><stop offset="100%" stop-color="#075985"/></linearGradient>
+    <linearGradient id="g-jwt" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#DDD6FE"/><stop offset="100%" stop-color="#5B21B6"/></linearGradient>
+    <linearGradient id="g-mw" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#6EE7B7"/><stop offset="100%" stop-color="#047857"/></linearGradient>
+  </defs>
+
+  <rect width="1900" height="1480" fill="#FFFFFF"/>
+  <line x1="360" y1="60" x2="360" y2="1380" stroke="#CBD5E1" stroke-width="1.5"/>
+  <line x1="740" y1="60" x2="740" y2="1380" stroke="#111827" stroke-width="2"/>
+  <line x1="1120" y1="60" x2="1120" y2="1380" stroke="#111827" stroke-width="2"/>
+  <line x1="1500" y1="60" x2="1500" y2="1380" stroke="#CBD5E1" stroke-width="1.5"/>
+
+  <text x="190" y="92" font-size="15" font-weight="800" fill="#1E3A8A" text-anchor="middle">1. USER / BROWSER (UI)</text>
+  <text x="550" y="92" font-size="15" font-weight="800" fill="#1E3A8A" text-anchor="middle">2. ACTION, SESSION &amp; MIDDLEWARE</text>
+  <text x="930" y="92" font-family="'Times New Roman', Georgia, serif" font-size="20" font-weight="800" fill="#111827" text-anchor="middle">3. PUBLIC CHANNEL (HTTP/COOKIE)</text>
+  <text x="1310" y="92" font-size="15" font-weight="800" fill="#9F1239" text-anchor="middle">4. BACKEND (NestJS)</text>
+  <text x="1700" y="92" font-size="15" font-weight="800" fill="#0369A1" text-anchor="middle">5. MYSQL DATABASE</text>
+
+  <!-- Step 1: LoginForm -->
+  <svg x="158" y="130" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48"><g fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"><circle cx="24" cy="12" r="8" fill="#2F88FF" /><path d="M42 44C42 34.0589 33.9411 26 24 26C14.0589 26 6 34.0589 6 44" /></g></svg>
+  <text x="190" y="210" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">1. Alice isi form login</text>
+  <text x="190" y="228" font-size="11" fill="#4B5563" text-anchor="middle">LoginForm.tsx:12,65-145</text>
+  <g font-family="monospace" font-size="11" fill="#1D4ED8">
+    <text x="75" y="252">{</text>
+    <text x="90" y="268">"email": "alice@gmail.com",</text>
+    <text x="90" y="284">"password": "Alice12#$"</text>
+    <text x="75" y="300">}</text>
+  </g>
+
+  <path d="M 320 250 L 420 250" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+
+  <!-- Step 2: Zod -->
+  <svg x="518" y="130" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48"><path fill="#2F88FF" stroke="#000" stroke-linejoin="round" stroke-width="4" d="M6 8.25564L24.0086 3L42 8.25564V19.0337C42 30.3622 34.7502 40.4194 24.0026 44.0005C13.2521 40.4195 6 30.36 6 19.0287V8.25564Z" /></svg>
+  <text x="550" y="210" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">2. Validasi Zod (login/actions.ts:8,32)</text>
+  <g font-family="monospace" font-size="10.5" fill="#059669">
+    <text x="405" y="242">{</text>
+    <text x="420" y="257">"success": true,</text>
+    <text x="420" y="272">"data": {</text>
+    <text x="435" y="287">"email": "alice@gmail.com",</text>
+    <text x="435" y="302">"password": "Alice12#$"</text>
+    <text x="420" y="317">}</text>
+    <text x="405" y="332">}</text>
+  </g>
+
+  <!-- Step 3: HTTP POST -->
+  <path d="M 695 270 C 745 270, 765 250, 815 250" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+  <text x="930" y="195" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">3. HTTP POST Login (actions.ts:51-60)</text>
+  <g font-family="monospace" font-size="10.5" fill="#1D4ED8">
+    <text x="765" y="218">POST /api/auth/login HTTP/1.1</text>
+    <text x="765" y="233">Content-Type: application/json</text>
+    <text x="765" y="253" fill="#111827">{</text>
+    <text x="780" y="268" fill="#111827">"email": "alice@gmail.com",</text>
+    <text x="780" y="283" fill="#111827">"password": "Alice12#$"</text>
+    <text x="765" y="298" fill="#111827">}</text>
+  </g>
+  <path d="M 1055 270 L 1175 270" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+
+  <!-- Step 4: Backend 4 Checks (auth.service.ts:126-167) -->
+  <svg x="1278" y="130" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48"><g fill="none"><path stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M24 40H7C5.34315 40 4 38.6569 4 37V11C4 9.34315 5.34315 8 7 8H41C42.6569 8 44 9.34315 44 11V23.0588" /><path fill="#2F88FF" stroke="#000" stroke-width="4" d="M4 11C4 9.34315 5.34315 8 7 8H41C42.6569 8 44 9.34315 44 11V20H4V11Z" /><circle r="2" fill="#fff" transform="matrix(0 -1 -1 0 10 14)" /><circle r="2" fill="#fff" transform="matrix(0 -1 -1 0 16 14)" /><circle cx="37" cy="34" r="3" stroke="#000" stroke-width="4" /><path stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M37 41V37" /><path stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M37 31V27" /><path stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M30.9378 37.5L34.4019 35.5" /><path stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M39.5979 32.5L43.062 30.5" /><path stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M30.9378 30.5L34.4019 32.5" /><path stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M39.5979 35.5L43.062 37.5" /></g></svg>
+  <text x="1310" y="210" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">4. AuthService.login() (auth.service.ts:126-167)</text>
+  <text x="1310" y="228" font-size="11" fill="#4B5563" text-anchor="middle">auth.controller.ts:18 • bcryptjs, typeorm</text>
+
+  <!-- 4 Explicit Decision Boxes -->
+  <rect x="1150" y="246" width="320" height="38" rx="8" fill="#FFF1F2" stroke="#E11D48" stroke-width="1.5"/>
+  <text x="1310" y="269" font-size="11.5" font-weight="700" fill="#111827" text-anchor="middle">1) Apakah user ditemukan? (#L134) → else 401</text>
+
+  <path d="M 1310 284 L 1310 304" fill="none" stroke="#111827" stroke-width="1.8" marker-end="url(#arr)"/>
+  <rect x="1150" y="308" width="320" height="38" rx="8" fill="#FFF1F2" stroke="#E11D48" stroke-width="1.5"/>
+  <text x="1310" y="331" font-size="11.5" font-weight="700" fill="#111827" text-anchor="middle">2) Apakah password cocok? (bcrypt.compare #L139)</text>
+
+  <path d="M 1310 346 L 1310 366" fill="none" stroke="#111827" stroke-width="1.8" marker-end="url(#arr)"/>
+  <rect x="1150" y="370" width="320" height="38" rx="8" fill="#FFF1F2" stroke="#E11D48" stroke-width="1.5"/>
+  <text x="1310" y="393" font-size="11.5" font-weight="700" fill="#111827" text-anchor="middle">3) Apakah isEmailVerified === true? (#L147)</text>
+
+  <path d="M 1310 408 L 1310 428" fill="none" stroke="#111827" stroke-width="1.8" marker-end="url(#arr)"/>
+  <rect x="1150" y="432" width="320" height="52" rx="8" fill="#FFF7ED" stroke="#EA580C" stroke-width="1.5"/>
+  <text x="1310" y="453" font-size="11.5" font-weight="700" fill="#111827" text-anchor="middle">4) Apakah users_id ada di organizers? (#L152)</text>
+  <text x="1310" y="472" font-family="monospace" font-size="10.5" fill="#9A3412" text-anchor="middle">Ya: "ORGANIZER" • Tidak: "CUSTOMER"</text>
+
+  <path d="M 1310 484 L 1310 504" fill="none" stroke="#111827" stroke-width="1.8" marker-end="url(#arr)"/>
+  <rect x="1150" y="508" width="320" height="44" rx="8" fill="#ECFDF5" stroke="#059669" stroke-width="1.5"/>
+  <text x="1310" y="527" font-family="monospace" font-size="10.5" font-weight="700" fill="#065F46" text-anchor="middle">const { password, ...result } = user; (#L159)</text>
+  <text x="1310" y="543" font-size="10" fill="#047857" text-anchor="middle">Buang hash password + tempel walletAddress &amp; role</text>
+
+  <!-- Step 5: MySQL Tables (users JOIN customers + organizers) -->
+  <path d="M 1465 265 L 1575 265" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+  <svg x="1668" y="130" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48"><g fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"><path d="M44 31C44 36.5228 39.5228 41 34 41C32.2091 41 30.5281 40.5292 29.0741 39.7046C26.5143 38.2529 24.6579 35.7046 24.1436 32.6983C24.0492 32.1463 24 31.5789 24 31C24 28.4323 24.9678 26.0906 26.5585 24.3198C28.3892 22.2818 31.0449 21 34 21C39.5228 21 44 25.4772 44 31Z" /><path d="M34 12V20V21C31.0449 21 28.3892 22.2818 26.5585 24.3198C24.9678 26.0906 24 28.4323 24 31C24 31.5789 24.0492 32.1463 24.1436 32.6983C24.6579 35.7046 26.5143 38.2529 29.0741 39.7046C26.4116 40.5096 22.8776 41 19 41C10.7157 41 4 38.7614 4 36V28V20V12" /><path fill="#2F88FF" d="M34 12C34 14.7614 27.2843 17 19 17C10.7157 17 4 14.7614 4 12C4 9.23858 10.7157 7 19 7C27.2843 7 34 9.23858 34 12Z" /><path d="M4 28C4 30.7614 10.7157 33 19 33C20.807 33 22.5393 32.8935 24.1436 32.6983" /><path d="M4 20C4 22.7614 10.7157 25 19 25C21.7563 25 24.339 24.7522 26.5585 24.3198" /><path d="M34 41C34 41 30.5 35.1375 30.5 31C30.5 26.8625 34 21 34 21" /><path d="M34 41C34 41 37.5 35.1375 37.5 31C37.5 26.8625 34 21 34 21" /><path d="M44 31H24" /></g></svg>
+  <text x="1700" y="210" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">5. Query MySQL (users JOIN customers)</text>
+  <g font-family="monospace" font-size="10" fill="#0369A1">
+    <text x="1520" y="236">Tabel users (9 kolom, #L128):</text>
+    <text x="1520" y="251">{ "id": 1, "name": "Alice",</text>
+    <text x="1530" y="266">"email": "alice@gmail.com",</text>
+    <text x="1530" y="281">"password": "$2b$10$N9qo8u...",</text>
+    <text x="1530" y="296">"isEmailVerified": true,</text>
+    <text x="1530" y="311">"emailVerificationToken": null,</text>
+    <text x="1530" y="326">"emailVerificationExpires": null }</text>
+    <text x="1520" y="348">JOIN customers (relations #L130):</text>
+    <text x="1520" y="363">{ "id": 1, "walletAddress": null,</text>
+    <text x="1530" y="378">"nikHash": "0x2864b40e...", "usersId": 1 }</text>
+    <text x="1520" y="400">Query organizers (#L152):</text>
+    <text x="1520" y="415">[] → role = "CUSTOMER"</text>
+  </g>
+
+  <!-- Step 6: Return User DTO -->
+  <path d="M 1150 530 C 1090 595, 1080 610, 1055 610" fill="none" stroke="#059669" stroke-width="2.4" marker-end="url(#arr-ok)"/>
+  <text x="930" y="575" font-size="13" font-weight="800" fill="#047857" text-anchor="middle">6. HTTP 201 OK (User DTO)</text>
+  <g font-family="monospace" font-size="10" fill="#059669">
+    <text x="760" y="596">{</text>
+    <text x="775" y="611">"id": 1, "name": "Alice",</text>
+    <text x="775" y="626">"email": "alice@gmail.com",</text>
+    <text x="775" y="641">"isEmailVerified": true,</text>
+    <text x="775" y="656">"walletAddress": "",</text>
+    <text x="775" y="671">"role": "CUSTOMER",</text>
+    <text x="775" y="686">"organizersId": null,</text>
+    <text x="775" y="701">"organizationName": null</text>
+    <text x="760" y="716">}</text>
+  </g>
+  <path d="M 760 645 C 720 645, 695 660, 650 660" fill="none" stroke="#059669" stroke-width="2.4" marker-end="url(#arr-ok)"/>
+
+  <!-- Step 7: Create Session -->
+  <svg x="518" y="620" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48"><g fill="none" stroke="#000" stroke-linejoin="round" stroke-width="4"><path fill="#2F88FF" d="M22.8682 24.2982C25.4105 26.7935 26.4138 30.4526 25.4971 33.8863C24.5805 37.32 21.8844 40.0019 18.4325 40.9137C14.9806 41.8256 11.3022 40.8276 8.79375 38.2986C5.02208 34.4141 5.07602 28.2394 8.91499 24.4206C12.754 20.6019 18.9613 20.5482 22.8664 24.3L22.8682 24.2982Z" /><path stroke-linecap="round" d="M23 24L40 7" /><path fill="#2F88FF" d="M30.3052 16.9001L35.7337 22.3001L42.0671 16.0001L36.6385 10.6001L30.3052 16.9001Z" /></g></svg>
+  <text x="550" y="698" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">7. createSession() (session.ts:22-89)</text>
+  <text x="550" y="716" font-size="11" fill="#4B5563" text-anchor="middle">Library: jose (SignJWT HS256 + SESSION_SECRET, 7d)</text>
+  <g font-family="monospace" font-size="10" fill="#5B21B6">
+    <text x="390" y="738">{ "userId": "1", "name": "Alice",</text>
+    <text x="400" y="753">"walletAddress": "", "email": "alice@gmail.com",</text>
+    <text x="400" y="768">"role": "CUSTOMER", "organizersId": null }</text>
+  </g>
+
+  <!-- Step 8: HttpOnly Cookie & Redirect -->
+  <path d="M 390 735 C 330 735, 290 735, 230 735" fill="none" stroke="#059669" stroke-width="2.4" marker-end="url(#arr-ok)"/>
+  <text x="190" y="710" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">8. Simpan Cookie "session"</text>
+  <text x="190" y="728" font-family="monospace" font-size="10.5" font-weight="700" fill="#047857" text-anchor="middle">httpOnly: true, maxAge: 604800s (7 hari)</text>
+  <text x="190" y="746" font-family="monospace" font-size="10.5" font-weight="700" fill="#059669" text-anchor="middle">redirect("/dashboard") (actions.ts:93)</text>
+
+  <!-- Step 9: Middleware -->
+  <path d="M 190 770 C 190 910, 290 945, 420 945" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+  <svg x="518" y="890" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48"><g fill="none" stroke-linejoin="round" stroke-width="4"><path fill="#2F88FF" stroke="#000" d="M6 9.25564L24.0086 4L42 9.25564V20.0337C42 31.3622 34.7502 41.4194 24.0026 45.0005C13.2521 41.4195 6 31.36 6 20.0287V9.25564Z" /><path stroke="#fff" stroke-linecap="round" d="M15 23L22 30L34 18" /></g></svg>
+  <text x="550" y="972" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">9. Evaluasi Middleware (middleware.ts:8 • jwt.ts:6)</text>
+  <g font-family="monospace" font-size="10.5" fill="#047857">
+    <text x="395" y="996">jwtVerify(cookie, encodedKey, { algorithms: ["HS256"] })</text>
+    <text x="395" y="1014">• /dashboard/* (non-/buy): wajib session?.userId</text>
+    <text x="395" y="1032">• /dashboard/admin/*: wajib role === "ORGANIZER"</text>
+  </g>
+
+  <text x="950" y="1435" font-family="'Times New Roman', Georgia, serif" font-size="18" font-weight="700" fill="#111827" text-anchor="middle">Gambar 4.2 Rancangan Arsitektur Login, Session JWT, dan Proteksi Middleware</text>
+</svg>

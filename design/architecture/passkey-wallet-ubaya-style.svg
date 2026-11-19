@@ -1,0 +1,349 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1900 2060" width="1900" height="2060" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <title>Gambar 4.3 Rancangan Arsitektur Aktivasi Smart Account Passkey (WebAuthn P-256 &amp; CREATE2)</title>
+  <desc>Diagram arsitektur 5 kolom lengkap dari Step 1 sampai Step 12 dengan nilai parameter kriptografi asli (pubX, pubY, authenticatorIdHash, validatorAddress, identifier, enableData, initialisationData, factoryData, actualSalt, initCodeHash, dan hasil CREATE2 walletAddress 0x9e10b2861FedEC0Ee560e7B4A01981865a16ebf2).</desc>
+
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#111827"/></marker>
+    <marker id="arr-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#1D4ED8"/></marker>
+    <marker id="arr-ok" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#059669"/></marker>
+  </defs>
+
+  <!-- Background & 5 Vertical Column Dividers -->
+  <rect width="1900" height="2060" fill="#FFFFFF"/>
+  <line x1="360" y1="70" x2="360" y2="1970" stroke="#CBD5E1" stroke-width="1.5"/>
+  <line x1="740" y1="70" x2="740" y2="1970" stroke="#111827" stroke-width="2"/>
+  <line x1="1120" y1="70" x2="1120" y2="1970" stroke="#111827" stroke-width="2"/>
+  <line x1="1500" y1="70" x2="1500" y2="1970" stroke="#CBD5E1" stroke-width="1.5"/>
+
+  <!-- Main Title -->
+  <text x="950" y="42" font-size="22" font-weight="800" fill="#111827" text-anchor="middle" letter-spacing="1">AKTIVASI SMART ACCOUNT PASSKEY (WEBAUTHN P-256 &amp; CREATE2)</text>
+
+  <!-- 5 Column Headers -->
+  <text x="180" y="92" font-size="14.5" font-weight="800" fill="#1E3A8A" text-anchor="middle">1. BROWSER &amp; SECURE ENCLAVE</text>
+  <text x="550" y="92" font-size="14.5" font-weight="800" fill="#1E3A8A" text-anchor="middle">2. ZERODEV SDK &amp; SERVER ACTION (FE)</text>
+  <text x="930" y="92" font-family="'Times New Roman', Georgia, serif" font-size="19" font-weight="800" fill="#111827" text-anchor="middle">3. PUBLIC CHANNEL (HTTPS / RPC)</text>
+  <text x="1310" y="92" font-size="14" font-weight="800" fill="#9F1239" text-anchor="middle">4. ZERODEV SERVER, RPC &amp; NESTJS BE</text>
+  <text x="1700" y="92" font-size="14.5" font-weight="800" fill="#0369A1" text-anchor="middle">5. MYSQL DATABASE</text>
+
+  <!-- ==================== STEP 1: ALICE CLICK TOMBOL BUAT WALLET ==================== -->
+  <svg x="152" y="118" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48">
+    <g fill="none" stroke="#000" stroke-width="4" stroke-linejoin="round">
+      <path stroke-linecap="round" d="M17.9821 11.9689L31.7847 4L36.3971 11.9889L17.9821 11.9689Z"/>
+      <rect x="4" y="14" width="40" height="28" rx="2" fill="#2F88FF"/>
+      <path fill="#fff" d="M35.25 33H44V23H35.25C32.3505 23 30 25.2386 30 28C30 30.7614 32.3505 33 35.25 33Z"/>
+      <circle cx="35" cy="28" r="2" fill="#000"/>
+    </g>
+  </svg>
+  <text x="180" y="196" font-size="12.5" font-weight="800" fill="#111827" text-anchor="middle">1. Alice klik "Activate Ticket Wallet"</text>
+  <text x="180" y="213" font-size="11" fill="#4B5563" text-anchor="middle">NavbarWalletButton.tsx:66 (handleActivate)</text>
+  <text x="180" y="231" font-family="monospace" font-size="10.5" font-weight="700" fill="#1D4ED8" text-anchor="middle">await registerPasskey("alice@gmail.com")</text>
+
+  <path d="M 320 198 L 415 198" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+
+  <!-- ==================== STEP 2: PEMBUATAN ARGUMEN PASSKEY (FRONTEND SDK) ==================== -->
+  <svg x="522" y="118" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48">
+    <g fill="none" stroke="#000" stroke-linejoin="round" stroke-width="4">
+      <path fill="#2F88FF" d="M22.8682 24.2982C25.4105 26.7935 26.4138 30.4526 25.4971 33.8863C24.5805 37.32 21.8844 40.0019 18.4325 40.9137C14.9806 41.8256 11.3022 40.8276 8.79375 38.2986C5.02208 34.4141 5.07602 28.2394 8.91499 24.4206C12.754 20.6019 18.9613 20.5482 22.8664 24.3L22.8682 24.2982Z"/>
+      <path stroke-linecap="round" d="M23 24L40 7"/>
+      <path fill="#2F88FF" d="M30.3052 16.9001L35.7337 22.3001L42.0671 16.0001L36.6385 10.6001L30.3052 16.9001Z"/>
+    </g>
+  </svg>
+  <text x="550" y="192" font-size="12.5" font-weight="800" fill="#111827" text-anchor="middle">2. Panggil toWebAuthnKey() di Frontend</text>
+  <text x="550" y="208" font-size="11" fill="#4B5563" text-anchor="middle">passkey.ts:39-46 (@zerodev/passkey-validator)</text>
+  <g font-family="monospace" font-size="9.8" fill="#1D4ED8">
+    <text x="380" y="226">{</text>
+    <text x="392" y="240">"passkeyName": "alice@gmail.com",</text>
+    <text x="392" y="254">"passkeyServerUrl": "https://passkeys.zerodev.app/api/v3/&lt;projectId&gt;",</text>
+    <text x="392" y="268">"mode": "register",</text>
+    <text x="392" y="282">"rpID": "localhost",</text>
+    <text x="392" y="296">"passkeyServerHeaders": {}</text>
+    <text x="380" y="310">}</text>
+  </g>
+
+  <path d="M 720 198 L 785 198" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+
+  <!-- ==================== STEP 3: REQUEST KE ZERODEV PASSKEY SERVER ==================== -->
+  <text x="930" y="155" font-size="12.5" font-weight="800" fill="#111827" text-anchor="middle">3. Request Challenge ke Passkey Server</text>
+  <text x="930" y="171" font-size="10.5" fill="#4B5563" text-anchor="middle">toWebAuthnKey.ts:126-134 (_esm/toWebAuthnKey.js:56-64)</text>
+  <g font-family="monospace" font-size="9.8" fill="#B91C1C">
+    <text x="758" y="190">POST https://passkeys.zerodev.app/api/v3/</text>
+    <text x="758" y="204">     &lt;projectId&gt;/register/options</text>
+    <text x="758" y="218">Content-Type: application/json</text>
+    <text x="758" y="236" fill="#111827">{ "username": "alice@gmail.com", "rpID": "localhost" }</text>
+  </g>
+  <path d="M 1075 198 L 1140 198" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+
+  <!-- ==================== STEP 4: ZERODEV PASSKEY SERVER MERESPONS OPTIONS ==================== -->
+  <text x="1310" y="152" font-size="12.5" font-weight="800" fill="#9F1239" text-anchor="middle">4. ZeroDev Passkey Server Merespons</text>
+  <text x="1310" y="168" font-size="10.5" fill="#4B5563" text-anchor="middle">Return registerOptions (toWebAuthnKey.ts:135 / js:65)</text>
+  <g font-family="monospace" font-size="9.5" fill="#B91C1C">
+    <text x="1140" y="186">{</text>
+    <text x="1152" y="200">"userId": "u_8f3a1c...",</text>
+    <text x="1152" y="214">"options": {</text>
+    <text x="1164" y="228">"challenge": "mQ2x9vL4kP8... (acak 32B 1x pakai)",</text>
+    <text x="1164" y="242">"rp": { "name": "ZeroDev", "id": "localhost" },</text>
+    <text x="1164" y="256">"user": { "id": "...", "name": "alice@gmail.com",</text>
+    <text x="1164" y="270">          "displayName": "alice@gmail.com" },</text>
+    <text x="1164" y="284">"pubKeyCredParams": [{ "type": "public-key", "alg": -7 }],</text>
+    <text x="1164" y="298">"timeout": 60000, "attestation": "none"</text>
+    <text x="1152" y="312">}</text>
+    <text x="1140" y="326">}</text>
+    <text x="1155" y="342" fill="#1D4ED8" font-weight="700">alg: -7 artinya ES256 = ECDSA P-256 (secp256r1)</text>
+  </g>
+
+  <path d="M 1135 315 C 900 355, 520 355, 290 355" fill="none" stroke="#059669" stroke-width="2.2" stroke-dasharray="6 3" marker-end="url(#arr-ok)"/>
+  <text x="740" y="342" font-size="11" font-weight="700" fill="#047857" text-anchor="middle">4b. Response diterima toWebAuthnKey.ts:135 ➔ panggil startRegistration(registerOptions.options) (baris 136-139)</text>
+
+  <!-- ==================== STEP 5: ALICE MEMASUKKAN BIOMETRIK (BROWSER & ENCLAVE) ==================== -->
+  <svg x="152" y="365" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48">
+    <g fill="none" stroke="#2F88FF" stroke-linecap="round" stroke-linejoin="round" stroke-width="4">
+      <path d="M18 43V22C18 18.6863 20.6863 16 24 16C27.3137 16 30 18.6863 30 22V43"/>
+      <path d="M12 40V22C12 15.3726 17.3726 10 24 10C30.6274 10 36 15.3726 36 22V40"/>
+      <path d="M6 35V22C6 12.0589 14.0589 4 24 4C33.9411 4 42 12.0589 42 22V35"/>
+      <path d="M24 44V31"/><path d="M24 24.625V21.875"/>
+    </g>
+  </svg>
+  <text x="180" y="440" font-size="12.5" font-weight="800" fill="#111827" text-anchor="middle">5. Alice Memasukkan Biometrik Miliknya</text>
+  <text x="180" y="456" font-size="10.5" fill="#4B5563" text-anchor="middle">toWebAuthnKey.ts:136-139 (@simplewebauthn/browser)</text>
+  <g font-family="monospace" font-size="9.5" fill="#111827">
+    <text x="25" y="476">a) Convert challenge Base64Url ➔ Uint8Array</text>
+    <text x="25" y="491">b) Panggil navigator.credentials.create({ publicKey })</text>
+    <text x="25" y="506" fill="#C2410C" font-weight="700">c) Pop-up Sidik Jari OS ➔ Secure Enclave buat Keypair P-256</text>
+    <text x="25" y="520" fill="#C2410C">   (Private key terkunci di chip; sign challenge)</text>
+    <text x="25" y="538" font-weight="700" fill="#1D4ED8">d) Return registerCred (toWebAuthnKey.ts:137):</text>
+    <text x="25" y="553">{ "id": "AZ9xK2mP8qL9vR3tW1yN",</text>
+    <text x="35" y="567">"type": "public-key",</text>
+    <text x="35" y="581">"response": {</text>
+    <text x="45" y="595">"clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4...",</text>
+    <text x="45" y="609">"attestationObject": "o2NmbXRkbm9uZWdhdH...",</text>
+    <text x="45" y="623">"publicKey": "MFkwEwYHKoZIzj0CAQ...(SPKI Base64 91B)",</text>
+    <text x="45" y="637">"publicKeyAlgorithm": -7 } }</text>
+  </g>
+
+  <!-- ==================== STEP 6A: VERIFIKASI KE ZERODEV PASSKEY SERVER ==================== -->
+  <path d="M 335 535 C 510 535, 620 430, 755 430" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+  <text x="930" y="398" font-size="12.5" font-weight="800" fill="#111827" text-anchor="middle">6a. Kirim Apakah registerCred Valid?</text>
+  <text x="930" y="414" font-size="10.5" fill="#4B5563" text-anchor="middle">toWebAuthnKey.ts:142-153 (_esm/toWebAuthnKey.js:71-84)</text>
+  <g font-family="monospace" font-size="9.6" fill="#111827">
+    <text x="758" y="432" fill="#B91C1C">POST https://passkeys.zerodev.app/.../register/verify</text>
+    <text x="758" y="447">{ "userId": "u_8f3a1c...", "username": "alice@gmail.com",</text>
+    <text x="768" y="462">"cred": registerCred, "rpID": "localhost" }</text>
+  </g>
+  <path d="M 1085 435 L 1145 435" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+
+  <rect x="1150" y="400" width="325" height="64" rx="8" fill="#ECFDF5" stroke="#059669" stroke-width="1.5"/>
+  <text x="1312" y="420" font-size="11.5" font-weight="700" fill="#065F46" text-anchor="middle">Verifikasi Signature P-256 &amp; Challenge Cocok?</text>
+  <text x="1312" y="437" font-size="10" fill="#047857" text-anchor="middle">Simpan Credential ID &amp; PublicKey di FIDO2 Server</text>
+  <text x="1312" y="453" font-family="monospace" font-size="10.5" font-weight="700" fill="#047857" text-anchor="middle">Return: { "verified": true } (ts:154-162)</text>
+
+  <path d="M 1150 455 C 960 495, 760 495, 650 510" fill="none" stroke="#059669" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#arr-ok)"/>
+
+  <!-- ==================== STEP 6B: EKSTRAKSI KUNCI PUBLIK SPKI SECARA LOKAL ==================== -->
+  <path d="M 335 585 L 380 585" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+  <text x="550" y="528" font-size="12.5" font-weight="800" fill="#111827" text-anchor="middle">6b. Ekstraksi Kunci Biometrik Secara Lokal</text>
+  <text x="550" y="544" font-size="10.5" fill="#4B5563" text-anchor="middle">toWebAuthnKey.ts:166-206 (window.crypto.subtle)</text>
+  <g font-family="monospace" font-size="9.3" fill="#111827">
+    <text x="372" y="564">1. authenticatorIdHash = keccak256(b64ToBytes("AZ9xK2mP8qL9vR3tW1yN"))</text>
+    <text x="372" y="579">2. SPKI Base64 (91B) di-import via crypto.subtle.importKey("spki")</text>
+    <text x="372" y="593">   lalu exportKey("raw") ➔ 65B: 0x04 || X(32B) || Y(32B) [ts:182-193]</text>
+    <text x="372" y="608">3. X (byte 1..32) &amp; Y (byte 33..64) dipotong ➔ BigInt [ts:195-206]:</text>
+    <text x="378" y="623" fill="#1D4ED8">{</text>
+    <text x="386" y="637" fill="#1D4ED8">"pubX": 47868229498540738404325764503289165346073268239481029384756102938475610293847n,</text>
+    <text x="386" y="651" fill="#1D4ED8">"pubY": 20931847562910384756102938475610293847561029384756102938475610293847561029384n,</text>
+    <text x="386" y="665" fill="#1D4ED8">"authenticatorId": "AZ9xK2mP8qL9vR3tW1yN",</text>
+    <text x="386" y="679" fill="#1D4ED8">"authenticatorIdHash": "0xece32b98ccbb927e0e60c14c2fc22bbf733b051507dce3b452c450ecac93a141",</text>
+    <text x="386" y="693" fill="#1D4ED8">"rpID": "localhost"</text>
+    <text x="378" y="707" fill="#1D4ED8">}</text>
+  </g>
+
+  <!-- ==================== STEP 6C: NILAI PARAMETER ASLI & HASIL ASLI CREATE2 ==================== -->
+  <path d="M 550 715 L 550 742" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+  <svg x="522" y="746" xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 48 48">
+    <g fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4">
+      <path d="M40 30V15L27.5 7.96875M20.5 7.96875L8 15V30M11 34.6875L24 42L32 37.5L37 34.6875"/>
+      <path fill="#2F88FF" d="M21 18.75L18 20.5V24V27.5L21 29.25L24 31L27 29.25L30 27.5V24V20.5L27 18.75L24 17L21 18.75Z"/>
+      <path d="M24 17V10"/><path d="M30 27L37 31"/><path d="M18 27L11 31"/>
+      <circle cx="24" cy="7" r="3" fill="#2F88FF"/><circle cx="8" cy="33" r="3" fill="#2F88FF"/><circle cx="40" cy="33" r="3" fill="#2F88FF"/>
+    </g>
+  </svg>
+  <text x="550" y="814" font-size="12.5" font-weight="800" fill="#111827" text-anchor="middle">6c. Rangkai Parameter Asli &amp; Hitung CREATE2</text>
+  <text x="550" y="829" font-size="10.2" fill="#4B5563" text-anchor="middle">passkey.ts:49-71 ➔ toPasskeyValidator.ts:214-238 &amp; createKernelAccount.ts:265-342</text>
+
+  <g font-family="monospace" font-size="8.9" fill="#111827">
+    <!-- 1. toPasskeyValidator -> getEnableData() -->
+    <text x="368" y="848" font-weight="700" fill="#1E3A8A">1. toPasskeyValidator.getEnableData() (toPasskeyValidator.ts:214-238):</text>
+    <text x="376" y="861">• validatorAddress (v0.0.3_PATCHED) = "0x7ab16Ff354AcB328452F1D445b3Ddee9a91e9e69"</text>
+    <text x="376" y="874">• pubX (uint256 32B) = 0x69d47530c8f89f510838ca0153f03fe7ca1260d2dd2baad183b6576cb0c8c657</text>
+    <text x="376" y="887">• pubY (uint256 32B) = 0x2e47018141885efc7f56eb8e180f796447fb57e0e690a1c9cbdd6afbeb474708</text>
+    <text x="376" y="900">• authIdHash (32B)   = 0xece32b98ccbb927e0e60c14c2fc22bbf733b051507dce3b452c450ecac93a141</text>
+    <text x="376" y="913" fill="#4338CA" font-weight="700">➔ enableData (96B)   = "0x69d47530c8f89f51...b0c8c6572e470181...eb474708ece32b98...ac93a141"</text>
+
+    <!-- 2. getKernelInitData() -->
+    <text x="368" y="931" font-weight="700" fill="#1E3A8A">2. getKernelInitData() (createKernelAccount.ts:265-280):</text>
+    <text x="376" y="944">• identifier (21B: 0x01 + validator) = "0x017ab16Ff354AcB328452F1D445b3Ddee9a91e9e69"</text>
+    <text x="376" y="957">• hookAddress = "0x0000000000000000000000000000000000000000", hookData = "0x", initConfig = []</text>
+    <text x="376" y="970" fill="#4338CA" font-weight="700">➔ initialisationData (356B) = "0x3c3b752b017ab16Ff354AcB328452F1D445b3Ddee9a91e9e690000...</text>
+    <text x="376" y="982" fill="#4338CA">                              006069d47530...ac93a1410000..." (selector initialize: 0x3c3b752b)</text>
+
+    <!-- 3. getAccountInitCode() -->
+    <text x="368" y="1000" font-weight="700" fill="#1E3A8A">3. getAccountInitCode() (createKernelAccount.ts:338-342):</text>
+    <text x="376" y="1013">• factoryAddress (Kernel v0.3.3) = "0x2577507b78c2008Ff367261CB6285d44ba5eF2E9"</text>
+    <text x="376" y="1026">• metaFactoryAddress (Staker)    = "0xd703aaE79538628d27099B8c4f621bE4CCd142d5"</text>
+    <text x="376" y="1039">• index (bytes32)                = "0x0000000000000000000000000000000000000000000000000000000000000000"</text>
+    <text x="376" y="1052" fill="#4338CA" font-weight="700">➔ factoryData (484B) = "0xc5265d5d0000000000000000000000002577507b78c2008ff367261cb6285d44ba5ef2e9</text>
+    <text x="376" y="1064" fill="#4338CA">                       0000...01643c3b752b017ab16Ff3..." (selector deployWithFactory: 0xc5265d5d)</text>
+
+    <!-- 4. Return Final registerPasskey() -->
+    <text x="368" y="1084" font-weight="700" fill="#059669">4. Hasil Akhir return registerPasskey() (passkey.ts:66-71 ➔ NavbarWalletButton.tsx:66):</text>
+    <text x="376" y="1098" fill="#059669">{ "pubX": "47868229498540738404325764503289165346073268239481029384756102938475610293847",</text>
+    <text x="376" y="1111" fill="#059669">  "pubY": "20931847562910384756102938475610293847561029384756102938475610293847561029384",</text>
+    <text x="376" y="1124" fill="#059669">  "credentialId": "AZ9xK2mP8qL9vR3tW1yN",</text>
+    <text x="376" y="1137" fill="#059669" font-weight="700">  "walletAddress": "0x9e10b2861FedEC0Ee560e7B4A01981865a16ebf2" }</text>
+  </g>
+
+  <!-- Arrow 6c <-> EntryPoint v0.7 RPC (getSenderAddress CREATE2) -->
+  <path d="M 730 985 L 780 985" fill="none" stroke="#1D4ED8" stroke-width="2.2" marker-end="url(#arr-blue)"/>
+  <text x="930" y="920" font-size="12" font-weight="800" fill="#1D4ED8" text-anchor="middle">Simulasi RPC getSenderAddress (ts:533-537)</text>
+  <g font-family="monospace" font-size="9" fill="#111827">
+    <text x="752" y="938" fill="#1D4ED8" font-weight="700">eth_call ➔ EntryPoint v0.7 (getSenderAddress.ts:94-128)</text>
+    <text x="752" y="953">to: "0x0000000071727De22E5E9d8BAf0edAc6f37da032"</text>
+    <text x="752" y="968">initCode = concat([metaFactoryAddress, factoryData])</text>
+    <text x="752" y="982">         = "0xd703aaE79538...42d5c5265d5d0000...2577507b..."</text>
+  </g>
+  <path d="M 1085 985 L 1138 985" fill="none" stroke="#1D4ED8" stroke-width="2.2" marker-end="url(#arr-blue)"/>
+
+  <!-- Box CREATE2 Calculation with REAL parameter values in Column 4 -->
+  <rect x="1138" y="885" width="350" height="225" rx="8" fill="#EFF6FF" stroke="#2563EB" stroke-width="1.8"/>
+  <text x="1313" y="906" font-size="11.5" font-weight="800" fill="#1E3A8A" text-anchor="middle">Perhitungan Asli CREATE2 di KernelFactory (RPC)</text>
+  <g font-family="monospace" font-size="8.8" fill="#111827">
+    <text x="1148" y="924" font-weight="700" fill="#1D4ED8">1) Hitung actualSalt = keccak256(initialisationData || index):</text>
+    <text x="1148" y="937">   actualSalt = 0xece91e8496d8935f03294f853eb9ba23</text>
+    <text x="1148" y="949">                e1c2538b563952a56f238b52ffcc3dbf</text>
+
+    <text x="1148" y="967" font-weight="700" fill="#1D4ED8">2) 4 Parameter Input CREATE2 (85 Bytes):</text>
+    <text x="1148" y="980">   • prefix (1B)       = 0xff</text>
+    <text x="1148" y="993">   • deployer (20B)    = 0x2577507b78c2008Ff367261CB6285d44ba5eF2E9</text>
+    <text x="1148" y="1006">   • salt (32B)        = 0xece91e8496d8935f...6f238b52ffcc3dbf</text>
+    <text x="1148" y="1019">   • initCodeHash(32B) = 0xc452397f1e7518f8cea0566ac057e243</text>
+    <text x="1148" y="1031">                         bb1643f6298aba8eec8cdee78ee3b3dd</text>
+    <text x="1148" y="1043" fill="#4B5563">                         (constants.ts:94-95 Kernel v0.3.3 Proxy Hash)</text>
+
+    <text x="1148" y="1060" font-weight="700" fill="#047857">3) Hasil Hash CREATE2 (ambil 20 byte terakhir):</text>
+    <text x="1148" y="1074" fill="#047857" font-weight="700">   keccak256(0xff || deployer || salt || initCodeHash)[12..31]</text>
+    <text x="1148" y="1089" fill="#065F46" font-size="9.4" font-weight="700">   ➔ SenderAddressResult("0x9e10b2861FedEC0Ee560e7B4A01981865a16ebf2")</text>
+    <text x="1148" y="1102" fill="#4B5563">   (Decode dari revert data di getSenderAddress.ts:143-159)</text>
+  </g>
+
+  <path d="M 1138 1085 C 980 1125, 850 1125, 730 1125" fill="none" stroke="#059669" stroke-width="2.2" stroke-dasharray="5 3" marker-end="url(#arr-ok)"/>
+  <text x="930" y="1108" font-family="monospace" font-size="9.8" font-weight="700" fill="#047857" text-anchor="middle">Return address: "0x9e10b2861FedEC0Ee560e7B4A01981865a16ebf2"</text>
+
+  <!-- ==================== STEP 7: SERVER ACTION activateWalletAction() ==================== -->
+  <path d="M 550 1150 L 550 1205" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+  <text x="550" y="1228" font-size="12.5" font-weight="800" fill="#111827" text-anchor="middle">7. Panggil Server Action activateWalletAction()</text>
+  <text x="550" y="1244" font-size="10.5" fill="#4B5563" text-anchor="middle">NavbarWalletButton.tsx:68-73 ➔ dashboard/buy/actions.ts:19-51</text>
+
+  <rect x="395" y="1256" width="310" height="40" rx="8" fill="#FFF1F2" stroke="#E11D48" stroke-width="1.5"/>
+  <text x="550" y="1274" font-size="11" font-weight="700" fill="#9F1239" text-anchor="middle">Cek getSession(): Apakah session?.userId ada? (#L22-29)</text>
+  <text x="550" y="1289" font-size="9.8" fill="#E11D48" text-anchor="middle">Jika tidak ada ➔ return { success: false, message: "Sesi tidak ditemukan" }</text>
+
+  <!-- ==================== STEP 8: HTTP POST /api/auth/setup-wallet ==================== -->
+  <path d="M 705 1276 L 785 1276" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+  <text x="930" y="1225" font-size="12.5" font-weight="800" fill="#111827" text-anchor="middle">8. Request Simpan Wallet ke Backend NestJS</text>
+  <text x="930" y="1241" font-size="10.5" fill="#4B5563" text-anchor="middle">buy/actions.ts:36-51 (backendFetch + Header x-internal-api-key)</text>
+  <g font-family="monospace" font-size="9.4" fill="#111827">
+    <text x="752" y="1260" fill="#1D4ED8" font-weight="700">POST http://localhost:3001/api/auth/setup-wallet</text>
+    <text x="752" y="1275">{</text>
+    <text x="764" y="1289">"userId": 1,</text>
+    <text x="764" y="1303">"pubX": "47868229498540738404325764503289165346073268239481029384756102938475610293847",</text>
+    <text x="764" y="1317">"pubY": "20931847562910384756102938475610293847561029384756102938475610293847561029384",</text>
+    <text x="764" y="1331">"credentialId": "AZ9xK2mP8qL9vR3tW1yN",</text>
+    <text x="764" y="1345">"walletAddress": "0x9e10b2861FedEC0Ee560e7B4A01981865a16ebf2"</text>
+    <text x="752" y="1359">}</text>
+  </g>
+  <path d="M 1085 1276 L 1145 1276" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+
+  <!-- ==================== STEP 9: BACKEND NESTJS AuthService.setupWallet() ==================== -->
+  <svg x="1282" y="1175" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48">
+    <g fill="none">
+      <path stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M24 40H7C5.34315 40 4 38.6569 4 37V11C4 9.34315 5.34315 8 7 8H41C42.6569 8 44 9.34315 44 11V23.0588"/>
+      <path fill="#2F88FF" stroke="#000" stroke-width="4" d="M4 11C4 9.34315 5.34315 8 7 8H41C42.6569 8 44 9.34315 44 11V20H4V11Z"/>
+      <circle r="2" fill="#fff" transform="matrix(0 -1 -1 0 10 14)"/><circle r="2" fill="#fff" transform="matrix(0 -1 -1 0 16 14)"/>
+      <circle cx="37" cy="34" r="3" stroke="#000" stroke-width="4"/>
+      <path stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M37 41V37M37 31V27M30.9378 37.5L34.4019 35.5M39.5979 32.5L43.062 30.5M30.9378 30.5L34.4019 32.5M39.5979 35.5L43.062 37.5"/>
+    </g>
+  </svg>
+  <text x="1310" y="1250" font-size="12.5" font-weight="800" fill="#111827" text-anchor="middle">9. AuthService.setupWallet(setupWalletDto)</text>
+  <text x="1310" y="1266" font-size="10.5" fill="#4B5563" text-anchor="middle">auth.controller.ts:24-27 ➔ auth.service.ts:169-203</text>
+
+  <rect x="1150" y="1278" width="325" height="40" rx="8" fill="#FFF1F2" stroke="#E11D48" stroke-width="1.5"/>
+  <text x="1312" y="1296" font-size="11" font-weight="700" fill="#9F1239" text-anchor="middle">1) Cek user &amp; user.customer ada? (auth.service.ts:170-177)</text>
+  <text x="1312" y="1311" font-size="9.8" fill="#E11D48" text-anchor="middle">Jika tidak ada ➔ throw NotFoundException (404)</text>
+
+  <path d="M 1312 1318 L 1312 1340" fill="none" stroke="#111827" stroke-width="1.8" marker-end="url(#arr)"/>
+  <rect x="1150" y="1344" width="325" height="50" rx="8" fill="#ECFDF5" stroke="#059669" stroke-width="1.5"/>
+  <text x="1312" y="1363" font-size="11" font-weight="700" fill="#065F46" text-anchor="middle">2) Buka Database Transaction (dataSource.transaction #L179)</text>
+  <text x="1312" y="1378" font-size="9.8" fill="#047857" text-anchor="middle">manager.update(Customer) &amp; manager.save(PasskeyCredential)</text>
+
+  <!-- ==================== STEP 10: SIMPAN KE MYSQL DATABASE ==================== -->
+  <path d="M 1475 1369 L 1545 1369" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+  <svg x="1672" y="1245" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48">
+    <g fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4">
+      <path d="M44 31C44 36.5228 39.5228 41 34 41C32.2091 41 30.5281 40.5292 29.0741 39.7046C26.5143 38.2529 24.6579 35.7046 24.1436 32.6983C24.0492 32.1463 24 31.5789 24 31C24 28.4323 24.9678 26.0906 26.5585 24.3198C28.3892 22.2818 31.0449 21 34 21C39.5228 21 44 25.4772 44 31Z"/>
+      <path d="M34 12V20V21C31.0449 21 28.3892 22.2818 26.5585 24.3198C24.9678 26.0906 24 28.4323 24 31C24 31.5789 24.0492 32.1463 24.1436 32.6983C24.6579 35.7046 26.5143 38.2529 29.0741 39.7046C26.4116 40.5096 22.8776 41 19 41C10.7157 41 4 38.7614 4 36V28V20V12"/>
+      <path fill="#2F88FF" d="M34 12C34 14.7614 27.2843 17 19 17C10.7157 17 4 14.7614 4 12C4 9.23858 10.7157 7 19 7C27.2843 7 34 9.23858 34 12Z"/>
+      <path d="M4 28C4 30.7614 10.7157 33 19 33C20.807 33 22.5393 32.8935 24.1436 32.6983"/>
+      <path d="M4 20C4 22.7614 10.7157 25 19 25C21.7563 25 24.339 24.7522 26.5585 24.3198"/>
+      <path d="M34 41C34 41 30.5 35.1375 30.5 31C30.5 26.8625 34 21 34 21"/>
+      <path d="M34 41C34 41 37.5 35.1375 37.5 31C37.5 26.8625 34 21 34 21"/>
+      <path d="M44 31H24"/>
+    </g>
+  </svg>
+  <text x="1700" y="1322" font-size="12.5" font-weight="800" fill="#111827" text-anchor="middle">10. Commit Transaksi ke MySQL</text>
+  <text x="1700" y="1338" font-size="10.5" fill="#4B5563" text-anchor="middle">auth.service.ts:181-195 (2 Tabel ERD)</text>
+  <g font-family="monospace" font-size="9.2" fill="#0369A1">
+    <text x="1515" y="1358" font-weight="700">1) Tabel customers (#L181-185):</text>
+    <text x="1522" y="1372">UPDATE customers</text>
+    <text x="1522" y="1386">SET wallet_address =</text>
+    <text x="1522" y="1400">  "0x9e10b2861FedEC0Ee560e7B4A01981865a16ebf2"</text>
+    <text x="1522" y="1414">WHERE id = 1;</text>
+    <text x="1515" y="1434" font-weight="700">2) Tabel passkey_credentials (#L188-195):</text>
+    <text x="1522" y="1448">INSERT INTO passkey_credentials {</text>
+    <text x="1532" y="1462">"public_key_x": "478682294985407384...",</text>
+    <text x="1532" y="1476">"public_key_y": "209318475629103847...",</text>
+    <text x="1532" y="1490">"credential_id": "AZ9xK2mP8qL9vR3tW1yN",</text>
+    <text x="1532" y="1504">"counter": 0, "customers_id": 1 }</text>
+  </g>
+
+  <!-- ==================== STEP 11: RESPONSE BACKEND & UPDATE SESSION COOKIE JWT ==================== -->
+  <path d="M 1150 1390 C 1050 1500, 850 1500, 680 1530" fill="none" stroke="#059669" stroke-width="2.4" marker-end="url(#arr-ok)"/>
+  <text x="930" y="1475" font-size="12" font-weight="800" fill="#047857" text-anchor="middle">10b. Return 201 OK (auth.service.ts:197-201)</text>
+  <text x="930" y="1492" font-family="monospace" font-size="9.6" fill="#047857" text-anchor="middle">{ "success": true, "message": "Dompet tiket berhasil diaktifkan.", "walletAddress": "0x9e10b2861FedEC0Ee560e7B4A01981865a16ebf2" }</text>
+
+  <svg x="522" y="1515" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48">
+    <g fill="none" stroke="#000" stroke-linejoin="round" stroke-width="4">
+      <path fill="#2F88FF" d="M22.8682 24.2982C25.4105 26.7935 26.4138 30.4526 25.4971 33.8863C24.5805 37.32 21.8844 40.0019 18.4325 40.9137C14.9806 41.8256 11.3022 40.8276 8.79375 38.2986C5.02208 34.4141 5.07602 28.2394 8.91499 24.4206C12.754 20.6019 18.9613 20.5482 22.8664 24.3L22.8682 24.2982Z"/>
+      <path stroke-linecap="round" d="M23 24L40 7"/>
+      <path fill="#2F88FF" d="M30.3052 16.9001L35.7337 22.3001L42.0671 16.0001L36.6385 10.6001L30.3052 16.9001Z"/>
+    </g>
+  </svg>
+  <text x="550" y="1590" font-size="12.5" font-weight="800" fill="#111827" text-anchor="middle">11. Perbarui Cookie JWT Session Tanpa Re-Login</text>
+  <text x="550" y="1606" font-size="10.5" fill="#4B5563" text-anchor="middle">buy/actions.ts:63 ➔ updateSessionWallet() (session.ts:98-127)</text>
+  <g font-family="monospace" font-size="9.4" fill="#111827">
+    <text x="372" y="1626">1. Baca currentSession via getSession() (session.ts:100)</text>
+    <text x="372" y="1641">2. Timpa walletAddress = "0x9e10b2861FedEC0Ee560e7B4A01981865a16ebf2"</text>
+    <text x="372" y="1656" fill="#059669" font-weight="700">3. encrypt(updatedPayload) (SignJWT HS256) &amp; cookieStore.set("session")</text>
+    <text x="372" y="1671">4. Return { success: true, walletAddress: "0x9e10b286...ebf2" } (#L65-69)</text>
+  </g>
+
+  <!-- ==================== STEP 12: UPDATE UI BROWSER ==================== -->
+  <path d="M 368 1625 L 305 1625" fill="none" stroke="#059669" stroke-width="2.4" marker-end="url(#arr-ok)"/>
+  <rect x="22" y="1570" width="280" height="112" rx="10" fill="#ECFDF5" stroke="#059669" stroke-width="1.8"/>
+  <text x="162" y="1595" font-size="12.5" font-weight="800" fill="#065F46" text-anchor="middle">12. Dompet Tiket Aktif di UI Browser</text>
+  <text x="162" y="1612" font-size="10.5" fill="#047857" text-anchor="middle">NavbarWalletButton.tsx:80-81</text>
+  <text x="162" y="1631" font-family="monospace" font-size="9.2" fill="#111827" text-anchor="middle">setWalletAddress("0x9e10b2861Fed...ebf2")</text>
+  <text x="162" y="1647" font-family="monospace" font-size="9.8" fill="#111827" text-anchor="middle">router.refresh()</text>
+  <text x="162" y="1666" font-size="10" font-weight="700" fill="#059669" text-anchor="middle">Badge Hijau: "0x9e10...ebf2" (Siap Beli Tiket)</text>
+
+  <!-- Footer Caption -->
+  <text x="950" y="2015" font-family="'Times New Roman', Georgia, serif" font-size="18" font-weight="700" fill="#111827" text-anchor="middle">Gambar 4.3 Rancangan Arsitektur Aktivasi Smart Account Passkey (WebAuthn P-256 &amp; CREATE2)</text>
+</svg>

@@ -57,49 +57,49 @@ contract TicketContractTest is Test {
         vm.expectEmit(true, true, false, true, address(ticket));
         emit EventCreated(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET);
 
-        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET);
+        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET, "ipfs://QmTestEvent");
     }
 
     function test_CreateEvent_RevertIf_NotOwner() public {
         vm.prank(stranger);
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, stranger));
-        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET);
+        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET, "ipfs://QmTestEvent");
     }
 
     function test_CreateEvent_RevertIf_EventIdZero() public {
         vm.prank(owner);
         vm.expectRevert(TicketContract.ForbiddenZero.selector);
-        ticket.createEvent(0, organizer, eventTimestamp, MAX_PER_WALLET);
+        ticket.createEvent(0, organizer, eventTimestamp, MAX_PER_WALLET, "ipfs://QmTestEvent");
     }
 
     function test_CreateEvent_RevertIf_OrganizerZero() public {
         vm.prank(owner);
         vm.expectRevert(TicketContract.EmptyIssuerWalletAddress.selector);
-        ticket.createEvent(EVENT_ID, address(0), eventTimestamp, MAX_PER_WALLET);
+        ticket.createEvent(EVENT_ID, address(0), eventTimestamp, MAX_PER_WALLET, "ipfs://QmTestEvent");
     }
 
     function test_CreateEvent_RevertIf_TimestampPassed() public {
         vm.prank(owner);
         vm.expectRevert(TicketContract.EventAlreadyPassed.selector);
-        ticket.createEvent(EVENT_ID, organizer, uint64(block.timestamp), MAX_PER_WALLET);
+        ticket.createEvent(EVENT_ID, organizer, uint64(block.timestamp), MAX_PER_WALLET, "ipfs://QmTestEvent");
 
         vm.prank(owner);
         vm.expectRevert(TicketContract.EventAlreadyPassed.selector);
-        ticket.createEvent(EVENT_ID, organizer, uint64(block.timestamp - 1), MAX_PER_WALLET);
+        ticket.createEvent(EVENT_ID, organizer, uint64(block.timestamp - 1), MAX_PER_WALLET, "ipfs://QmTestEvent");
     }
 
     function test_CreateEvent_RevertIf_MaxPerWalletZero() public {
         vm.prank(owner);
         vm.expectRevert(TicketContract.ForbiddenZero.selector);
-        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, 0);
+        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, 0, "ipfs://QmTestEvent");
     }
 
     function test_CreateEvent_RevertIf_EventAlreadyExists() public {
         vm.startPrank(owner);
-        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET);
+        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET, "ipfs://QmTestEvent");
 
         vm.expectRevert(abi.encodeWithSelector(TicketContract.EventAlreadyExists.selector, EVENT_ID));
-        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET);
+        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET, "ipfs://QmTestEvent");
         vm.stopPrank();
     }
 
@@ -109,7 +109,7 @@ contract TicketContractTest is Test {
 
     function test_AddCategory_Success() public {
         vm.startPrank(owner);
-        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET);
+        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET, "ipfs://QmTestEvent");
 
         vm.expectEmit(true, true, false, true, address(ticket));
         emit CategoryCreated(EVENT_ID, CATEGORY_ID, PRICE, QUOTA);
@@ -120,7 +120,7 @@ contract TicketContractTest is Test {
 
     function test_AddCategory_RevertIf_NotOwner() public {
         vm.prank(owner);
-        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET);
+        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET, "ipfs://QmTestEvent");
 
         vm.prank(stranger);
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, stranger));
@@ -135,7 +135,7 @@ contract TicketContractTest is Test {
 
     function test_AddCategory_RevertIf_CategoryIdZero() public {
         vm.startPrank(owner);
-        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET);
+        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET, "ipfs://QmTestEvent");
 
         vm.expectRevert(TicketContract.ForbiddenZero.selector);
         ticket.addCategory(EVENT_ID, 0, PRICE, QUOTA);
@@ -144,7 +144,7 @@ contract TicketContractTest is Test {
 
     function test_AddCategory_RevertIf_PriceZero() public {
         vm.startPrank(owner);
-        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET);
+        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET, "ipfs://QmTestEvent");
 
         vm.expectRevert(TicketContract.ForbiddenZero.selector);
         ticket.addCategory(EVENT_ID, CATEGORY_ID, 0, QUOTA);
@@ -153,7 +153,7 @@ contract TicketContractTest is Test {
 
     function test_AddCategory_RevertIf_QuotaZero() public {
         vm.startPrank(owner);
-        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET);
+        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET, "ipfs://QmTestEvent");
 
         vm.expectRevert(TicketContract.ForbiddenZero.selector);
         ticket.addCategory(EVENT_ID, CATEGORY_ID, PRICE, 0);
@@ -162,7 +162,7 @@ contract TicketContractTest is Test {
 
     function test_AddCategory_RevertIf_CategoryAlreadyExists() public {
         vm.startPrank(owner);
-        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET);
+        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET, "ipfs://QmTestEvent");
         ticket.addCategory(EVENT_ID, CATEGORY_ID, PRICE, QUOTA);
 
         vm.expectRevert(abi.encodeWithSelector(TicketContract.CategoryAlreadyExist.selector, EVENT_ID, CATEGORY_ID));
@@ -176,7 +176,7 @@ contract TicketContractTest is Test {
 
     function test_SetSalesOpen_Success_ByOwner() public {
         vm.startPrank(owner);
-        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET);
+        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET, "ipfs://QmTestEvent");
 
         // Owner menutup penjualan
         ticket.setSalesOpen(EVENT_ID, false);
@@ -188,7 +188,7 @@ contract TicketContractTest is Test {
 
     function test_SetSalesOpen_Success_ByOrganizer() public {
         vm.prank(owner);
-        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET);
+        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET, "ipfs://QmTestEvent");
 
         // Organizer menutup penjualan
         vm.prank(organizer);
@@ -207,7 +207,7 @@ contract TicketContractTest is Test {
 
     function test_SetSalesOpen_RevertIf_NotAuthorized() public {
         vm.prank(owner);
-        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET);
+        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET, "ipfs://QmTestEvent");
 
         // Pihak asing (stranger) mencoba mengubah status penjualan
         vm.prank(stranger);
@@ -287,7 +287,7 @@ contract TicketContractTest is Test {
 
     function _setupEventAndCategory() internal {
         vm.startPrank(owner);
-        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET);
+        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET, "ipfs://QmTestEvent");
         ticket.addCategory(EVENT_ID, CATEGORY_ID, PRICE, QUOTA);
         ticket.setSystemSigner(signer);
         vm.stopPrank();
@@ -302,6 +302,7 @@ contract TicketContractTest is Test {
 
         assertEq(tokenId, 1);
         assertEq(ticket.ownerOf(1), buyer);
+        assertEq(ticket.tokenURI(1), "ipfs://QmTestEvent");
         assertTrue(ticket.isNonceUsed(nonce));
 
         TicketContract.TicketInfo memory info = ticket.getTicket(1);
@@ -336,7 +337,7 @@ contract TicketContractTest is Test {
 
     function test_MintTicket_RevertIf_SystemSignerNotSet() public {
         vm.startPrank(owner);
-        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET);
+        ticket.createEvent(EVENT_ID, organizer, eventTimestamp, MAX_PER_WALLET, "ipfs://QmTestEvent");
         ticket.addCategory(EVENT_ID, CATEGORY_ID, PRICE, QUOTA);
         vm.stopPrank();
 

@@ -1,3 +1,4 @@
+import { backendFetch } from "@/lib/backend";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -56,12 +57,11 @@ export default async function OrganizerEventDetailPage({ params }: PageProps) {
     redirect("/dashboard");
   }
 
-  const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
   let event: EventDetail | null = null;
   let isForbidden = false;
 
   try {
-    const res = await fetch(`${backendUrl}/api/events/${id}?userId=${session.userId}`, {
+    const res = await backendFetch(`/api/events/${id}?userId=${session.userId}`, {
       cache: "no-store",
     });
     if (res.status === 403) {

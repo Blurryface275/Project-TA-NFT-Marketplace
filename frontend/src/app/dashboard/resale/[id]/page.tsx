@@ -1,3 +1,4 @@
+import { backendFetch } from "@/lib/backend";
 import { getSession } from "@/lib/session";
 import { redirect, notFound } from "next/navigation";
 import ResaleDetailClient from "./ResaleDetailClient";
@@ -17,8 +18,8 @@ export default async function ResaleDetailPage({ params }: ResaleDetailPageProps
 
   let listing = null;
   try {
-    const res = await fetch(
-      `${process.env.BACKEND_URL}/api/tickets/resale/detail/${id}`,
+    const res = await backendFetch(
+      `/api/tickets/resale/detail/${id}`,
       { cache: "no-store" },
     );
     if (res.ok) {

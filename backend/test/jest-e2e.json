@@ -4,6 +4,20 @@
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
   "transform": {
-    "^.+\\.(t|j)s$": "ts-jest"
-  }
+    "^.+\\.ts$": [
+      "ts-jest",
+      {
+        "tsconfig": {
+          "module": "commonjs",
+          "moduleResolution": "node",
+          "resolvePackageJsonExports": false,
+          "ignoreDeprecations": "6.0"
+        }
+      }
+    ],
+    "^.+\\.m?js$": "<rootDir>/../jest-esm-transformer.cjs"
+  },
+  "transformIgnorePatterns": [
+    "node_modules[/\\\\](?!(@nestjs|bcryptjs|nodemailer|abitype|@adraffy)[/\\\\])"
+  ]
 }

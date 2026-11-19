@@ -8,6 +8,7 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InternalApiGuard, Public } from '../common/internal-api-guard';
 import { TicketsService } from './tickets.service';
@@ -65,6 +66,11 @@ export class TicketsController {
   // POST http://localhost:3001/api/tickets/simulate-pay/:orderId
   @Post('simulate-pay/:orderId')
   async simulatePayment(@Param('orderId') orderId: string) {
+    if (process.env.NODE_ENV?.trim().toLowerCase() === 'production') {
+      throw new ForbiddenException(
+        'Endpoint simulasi pembayaran dinonaktifkan di lingkungan production.',
+      );
+    }
     const order = await this.ticketsService.getOrderEntity(orderId);
     return this.ticketsService.processPaidOrder(order, `SIMULATED-${Date.now()}`);
   }

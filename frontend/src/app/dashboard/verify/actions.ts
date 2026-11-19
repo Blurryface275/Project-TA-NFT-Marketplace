@@ -1,5 +1,6 @@
 "use server";
 
+import { backendFetch } from "@/lib/backend";
 import { getSession } from "@/lib/session";
 
 export interface DualScanState {
@@ -16,13 +17,16 @@ export async function verifyDualScanAction(payload: {
   walletAddress?: string;
   signedAt?: string;
   signature?: string;
+  authenticatorData?: string;
+  clientDataJSON?: string;
+  credentialId?: string;
+  nonce?: number;
   nik?: string;
 }): Promise<DualScanState> {
   try {
-    const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
     const session = await getSession();
 
-    const response = await fetch(`${backendUrl}/api/tickets/verify-dual-scan`, {
+    const response = await backendFetch("/api/tickets/verify-dual-scan", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -51,11 +55,11 @@ export async function verifyDualScanAction(payload: {
       txHash: data.txHash,
       blockNumber: data.blockNumber,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[VERIFY ACTION ERROR]:", error);
     return {
       success: false,
-      message: error?.message || "Koneksi ke backend server gagal.",
+      message: error instanceof Error ? error.message : "Koneksi ke backend server gagal.",
     };
   }
 }

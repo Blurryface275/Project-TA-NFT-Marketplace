@@ -17,14 +17,16 @@ import { EventsService } from '../events/events.service';
 import { CreateSnapDto } from './dto/create-snap.dto';
 import { DualScanVerifyDto } from './dto/dual-scan-verify.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan } from 'typeorm';
+import { EntityManager, Repository, MoreThan } from 'typeorm';
 import { Order, OrderStatus } from './entities/order.entity';
 import { Customer } from '../customers/entities/customer.entity';
 import * as crypto from 'crypto';
 import { parseEventLogs } from 'viem';
 import { ResaleListing, ResaleStatus } from './entities/resale-listing.entity';
 import { TicketCache } from './entities/ticket-cache.entity';
+import { TicketCategory } from '../events/entities/ticket-category.entity';
 import { MailService } from '../auth/mail.service';
+import { PasskeyCredential } from '../auth/entities/passkey-credential.entity';
 
 @Injectable()
 export class TicketsService {
@@ -33,6 +35,7 @@ export class TicketsService {
   private account;
   private contractAddress: `0x${string}`;
   private marketplaceAddress: `0x${string}`;
+  private readonly ticketLocks = new Map<number, Promise<void>>();
   private failedResaleOrders = new Map<
     string,
     { status: 'refunded' | 'failed'; message: string; amount: number }
@@ -49,6 +52,8 @@ export class TicketsService {
     private resaleListingRepository: Repository<ResaleListing>,
     @InjectRepository(Customer)
     private customerRepository: Repository<Customer>,
+    @InjectRepository(PasskeyCredential)
+    private passkeyCredentialRepository: Repository<PasskeyCredential>,
     @Optional()
     private readonly mailService?: MailService,
   ) {
@@ -154,6 +159,89 @@ export class TicketsService {
         refunded: false,
         detail: err?.message || 'Gagal menghubungi API refund Midtrans',
       };
+    }
+  }
+
+  private async withTicketLock<T>(
+    tokenId: number,
+    fn: () => Promise<T>,
+  ): Promise<T> {
+    const prev = this.ticketLocks.get(tokenId) ?? Promise.resolve();
+    let release!: () => void;
+    const next = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const chained = prev.then(() => next);
+    this.ticketLocks.set(tokenId, chained);
+
+    await prev;
+    try {
+      return await fn();
+    } finally {
+      release();
+      if (this.ticketLocks.get(tokenId) === chained) {
+        this.ticketLocks.delete(tokenId);
+      }
+    }
+  }
+
+  private async assertWalletEligibleForEvent(
+    manager: EntityManager,
+    walletLower: string,
+    customerId: number,
+    eventId: number,
+  ): Promise<void> {
+    const ownedCount = await manager
+      .createQueryBuilder(TicketCache, 'tc')
+      .where('LOWER(tc.ownerWallet) = :walletLower', { walletLower })
+      .andWhere('tc.eventsId = :eventId', { eventId })
+      .getCount();
+
+    if (ownedCount > 0) {
+      throw new BadRequestException(
+        'Batas tiket anda sudah terpenuhi: 1 dompet maksimal hanya dapat memiliki 1 tiket untuk event ini.',
+      );
+    }
+
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const activeOrderCount = await manager
+      .createQueryBuilder(Order, 'o')
+      .innerJoin('o.ticketCategory', 'cat')
+      .leftJoin(TicketCache, 'tc', 'tc.ordersId = o.id')
+      .where('o.customersId = :customerId', { customerId })
+      .andWhere('cat.eventsId = :eventId', { eventId })
+      .andWhere(
+        '((o.status = :pendingStatus AND o.createdAt > :tenMinutesAgo) OR (o.status = :paidStatus AND tc.tokenId IS NULL))',
+        {
+          pendingStatus: OrderStatus.PENDING,
+          tenMinutesAgo,
+          paidStatus: OrderStatus.PAID,
+        },
+      )
+      .getCount();
+
+    if (activeOrderCount > 0) {
+      throw new BadRequestException(
+        'Anda sudah memiliki pesanan aktif atau tiket yang sedang diproses untuk event ini.',
+      );
+    }
+
+    const now = new Date();
+    const activeResaleLockCount = await manager
+      .createQueryBuilder(ResaleListing, 'rl')
+      .innerJoin('rl.ticketCache', 'tc')
+      .where('LOWER(rl.buyerWallet) = :walletLower', { walletLower })
+      .andWhere('rl.status = :lockedStatus', {
+        lockedStatus: ResaleStatus.LOCKED,
+      })
+      .andWhere('rl.lockedUntil > :now', { now })
+      .andWhere('tc.eventsId = :eventId', { eventId })
+      .getCount();
+
+    if (activeResaleLockCount > 0) {
+      throw new BadRequestException(
+        'Anda sedang memiliki reservasi pembelian resale aktif untuk event ini.',
+      );
     }
   }
 
@@ -297,14 +385,18 @@ export class TicketsService {
   // 3. Eksekusi markUsed(tokenId) di smart contract
   async verifyDualScanGate(dto: DualScanVerifyDto) {
     try {
-      const isManualMode = dto.signature === '0xmanual' || !dto.walletAddress;
+      const walletTrimmed = dto.walletAddress?.trim() || '';
+      const isManualMode = dto.signature === '0xmanual' && !walletTrimmed;
 
-      // 1. Validasi masa berlaku Dynamic QR Code (Maksimal 60 detik) jika bukan mode manual
+      // 1. Validasi masa berlaku Dynamic QR Code (Maksimal 60 detik) & kelengkapan WebAuthn jika bukan mode manual
       if (isManualMode) {
         if (!dto.nik || dto.nik.trim().length !== 16) {
           throw new BadRequestException('Verifikasi KTP Wajib: Masukkan 16 digit NIK fisik pengunjung.');
         }
       } else {
+        if (!walletTrimmed) {
+          throw new BadRequestException('Dynamic QR code tidak valid: alamat dompet tidak ditemukan.');
+        }
         if (!dto.signedAt) {
           throw new BadRequestException('Dynamic QR code tidak valid: timestamp penandatanganan tidak ditemukan.');
         }
@@ -315,6 +407,25 @@ export class TicketsService {
         if (isNaN(signedTime) || timeDiffSeconds > 60 || timeDiffSeconds < -5) {
           throw new BadRequestException(
             'QR Code tiket sudah kedaluwarsa (masa aktif 60 detik). Minta pengunjung merefresh QR Code di HP-nya.',
+          );
+        }
+        if (
+          !dto.signature?.trim() ||
+          !dto.authenticatorData?.trim() ||
+          !dto.clientDataJSON?.trim()
+        ) {
+          throw new BadRequestException(
+            'Dynamic QR code tidak valid: bukti tanda tangan WebAuthn tidak lengkap.',
+          );
+        }
+        if (
+          dto.nonce === undefined ||
+          dto.nonce === null ||
+          typeof dto.nonce !== 'number' ||
+          !Number.isFinite(dto.nonce)
+        ) {
+          throw new BadRequestException(
+            'Dynamic QR code tidak valid: nonce WebAuthn tidak ditemukan.',
           );
         }
       }
@@ -373,9 +484,9 @@ export class TicketsService {
         );
       }
 
-      const targetWallet = (dto.walletAddress || ticket.owner).toLowerCase();
+      const targetWallet = (walletTrimmed || ticket.owner).toLowerCase();
 
-      if (!isManualMode && dto.walletAddress && ticket.owner.toLowerCase() !== dto.walletAddress.toLowerCase()) {
+      if (!isManualMode && ticket.owner.toLowerCase() !== walletTrimmed.toLowerCase()) {
         throw new BadRequestException(
           'Alamat dompet di QR Code tidak cocok dengan pemilik sah tiket di blockchain!',
         );
@@ -392,9 +503,14 @@ export class TicketsService {
       const computedNikHash = keccak256(stringToBytes(cleanNik));
 
       // Cek dulu kecocokan NIK di tabel customer MySQL (sangat cepat <5ms)
-      const customer = await this.customerRepository.findOne({
+      let customer = await this.customerRepository.findOne({
         where: { walletAddress: targetWallet },
       });
+      if (!customer && (walletTrimmed || ticket.owner) !== targetWallet) {
+        customer = await this.customerRepository.findOne({
+          where: { walletAddress: walletTrimmed || ticket.owner },
+        });
+      }
 
       if (customer && customer.nikHash) {
         if (customer.nikHash.toLowerCase() !== computedNikHash.toLowerCase()) {
@@ -418,6 +534,136 @@ export class TicketsService {
         ) {
           throw new BadRequestException(
             'Verifikasi KTP Gagal: NIK KTP fisik tidak cocok dengan pemilik sah tiket ini di blockchain!',
+          );
+        }
+      }
+
+      // 3b. Verifikasi Kriptografis WebAuthn P-256 ECDSA (dilakukan SEBELUM update used = 1)
+      if (!isManualMode) {
+        if (!customer) {
+          throw new BadRequestException(
+            'Data pemilik passkey WebAuthn tidak ditemukan untuk dompet ini.',
+          );
+        }
+
+        const credentialIdFilter = dto.credentialId?.trim();
+        const credentials = await this.passkeyCredentialRepository.find({
+          where: credentialIdFilter
+            ? { customersId: customer.id, credentialId: credentialIdFilter }
+            : { customersId: customer.id },
+        });
+
+        if (!credentials || credentials.length === 0) {
+          throw new BadRequestException(
+            'Kredensial passkey WebAuthn tidak ditemukan untuk pemilik tiket ini.',
+          );
+        }
+
+        const clientDataBuf = Buffer.from(dto.clientDataJSON!.trim(), 'base64url');
+        let parsedClientData: { type?: unknown; challenge?: unknown } | null = null;
+        try {
+          const decoded: unknown = JSON.parse(clientDataBuf.toString('utf8'));
+          if (decoded && typeof decoded === 'object') {
+            parsedClientData = decoded as { type?: unknown; challenge?: unknown };
+          }
+        } catch {
+          parsedClientData = null;
+        }
+
+        if (
+          !parsedClientData ||
+          parsedClientData.type !== 'webauthn.get' ||
+          typeof parsedClientData.challenge !== 'string' ||
+          parsedClientData.challenge.length === 0
+        ) {
+          throw new BadRequestException(
+            'Payload clientDataJSON WebAuthn tidak valid.',
+          );
+        }
+
+        const expectedChallengeStr = `NFTIX-AUTH:Token#${dto.tokenId}:Owner#${walletTrimmed}:Nonce#${dto.nonce}:Time#${dto.signedAt}`;
+        const expectedChallenge = Buffer.from(
+          expectedChallengeStr,
+          'utf8',
+        ).toString('base64url');
+        if (parsedClientData.challenge !== expectedChallenge) {
+          throw new BadRequestException(
+            'Challenge WebAuthn QR Code tidak cocok dengan tiket dan waktu penandatanganan.',
+          );
+        }
+
+        const authDataBuf = Buffer.from(dto.authenticatorData!.trim(), 'base64url');
+        if (authDataBuf.length < 37 || (authDataBuf[32] & 0x01) === 0) {
+          throw new BadRequestException(
+            'Data autentikator WebAuthn tidak valid atau kehadiran pengguna tidak terverifikasi.',
+          );
+        }
+
+        const sigRaw = dto.signature!.trim();
+        let signatureBuf: Buffer;
+        if (/^0x/i.test(sigRaw)) {
+          const hex = sigRaw.slice(2);
+          if (!hex || hex.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(hex)) {
+            throw new BadRequestException('Format hex tanda tangan WebAuthn tidak valid.');
+          }
+          signatureBuf = Buffer.from(hex, 'hex');
+        } else if (/^[0-9a-fA-F]+$/.test(sigRaw) && sigRaw.length % 2 === 0) {
+          signatureBuf = Buffer.from(sigRaw, 'hex');
+        } else {
+          signatureBuf = Buffer.from(sigRaw, 'base64url');
+        }
+
+        if (signatureBuf.length === 0) {
+          throw new BadRequestException('Tanda tangan WebAuthn kosong atau tidak valid.');
+        }
+
+        const clientDataHash = crypto
+          .createHash('sha256')
+          .update(clientDataBuf)
+          .digest();
+        const signedPayload = Buffer.concat([authDataBuf, clientDataHash]);
+
+        const isSignatureValid = credentials.some((cred) => {
+          try {
+            const xBig = BigInt(cred.publicKeyX);
+            const yBig = BigInt(cred.publicKeyY);
+            if (xBig < 0n || yBig < 0n) {
+              return false;
+            }
+            const xHex = xBig.toString(16);
+            const yHex = yBig.toString(16);
+            if (xHex.length > 64 || yHex.length > 64) {
+              return false;
+            }
+            const xB64 = Buffer.from(xHex.padStart(64, '0'), 'hex').toString(
+              'base64url',
+            );
+            const yB64 = Buffer.from(yHex.padStart(64, '0'), 'hex').toString(
+              'base64url',
+            );
+            const publicKey = crypto.createPublicKey({
+              key: {
+                kty: 'EC',
+                crv: 'P-256',
+                x: xB64,
+                y: yB64,
+              },
+              format: 'jwk',
+            });
+            return crypto.verify(
+              'sha256',
+              signedPayload,
+              publicKey,
+              signatureBuf,
+            );
+          } catch {
+            return false;
+          }
+        });
+
+        if (!isSignatureValid) {
+          throw new BadRequestException(
+            'Tanda tangan passkey WebAuthn tidak valid atau QR Code dipalsukan!',
           );
         }
       }
@@ -563,7 +809,7 @@ export class TicketsService {
 
     const cachedTickets = await this.ticketCacheRepository.find({
       where: { ownerWallet: walletAddress.toLowerCase() },
-      relations: { event: true },
+      relations: { event: { ticketCategories: true }, order: true },
       order: { tokenId: 'ASC' },
     });
 
@@ -576,195 +822,254 @@ export class TicketsService {
     });
     const listedTokenIds = new Set(activeResales.map((r) => r.ticketCacheTokenId));
 
-    return cachedTickets.map((t, index) => ({
-      tokenId: t.tokenId,
-      eventId: t.eventsId,
-      categoryId: 1,
-      originalPrice: Number(t.originalPrice),
-      used: Boolean(t.used),
-      owner: t.ownerWallet,
-      seatIndex: index + 1,
-      isListed: listedTokenIds.has(t.tokenId),
-    }));
+    return cachedTickets.map((t, index) => {
+      const rawOrderCatId =
+        t.order?.ticketCategoriesId ?? t.order?.ticketCategory?.id;
+      const parsedOrderCatId =
+        rawOrderCatId !== undefined &&
+        rawOrderCatId !== null &&
+        String(rawOrderCatId).trim() !== ''
+          ? Number(rawOrderCatId)
+          : NaN;
+      const matchedByPrice = t.event?.ticketCategories?.find(
+        (c) => Number(c.price) === Number(t.originalPrice),
+      );
+      const parsedFallbackCatId = matchedByPrice
+        ? Number(matchedByPrice.id)
+        : NaN;
+      const categoryId =
+        Number.isFinite(parsedOrderCatId) && parsedOrderCatId > 0
+          ? parsedOrderCatId
+          : Number.isFinite(parsedFallbackCatId) && parsedFallbackCatId > 0
+            ? parsedFallbackCatId
+            : 1;
+
+      return {
+        tokenId: t.tokenId,
+        eventId: t.eventsId,
+        categoryId,
+        originalPrice: Number(t.originalPrice),
+        used: Boolean(t.used),
+        owner: t.ownerWallet,
+        seatIndex: index + 1,
+        isListed: listedTokenIds.has(t.tokenId),
+      };
+    });
   }
 
   async createSnapTransaction(dto: CreateSnapDto) {
-    // Validasi Cloudflare Turnstile
+    if (dto.quantity !== undefined && Number(dto.quantity) > 1) {
+      throw new BadRequestException(
+        'Maksimal pembelian adalah 1 tiket per transaksi',
+      );
+    }
+    const qty = 1;
+
+    // Validasi Cloudflare Turnstile sebelum transaksi database
     const turnstileSecret = this.configService.get<string>('TURNSTILE_SECRET_KEY');
-    if(turnstileSecret){
-      if(!dto.turnstileToken){
-        throw new BadRequestException('Token verifikasi Cloudflare Turnstile wajib disertakan');
+    if (turnstileSecret) {
+      if (!dto.turnstileToken) {
+        throw new BadRequestException(
+          'Token verifikasi Cloudflare Turnstile wajib disertakan',
+        );
       }
 
-      const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+      const verifyRes = await fetch(
+        'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            secret: turnstileSecret,
+            response: dto.turnstileToken,
+          }),
         },
-        body: new URLSearchParams({
-          secret: turnstileSecret,
-          response: dto.turnstileToken,
-        }),
-      });
+      );
 
       const verifyData = await verifyRes.json();
-      if(!verifyData.success){
-        console.error('[TURNSTILE] Verifikasi bot gagal:', verifyData['error-codes']);
-        throw new BadRequestException('Verifikasi bot (Cloudflare Turnstile) gagal atau kedaluwarsa');     
+      if (!verifyData.success) {
+        console.error(
+          '[TURNSTILE] Verifikasi bot gagal:',
+          verifyData['error-codes'],
+        );
+        throw new BadRequestException(
+          'Verifikasi bot (Cloudflare Turnstile) gagal atau kedaluwarsa',
+        );
       }
-        console.log('[TURNSTILE] Lolos verifikasi manusia:', verifyData.hostname);
+      console.log('[TURNSTILE] Lolos verifikasi manusia:', verifyData.hostname);
     }
-    // Ambil data event & kategorinya dri database MySQL
+
+    // Ambil data event & kategorinya dari database MySQL
     const event = await this.eventsService.findOne(dto.eventId);
 
-        // Validasi Flash Sale Time Gate: Cek apakah penjualan sudah dibuka
+    // Validasi Flash Sale Time Gate: Cek apakah penjualan sudah dibuka
     if (event.saleStartTime) {
       const now = new Date();
       const saleStart = new Date(event.saleStartTime);
       if (now < saleStart) {
         throw new BadRequestException(
-          `Flash sale belum dibuka! Penjualan tiket baru dimulai pada: ${saleStart.toLocaleString('id-ID')}`
+          `Flash sale belum dibuka! Penjualan tiket baru dimulai pada: ${saleStart.toLocaleString('id-ID')}`,
         );
       }
     }
-    // output event ini nanti bentuknya : {id: 1, name: 'Jazz Festival', ticketCategories: [
-    //   {id: 1, name: 'VIP', price: 1000000},
-    //   {id: 2, name: 'Festival', price: 500000},
-    // ]} --> mengikuti sesuai dto CreateSnapDto
 
-    // Ambil data kategori berdasarkan dto.categoryId
     const category = event.ticketCategories.find(
       (c) => Number(c.id) === Number(dto.categoryId),
-    ); 
-    // contoh output : {id: 1, name: 'VIP', price: 1000000}
-
+    );
     if (!category) {
-      throw new BadRequestException("Kategori tiket tidak ditemukan")
+      throw new BadRequestException('Kategori tiket tidak ditemukan');
     }
 
-    // jika dto.quantity < 1 maka qty = 1, kalau >1 maka qty = dto.quantity
-    const qty = dto.quantity > 0 ? dto.quantity : 1; 
-
-    // Soft-Locking / Reservation Window 10 Menit (Anti-Overbooking / First-Principles)
-    // Hitung tiket yang sudah PAID + tiket PENDING yang masih aktif (< 10 menit)
-    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
-    const activeOrders = await this.orderRepository.find({
-      where: [
-        { ticketCategoriesId: String(category.id), status: OrderStatus.PAID },
-        { ticketCategoriesId: String(category.id), status: OrderStatus.PENDING, createdAt: MoreThan(tenMinutesAgo) },
-      ],
-    });
-    const reservedQuota = activeOrders.reduce((sum, order) => sum + (order.amount || 1), 0);
-    const availableQuota = category.quota - reservedQuota;
-
-    if (availableQuota < qty) {
-      throw new BadRequestException(
-        'Semua kuota tiket saat ini sedang dalam proses pembayaran oleh pembeli lain. Silakan coba beberapa saat lagi jika ada pesanan yang batal/kedaluwarsa.'
-      );
-    }
-    
-    // Validasi batas kuota per wallet mencegah calo memborong tiket
-    const maxAllowed = event.maxPerWallet || 1;
-    const existingTickets = await this.getUserTickets(dto.walletAddress);
-    const ownedCountForCurrentEvent = existingTickets.filter(
-      (t) => t.eventId === dto.eventId, //difilter dengan cara membandingkan eventId satu persatu
-    ).length;
-    
-    if(ownedCountForCurrentEvent + qty > maxAllowed) {
-      throw new BadRequestException(`Batas tiket anda sudah terpenuhi`);
-    }
+    const walletLower = dto.walletAddress.trim().toLowerCase();
 
     // Hitung biaya tiket + biaya admin untuk transaksi di blockchain
-    const baseFee = 5000; // Fee transaksi untuk biaya gas di blockchain
+    const baseFee = 5000;
     const variableFee = Math.round(Number(category.price) * qty * 0.025);
     const totalAdminFee = baseFee + variableFee;
     const totalPrice = Number(category.price) * qty + totalAdminFee;
 
-    // make sure customer sudah memiliki wallet dan passkey terdaftar
-    let customer = await this.customerRepository.findOne({
-      where: { walletAddress: dto.walletAddress },
-      relations: { user: true },
-    });
-    
-    if (!customer) {
-      // jika belum punya wallet, buat wallet baru untuk customer ini
-      // note : user akan otomatis terdaftar saat pertama kali register passkey
-      throw new BadRequestException("Customer tidak ditemukan");
-    }
+    const { savedOrder, lockedCustomer } =
+      await this.orderRepository.manager.transaction(async (manager) => {
+        // 1. Kunci baris Customer terlebih dahulu (tanpa join) untuk urutan lock deterministik
+        const customer = await manager
+          .createQueryBuilder(Customer, 'c')
+          .setLock('pessimistic_write')
+          .where('LOWER(c.walletAddress) = :walletLower', { walletLower })
+          .getOne();
 
-    // buat ID pesanan unik (UUIDv4) dan simpan order dengan status PENDING
-    const orderId = crypto.randomUUID(); // pake algoritma CSPRNG
+        if (!customer) {
+          throw new BadRequestException('Customer tidak ditemukan');
+        }
 
-    const newOrder = this.orderRepository.create({
-      id: orderId,
-      amount: qty,
-      totalPrice: totalPrice,
-      adminFee: totalAdminFee,
-      status: OrderStatus.PENDING,
-      customersId: customer.id,
-      ticketCategoriesId: String(category.id),
-    });
+        // 2. Kunci baris TicketCategory kedua untuk mencegah race condition kuota
+        const lockedCategory = await manager
+          .createQueryBuilder(TicketCategory, 'tc')
+          .setLock('pessimistic_write')
+          .where('tc.id = :categoryId', { categoryId: String(category.id) })
+          .getOne();
 
-    await this.orderRepository.save(newOrder);
-    
-    // Siapkan authentication Midtrans  (Basic Auth: Base64 dari ServerKey:)
-    const serverKey = this.configService.get('MIDTRANS_SERVER_KEY');
-    if(!serverKey){
-      throw new Error ('MIDTRANS_SERVER_KEY tidak ditemukan di environment')
-    }
-    const basicAuth = Buffer.from(`${serverKey}:`).toString('base64'); // contoh output : srv-pk-c19448fa0fa3d9e2b8131037f541ab72:
-    const midtransUrl = 'https://app.sandbox.midtrans.com/snap/v1/transactions';
+        if (!lockedCategory) {
+          throw new BadRequestException('Kategori tiket tidak ditemukan');
+        }
 
-    // Request Snap Token ke Midtrans 
-    const response = await fetch(midtransUrl, {
-      method: "POST",
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        Authorization: `Basic ${basicAuth}`,
-      },
-      body: JSON.stringify({
-        transaction_details: {
-          order_id: orderId,
-          gross_amount: totalPrice,
+        // 3. Validasi aturan 1 dompet = maksimal 1 tiket per event across ticket_cache, orders, & resale_listings
+        await this.assertWalletEligibleForEvent(
+          manager,
+          walletLower,
+          customer.id,
+          lockedCategory.eventsId,
+        );
+
+        // 4. Hitung kuota aktif (PAID + PENDING < 10 menit) di dalam transaksi terkunci
+        const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+        const activeOrders = await manager.find(Order, {
+          where: [
+            { ticketCategoriesId: String(lockedCategory.id), status: OrderStatus.PAID },
+            {
+              ticketCategoriesId: String(lockedCategory.id),
+              status: OrderStatus.PENDING,
+              createdAt: MoreThan(tenMinutesAgo),
+            },
+          ],
+        });
+        const reservedQuota = activeOrders.reduce(
+          (sum, order) => sum + (order.amount || 1),
+          0,
+        );
+
+        if (lockedCategory.quota - reservedQuota < qty) {
+          throw new BadRequestException(
+            'Semua kuota tiket saat ini sedang dalam proses pembayaran oleh pembeli lain. Silakan coba beberapa saat lagi jika ada pesanan yang batal/kedaluwarsa.',
+          );
+        }
+
+        // 5. Buat dan simpan order PENDING di dalam transaksi sebelum commit
+        const orderId = crypto.randomUUID();
+        const newOrder = manager.create(Order, {
+          id: orderId,
+          amount: qty,
+          totalPrice,
+          adminFee: totalAdminFee,
+          status: OrderStatus.PENDING,
+          customersId: customer.id,
+          ticketCategoriesId: String(lockedCategory.id),
+        });
+        const persistedOrder = await manager.save(newOrder);
+
+        return { savedOrder: persistedOrder, lockedCustomer: customer };
+      });
+
+    const customerWithUser = lockedCustomer.user
+      ? lockedCustomer
+      : await this.customerRepository.findOne({
+          where: { id: lockedCustomer.id },
+          relations: { user: true },
+        });
+
+    try {
+      const serverKey = this.configService.get<string>('MIDTRANS_SERVER_KEY');
+      if (!serverKey) {
+        throw new Error('MIDTRANS_SERVER_KEY tidak ditemukan di environment');
+      }
+      const basicAuth = Buffer.from(`${serverKey}:`).toString('base64');
+      const midtransUrl = 'https://app.sandbox.midtrans.com/snap/v1/transactions';
+
+      const response = await fetch(midtransUrl, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          Authorization: `Basic ${basicAuth}`,
         },
-        item_details: [
-          {
-            id: String(category.id),
-            price: Math.round(Number(category.price)),
-            quantity: qty,
-            name: `${event.eventName} (${category.name})`.slice(0,50), // dibatasi 50 karakter
+        body: JSON.stringify({
+          transaction_details: {
+            order_id: savedOrder.id,
+            gross_amount: totalPrice,
           },
-          {
-            id: 'FEE-ADMIN',
-            price: totalAdminFee,
-            quantity: 1,
-            name: 'Biaya Layanan & Admin',
-          }, 
-        ],
-        customer_details: {
-          first_name: customer.user.name,
-          email: customer.user.email,
-          
-        },
-      }),
-    });
+          item_details: [
+            {
+              id: String(category.id),
+              price: Math.round(Number(category.price)),
+              quantity: qty,
+              name: `${event.eventName} (${category.name})`.slice(0, 50),
+            },
+            {
+              id: 'FEE-ADMIN',
+              price: totalAdminFee,
+              quantity: 1,
+              name: 'Biaya Layanan & Admin',
+            },
+          ],
+          customer_details: {
+            first_name: customerWithUser?.user?.name || 'Pelanggan',
+            email: customerWithUser?.user?.email || 'customer@example.com',
+          },
+        }),
+      });
 
-    const data = await response.json();
-    if(!response.ok){
-      console.error('Midtrans Snap Error:', data);
-      throw new BadRequestException( 
-        data.error_message || `Gagal membuat token Snap Midtrans`,
+      const data = await response.json();
+      if (!response.ok) {
+        console.error('Midtrans Snap Error:', data);
+        throw new BadRequestException(
+          data.error_message || 'Gagal membuat token Snap Midtrans',
+        );
+      }
+
+      return {
+        token: data.token,
+        redirectUrl: data.redirect_url,
+        orderId: savedOrder.id,
+        grossAmount: totalPrice,
+      };
+    } catch (snapErr) {
+      await this.orderRepository.update(
+        { id: savedOrder.id, status: OrderStatus.PENDING },
+        { status: OrderStatus.FAILED },
       );
+      throw snapErr;
     }
-
-    // Return hasil snap token dari Mditrans ke Frontend
-    return {
-      token: data.token,
-      redirectUrl: data.redirect_url,
-      orderId: orderId,
-      grossAmount: totalPrice,
-    };
   }
   
 
@@ -1037,7 +1342,7 @@ export class TicketsService {
       if (mintResult.tokenId) {
         await this.ticketCacheRepository.save({
           tokenId: mintResult.tokenId,
-          ownerWallet: order.customer.walletAddress!,
+          ownerWallet: order.customer.walletAddress!.toLowerCase(),
           originalPrice: Number(order.ticketCategory.price),
           used: 0,
           syncedAt: new Date(),
@@ -1243,121 +1548,169 @@ export class TicketsService {
 
   // 1. Daftarkan tiket ke Pasar Sekunder (harga jual otomatis dikunci = originalPrice)
   async listTicketForResale(tokenId: number, sellerWallet: string) {
-    // Cek dulu data tiket langsung dari smart contract Sepolia
-    const onChainTicket = await this.getTicket(tokenId);
+    return this.withTicketLock(tokenId, async () => {
+      const sellerLower = sellerWallet.trim().toLowerCase();
 
-    // Pastikan yang request jual beneran pemilik sah tiket di blockchain
-    if (onChainTicket.owner.toLowerCase() !== sellerWallet.toLowerCase()) {
-      throw new BadRequestException('Validasi gagal: Anda bukan pemilik sah tiket ini');
-    }
+      // Cek dulu data tiket langsung dari smart contract Sepolia
+      const onChainTicket = await this.getTicket(tokenId);
 
-    // Tiket yang sudah di-scan masuk venue ga boleh dijual lagi
-    if (onChainTicket.used) {
-      throw new BadRequestException('Validasi gagal: Tiket sudah pernah digunakan dan tidak bisa dijual');
-    }
-
-    // Pastikan data tiket sudah ada di tabel ticket_cache MySQL (karena resale_listings punya FK ke ticket_cache)
-    let cache = await this.ticketCacheRepository.findOne({
-      where: { tokenId },
-    });
-
-    if (!cache) {
-      // Kalau tiket lama belum sempat masuk ticket_cache, kita sinkronkan dulu dari order terakhir yang paid
-      const latestOrder = await this.orderRepository.findOne({
-        where: { status: OrderStatus.PAID },
-        order: { createdAt: 'DESC' },
-      });
-      if (!latestOrder) {
-        throw new BadRequestException('Data order asal untuk ticket_cache belum ditemukan');
+      // Pastikan yang request jual beneran pemilik sah tiket di blockchain
+      if (onChainTicket.owner.toLowerCase() !== sellerLower) {
+        throw new BadRequestException(
+          'Validasi gagal: Anda bukan pemilik sah tiket ini',
+        );
       }
 
-      cache = await this.ticketCacheRepository.save({
-        tokenId,
-        ownerWallet: onChainTicket.owner,
-        originalPrice: onChainTicket.originalPrice,
-        used: onChainTicket.used ? 1 : 0,
-        syncedAt: new Date(),
-        eventsId: onChainTicket.eventId,
-        ordersId: latestOrder.id,
+      // Tiket yang sudah di-scan masuk venue ga boleh dijual lagi
+      if (onChainTicket.used) {
+        throw new BadRequestException(
+          'Validasi gagal: Tiket sudah pernah digunakan dan tidak bisa dijual',
+        );
+      }
+
+      // Cegah duplikasi listing untuk tokenId yang sama
+      const existingListing = await this.resaleListingRepository.findOne({
+        where: [
+          { ticketCacheTokenId: tokenId, status: ResaleStatus.ACTIVE },
+          { ticketCacheTokenId: tokenId, status: ResaleStatus.LOCKED },
+        ],
       });
-    }
+      if (existingListing) {
+        throw new BadRequestException(
+          'Tiket ini sudah terdaftar di pasar sekunder.',
+        );
+      }
 
-    // Kirim transaksi listTicket(tokenId, seller) ke MarketplaceContract di Sepolia via relayer admin
-    console.log(`[TicketsService] Mendaftarkan resale tokenId #${tokenId} milik ${sellerWallet} ke Sepolia...`);
-    const hash = await this.walletClient.writeContract({
-      address: this.marketplaceAddress,
-      abi: MARKETPLACE_CONTRACT_ABI,
-      functionName: 'listTicket',
-      args: [BigInt(tokenId), sellerWallet as `0x${string}`],
+      // Pastikan data tiket sudah ada di tabel ticket_cache MySQL (karena resale_listings punya FK ke ticket_cache)
+      let cache = await this.ticketCacheRepository.findOne({
+        where: { tokenId },
+      });
+
+      if (!cache) {
+        // Kalau tiket lama belum sempat masuk ticket_cache, kita sinkronkan dulu dari order terakhir yang paid
+        const latestOrder = await this.orderRepository.findOne({
+          where: { status: OrderStatus.PAID },
+          order: { createdAt: 'DESC' },
+        });
+        if (!latestOrder) {
+          throw new BadRequestException(
+            'Data order asal untuk ticket_cache belum ditemukan',
+          );
+        }
+
+        cache = await this.ticketCacheRepository.save({
+          tokenId,
+          ownerWallet: onChainTicket.owner.toLowerCase(),
+          originalPrice: onChainTicket.originalPrice,
+          used: onChainTicket.used ? 1 : 0,
+          syncedAt: new Date(),
+          eventsId: onChainTicket.eventId,
+          ordersId: latestOrder.id,
+        });
+      }
+
+      // Kirim transaksi listTicket(tokenId, seller) ke MarketplaceContract di Sepolia via relayer admin
+      console.log(
+        `[TicketsService] Mendaftarkan resale tokenId #${tokenId} milik ${sellerLower} ke Sepolia...`,
+      );
+      const hash = await this.walletClient.writeContract({
+        address: this.marketplaceAddress,
+        abi: MARKETPLACE_CONTRACT_ABI,
+        functionName: 'listTicket',
+        args: [BigInt(tokenId), sellerLower as `0x${string}`],
+      });
+
+      // Tunggu sampai transaksi masuk ke blok Sepolia
+      await this.publicClient.waitForTransactionReceipt({ hash });
+
+      // Simpan ke tabel resale_listings MySQL dengan lockedPrice = originalPrice (Zero-Markup Price Lock)
+      const listing = this.resaleListingRepository.create({
+        id: crypto.randomUUID(), // generate UUID unik karena 1 tiket bisa dijual berkali-kali
+        sellerWallet: sellerLower,
+        lockedPrice: onChainTicket.originalPrice,
+        status: ResaleStatus.ACTIVE,
+        listedAt: new Date(),
+        ticketCacheTokenId: tokenId,
+        buyerWallet: null,
+        adminFee: null,
+        buyerMidtransTransactionId: null,
+      });
+
+      await this.resaleListingRepository.save(listing);
+
+      return {
+        success: true,
+        listingId: listing.id,
+        tokenId,
+        lockedPrice: listing.lockedPrice,
+        txHash: hash,
+      };
     });
-
-    // Tunggu sampai transaksi masuk ke blok Sepolia
-    await this.publicClient.waitForTransactionReceipt({ hash });
-
-    // Simpan ke tabel resale_listings MySQL dengan lockedPrice = originalPrice (Zero-Markup Price Lock)
-    const listing = this.resaleListingRepository.create({
-      id: crypto.randomUUID(), // generate UUID unik karena 1 tiket bisa dijual berkali-kali
-      sellerWallet,
-      lockedPrice: onChainTicket.originalPrice,
-      status: ResaleStatus.ACTIVE,
-      listedAt: new Date(),
-      ticketCacheTokenId: tokenId,
-      buyerWallet: null,
-      adminFee: null,
-      buyerMidtransTransactionId: null,
-    });
-
-    await this.resaleListingRepository.save(listing);
-
-    return {
-      success: true,
-      listingId: listing.id,
-      tokenId,
-      lockedPrice: listing.lockedPrice,
-      txHash: hash,
-    };
   }
 
   // 2. Batalkan listing tiket yang sedang dijual di Pasar Sekunder
   async cancelResaleListing(tokenId: number, sellerWallet: string) {
-    // Cari listing yang masih ACTIVE untuk tokenId tersebut
-    const listing = await this.resaleListingRepository.findOne({
-      where: {
-        ticketCacheTokenId: tokenId,
-        status: ResaleStatus.ACTIVE,
-      },
+    return this.withTicketLock(tokenId, async () => {
+      // Cari listing ACTIVE atau LOCKED untuk tokenId tersebut
+      const listing = await this.resaleListingRepository.findOne({
+        where: [
+          { ticketCacheTokenId: tokenId, status: ResaleStatus.ACTIVE },
+          { ticketCacheTokenId: tokenId, status: ResaleStatus.LOCKED },
+        ],
+      });
+
+      if (!listing) {
+        throw new BadRequestException(
+          'Listing aktif untuk tiket ini tidak ditemukan',
+        );
+      }
+
+      // Tolak pembatalan jika sedang dalam masa reservasi pembayaran pembeli yang belum kedaluwarsa
+      if (
+        listing.status === ResaleStatus.LOCKED &&
+        listing.lockedUntil &&
+        listing.lockedUntil > new Date()
+      ) {
+        throw new BadRequestException(
+          'Listing sedang dalam proses pembayaran oleh pembeli dan tidak dapat dibatalkan saat ini.',
+        );
+      }
+
+      // Pastikan yang membatalkan adalah penjual aslinya
+      if (listing.sellerWallet.toLowerCase() !== sellerWallet.trim().toLowerCase()) {
+        throw new BadRequestException(
+          'Hanya penjual asli yang dapat membatalkan listing ini',
+        );
+      }
+
+      // Panggil fungsi cancelListing(tokenId) di MarketplaceContract Sepolia
+      console.log(
+        `[TicketsService] Membatalkan listing resale tokenId #${tokenId} di Sepolia...`,
+      );
+      const hash = await this.walletClient.writeContract({
+        address: this.marketplaceAddress,
+        abi: MARKETPLACE_CONTRACT_ABI,
+        functionName: 'cancelListing',
+        args: [BigInt(tokenId)],
+      });
+
+      await this.publicClient.waitForTransactionReceipt({ hash });
+
+      // Update status di MySQL jadi CANCELLED dan bersihkan sisa field lock jika ada
+      listing.status = ResaleStatus.CANCELLED;
+      listing.lockedUntil = null;
+      listing.buyerWallet = null;
+      listing.adminFee = null;
+      listing.buyerMidtransTransactionId = null;
+      await this.resaleListingRepository.save(listing);
+
+      return {
+        success: true,
+        tokenId,
+        status: listing.status,
+        txHash: hash,
+      };
     });
-
-    if (!listing) {
-      throw new BadRequestException('Listing aktif untuk tiket ini tidak ditemukan');
-    }
-
-    // Pastikan yang membatalkan adalah penjual aslinya
-    if (listing.sellerWallet.toLowerCase() !== sellerWallet.toLowerCase()) {
-      throw new BadRequestException('Hanya penjual asli yang dapat membatalkan listing ini');
-    }
-
-    // Panggil fungsi cancelListing(tokenId) di MarketplaceContract Sepolia
-    console.log(`[TicketsService] Membatalkan listing resale tokenId #${tokenId} di Sepolia...`);
-    const hash = await this.walletClient.writeContract({
-      address: this.marketplaceAddress,
-      abi: MARKETPLACE_CONTRACT_ABI,
-      functionName: 'cancelListing',
-      args: [BigInt(tokenId)],
-    });
-
-    await this.publicClient.waitForTransactionReceipt({ hash });
-
-    // Update status di MySQL jadi CANCELLED
-    listing.status = ResaleStatus.CANCELLED;
-    await this.resaleListingRepository.save(listing);
-
-    return {
-      success: true,
-      tokenId,
-      status: listing.status,
-      txHash: hash,
-    };
   }
 
   // 3. Ambil seluruh daftar tiket resale yang sedang ACTIVE untuk halaman katalog /dashboard/resale
@@ -1395,127 +1748,199 @@ export class TicketsService {
 
   // 4. Buat transaksi Midtrans Snap saat pembeli baru klik "Beli Tiket Resale"
   async createResaleSnapTransaction(listingId: string, buyerWallet: string) {
-    // Ambil data listing beserta relasi ticket_cache dan event-nya
-    const listing = await this.resaleListingRepository.findOne({
+    const preListing = await this.resaleListingRepository.findOne({
       where: { id: listingId },
-      relations: {
-        ticketCache: {
-          event: true,
-        },
-      },
     });
-
-    if (!listing || listing.status === ResaleStatus.SOLD || listing.status === ResaleStatus.CANCELLED) {
-      throw new BadRequestException('Tiket resale sudah laku atau tidak tersedia');
-    }
-
-    // Cek apakah tiket sedang di-lock oleh pembeli lain yang belum kedaluwarsa (< 10 menit)
-    const now = new Date();
-    const isLockedByOther =
-      listing.status === ResaleStatus.LOCKED &&
-      listing.lockedUntil &&
-      listing.lockedUntil > now;
-
-    if (isLockedByOther) {
-      throw new BadRequestException('Tiket resale sedang dalam proses pembayaran oleh pembeli lain. Silakan coba beberapa saat lagi.');
-    }
-
-    // Penjual ga boleh beli tiketnya sendiri
-    if (listing.sellerWallet.toLowerCase() === buyerWallet.toLowerCase()) {
-      throw new BadRequestException('Anda tidak dapat membeli tiket yang Anda jual sendiri');
-    }
-
-    // Pastikan pembeli sudah punya akun customer & wallet terdaftar
-    const buyerCustomer = await this.customerRepository.findOne({
-      where: { walletAddress: buyerWallet },
-      relations: { user: true },
-    });
-
-    if (!buyerCustomer) {
-      throw new BadRequestException('Customer pembeli tidak ditemukan');
-    }
-
-    // Hitung harga tiket (terkunci sesuai harga asli) + biaya admin subsidi gas blockchain
-    const ticketPrice = Math.round(Number(listing.lockedPrice));
-    const baseFee = 5000;
-    const variableFee = Math.round(ticketPrice * 0.025);
-    const totalAdminFee = baseFee + variableFee;
-    const grossAmount = ticketPrice + totalAdminFee;
-
-    // Buat order_id khusus dengan awalan 'RESALE-' supaya webhook Midtrans tahu ini transaksi pasar sekunder
-    const midtransOrderId = `RESALE-${listing.ticketCacheTokenId}-${Date.now()}`;
-
-    // Kunci tiket dengan status LOCKED selama 10 menit
-    listing.status = ResaleStatus.LOCKED;
-    listing.lockedUntil = new Date(Date.now() + 10 * 60 * 1000);
-    listing.buyerWallet = buyerWallet;
-    listing.adminFee = totalAdminFee;
-    listing.buyerMidtransTransactionId = midtransOrderId;
-    await this.resaleListingRepository.save(listing);
-
-    // Siapkan Basic Auth Midtrans
-    const serverKey = this.configService.get<string>('MIDTRANS_SERVER_KEY');
-    if (!serverKey) {
-      throw new Error('MIDTRANS_SERVER_KEY tidak ditemukan di environment');
-    }
-    const basicAuth = Buffer.from(`${serverKey}:`).toString('base64');
-    const midtransUrl = 'https://app.sandbox.midtrans.com/snap/v1/transactions';
-
-    // Request Snap Token ke Midtrans
-    const response = await fetch(midtransUrl, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        Authorization: `Basic ${basicAuth}`,
-      },
-      body: JSON.stringify({
-        transaction_details: {
-          order_id: midtransOrderId,
-          gross_amount: grossAmount,
-        },
-        item_details: [
-          {
-            id: `RESALE-TOKEN-${listing.ticketCacheTokenId}`,
-            price: ticketPrice,
-            quantity: 1,
-            name: `Resale ${listing.ticketCache?.event?.eventName || 'Tiket'} (#${listing.ticketCacheTokenId})`.slice(0, 50),
-          },
-          {
-            id: 'FEE-ADMIN-RESALE',
-            price: totalAdminFee,
-            quantity: 1,
-            name: 'Biaya Layanan & Subsidi Gas',
-          },
-        ],
-        customer_details: {
-          first_name: buyerCustomer.user.name,
-          email: buyerCustomer.user.email,
-        },
-      }),
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      // Kalau gagal bikin Snap Token di Midtrans, bersihkan kembali status lock
-      listing.status = ResaleStatus.ACTIVE;
-      listing.lockedUntil = null;
-      listing.buyerWallet = null;
-      listing.buyerMidtransTransactionId = null;
-      await this.resaleListingRepository.save(listing);
-
-      console.error('Midtrans Resale Snap Error:', data);
+    if (!preListing) {
       throw new BadRequestException(
-        data.error_message || 'Gagal membuat token Snap Midtrans untuk resale',
+        'Tiket resale sudah laku atau tidak tersedia',
       );
     }
 
-    return {
-      token: data.token,
-      redirectUrl: data.redirect_url,
-      orderId: midtransOrderId,
-      grossAmount,
-    };
+    const tokenId = preListing.ticketCacheTokenId;
+
+    return this.withTicketLock(tokenId, async () => {
+      const buyerLower = buyerWallet.trim().toLowerCase();
+
+      const {
+        buyerCustomer,
+        ticketPrice,
+        totalAdminFee,
+        grossAmount,
+        midtransOrderId,
+        eventName,
+        ticketTokenId,
+      } = await this.orderRepository.manager.transaction(async (manager) => {
+        // 1. Kunci baris Customer pembeli terlebih dahulu (tanpa join)
+        const customer = await manager
+          .createQueryBuilder(Customer, 'c')
+          .setLock('pessimistic_write')
+          .where('LOWER(c.walletAddress) = :buyerLower', { buyerLower })
+          .getOne();
+
+        if (!customer) {
+          throw new BadRequestException('Customer pembeli tidak ditemukan');
+        }
+
+        // 2. Kunci baris ResaleListing kedua (tanpa join)
+        const listing = await manager
+          .createQueryBuilder(ResaleListing, 'rl')
+          .setLock('pessimistic_write')
+          .where('rl.id = :listingId', { listingId })
+          .getOne();
+
+        if (
+          !listing ||
+          listing.status === ResaleStatus.SOLD ||
+          listing.status === ResaleStatus.CANCELLED
+        ) {
+          throw new BadRequestException(
+            'Tiket resale sudah laku atau tidak tersedia',
+          );
+        }
+
+        const now = new Date();
+        const isLockedByOther =
+          listing.status === ResaleStatus.LOCKED &&
+          listing.lockedUntil &&
+          listing.lockedUntil > now;
+
+        if (isLockedByOther) {
+          throw new BadRequestException(
+            'Tiket resale sedang dalam proses pembayaran oleh pembeli lain. Silakan coba beberapa saat lagi.',
+          );
+        }
+
+        if (listing.sellerWallet.toLowerCase() === buyerLower) {
+          throw new BadRequestException(
+            'Anda tidak dapat membeli tiket yang Anda jual sendiri',
+          );
+        }
+
+        const ticketCache = await manager.findOne(TicketCache, {
+          where: { tokenId: listing.ticketCacheTokenId },
+          relations: { event: true },
+        });
+        if (!ticketCache) {
+          throw new BadRequestException('Data tiket resale tidak ditemukan');
+        }
+
+        // 3. Validasi 1 dompet maksimal 1 tiket per event across ticket_cache, orders, & resale_listings
+        await this.assertWalletEligibleForEvent(
+          manager,
+          buyerLower,
+          customer.id,
+          ticketCache.eventsId,
+        );
+
+        const lockedTicketPrice = Math.round(Number(listing.lockedPrice));
+        const baseFee = 5000;
+        const variableFee = Math.round(lockedTicketPrice * 0.025);
+        const calcAdminFee = baseFee + variableFee;
+        const calcGrossAmount = lockedTicketPrice + calcAdminFee;
+
+        const orderId = `RESALE-${listing.ticketCacheTokenId}-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+
+        listing.status = ResaleStatus.LOCKED;
+        listing.lockedUntil = new Date(Date.now() + 10 * 60 * 1000);
+        listing.buyerWallet = buyerLower;
+        listing.adminFee = calcAdminFee;
+        listing.buyerMidtransTransactionId = orderId;
+        await manager.save(listing);
+
+        return {
+          buyerCustomer: customer,
+          ticketPrice: lockedTicketPrice,
+          totalAdminFee: calcAdminFee,
+          grossAmount: calcGrossAmount,
+          midtransOrderId: orderId,
+          eventName: ticketCache.event?.eventName || 'Tiket',
+          ticketTokenId: listing.ticketCacheTokenId,
+        };
+      });
+
+      const customerWithUser = buyerCustomer.user
+        ? buyerCustomer
+        : await this.customerRepository.findOne({
+            where: { id: buyerCustomer.id },
+            relations: { user: true },
+          });
+
+      try {
+        const serverKey = this.configService.get<string>('MIDTRANS_SERVER_KEY');
+        if (!serverKey) {
+          throw new Error('MIDTRANS_SERVER_KEY tidak ditemukan di environment');
+        }
+        const basicAuth = Buffer.from(`${serverKey}:`).toString('base64');
+        const midtransUrl =
+          'https://app.sandbox.midtrans.com/snap/v1/transactions';
+
+        const response = await fetch(midtransUrl, {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            Authorization: `Basic ${basicAuth}`,
+          },
+          body: JSON.stringify({
+            transaction_details: {
+              order_id: midtransOrderId,
+              gross_amount: grossAmount,
+            },
+            item_details: [
+              {
+                id: `RESALE-TOKEN-${ticketTokenId}`,
+                price: ticketPrice,
+                quantity: 1,
+                name: `Resale ${eventName} (#${ticketTokenId})`.slice(0, 50),
+              },
+              {
+                id: 'FEE-ADMIN-RESALE',
+                price: totalAdminFee,
+                quantity: 1,
+                name: 'Biaya Layanan & Subsidi Gas',
+              },
+            ],
+            customer_details: {
+              first_name: customerWithUser?.user?.name || 'Pelanggan',
+              email: customerWithUser?.user?.email || 'customer@example.com',
+            },
+          }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          console.error('Midtrans Resale Snap Error:', data);
+          throw new BadRequestException(
+            data.error_message ||
+              'Gagal membuat token Snap Midtrans untuk resale',
+          );
+        }
+
+        return {
+          token: data.token,
+          redirectUrl: data.redirect_url,
+          orderId: midtransOrderId,
+          grossAmount,
+        };
+      } catch (snapErr) {
+        await this.resaleListingRepository.update(
+          {
+            id: listingId,
+            status: ResaleStatus.LOCKED,
+            buyerMidtransTransactionId: midtransOrderId,
+          },
+          {
+            status: ResaleStatus.ACTIVE,
+            lockedUntil: null,
+            buyerWallet: null,
+            adminFee: null,
+            buyerMidtransTransactionId: null,
+          },
+        );
+        throw snapErr;
+      }
+    });
   }
 
   // 5. Method buat memproses webhook / rekonsiliasi Midtrans khusus transaksi Pasar Sekunder (RESALE-)
@@ -1525,13 +1950,15 @@ export class TicketsService {
     fraudStatus: string,
     transactionId: string | null,
   ) {
-    // Cari data listing berdasarkan ID transaksi Midtrans pembeli
-    const listing = await this.resaleListingRepository.findOne({
+    // Pre-read listing untuk resolusi tokenId agar dapat mengunci mutex per-tokenId
+    const preListing = await this.resaleListingRepository.findOne({
       where: { buyerMidtransTransactionId: midtransOrderId },
     });
 
-    if (!listing) {
-      console.warn(`[TicketsService] Resale webhook diabaikan: Order #${midtransOrderId} tidak ditemukan di database lokal`);
+    if (!preListing) {
+      console.warn(
+        `[TicketsService] Resale webhook diabaikan: Order #${midtransOrderId} tidak ditemukan di database lokal`,
+      );
       return {
         status: 'ignored_resale_order_not_found',
         orderId: midtransOrderId,
@@ -1539,140 +1966,173 @@ export class TicketsService {
       };
     }
 
-    // Proteksi idempotensi: kalau sudah SOLD jangan dieksekusi 2x
-    if (listing.status === ResaleStatus.SOLD) {
-      return {
-        status: 'already_processed',
-        message: 'Transaksi resale sudah diproses sebelumnya',
-      };
-    }
+    return this.withTicketLock(preListing.ticketCacheTokenId, async () => {
+      // Re-read listing di dalam lock agar state selalu segar dan bebas race condition
+      const listing = await this.resaleListingRepository.findOne({
+        where: { buyerMidtransTransactionId: midtransOrderId },
+      });
 
-    const isPaymentSuccess =
-      transactionStatus === 'settlement' ||
-      (transactionStatus === 'capture' && fraudStatus === 'accept');
-
-    if (isPaymentSuccess) {
-      try {
-        // Eksekusi pemindahan NFT on-chain dari penjual ke pembeli baru via MarketplaceContract.executeResale
-        console.log(`[TicketsService] Mengeksekusi executeResale untuk tokenId #${listing.ticketCacheTokenId} ke ${listing.buyerWallet}...`);
-        const hash = await this.executeWithRetry(
-          async () => {
-            const txHash = await this.walletClient.writeContract({
-              address: this.marketplaceAddress,
-              abi: MARKETPLACE_CONTRACT_ABI,
-              functionName: 'executeResale',
-              args: [
-                BigInt(listing.ticketCacheTokenId),
-                listing.buyerWallet! as `0x${string}`,
-              ],
-            });
-            await this.publicClient.waitForTransactionReceipt({ hash: txHash });
-            return txHash;
-          },
-          2,
-          2000,
-        );
-
-        // Update status listing dari ACTIVE langsung jadi SOLD
-        listing.status = ResaleStatus.SOLD;
-        await this.resaleListingRepository.save(listing);
-
-        // Update juga alamat pemilik baru di tabel ticket_cache MySQL
-        await this.ticketCacheRepository.update(
-          { tokenId: listing.ticketCacheTokenId },
-          {
-            ownerWallet: listing.buyerWallet!,
-            syncedAt: new Date(),
-          },
-        );
-
+      if (!listing) {
         return {
-          status: 'success',
-          message: 'Pembayaran resale sukses dan NFT telah berpindah tangan secara on-chain',
-          tokenId: listing.ticketCacheTokenId,
-          newOwner: listing.buyerWallet,
-          txHash: hash,
+          status: 'ignored_resale_order_not_found',
+          orderId: midtransOrderId,
+          message: 'Resale order tidak ditemukan di database lokal',
         };
-      } catch (err: any) {
-        console.error('Eksekusi executeResale on-chain gagal setelah pembayaran:', err);
-        const refundAmount =
-          Number(listing.lockedPrice) + (Number(listing.adminFee) || 0);
-        const buyerWallet = listing.buyerWallet;
-        const refundResult = await this.refundMidtransTransaction(
-          midtransOrderId,
-          refundAmount,
-          err?.message || 'Eksekusi resale on-chain gagal',
-        );
+      }
 
+      // Proteksi idempotensi: kalau sudah SOLD jangan dieksekusi 2x
+      if (listing.status === ResaleStatus.SOLD) {
+        return {
+          status: 'already_processed',
+          message: 'Transaksi resale sudah diproses sebelumnya',
+        };
+      }
+
+      // Guard status: hanya proses listing yang benar-benar sedang LOCKED dengan buyerWallet valid
+      if (listing.status !== ResaleStatus.LOCKED || !listing.buyerWallet) {
+        return {
+          status: 'ignored_resale_invalid_state',
+          orderId: midtransOrderId,
+          message: `Status listing resale (${listing.status}) tidak valid untuk diproses`,
+        };
+      }
+
+      const isPaymentSuccess =
+        transactionStatus === 'settlement' ||
+        (transactionStatus === 'capture' && fraudStatus === 'accept');
+
+      if (isPaymentSuccess) {
+        const buyerWalletLower = listing.buyerWallet.toLowerCase();
+        try {
+          // Eksekusi pemindahan NFT on-chain dari penjual ke pembeli baru via MarketplaceContract.executeResale
+          console.log(
+            `[TicketsService] Mengeksekusi executeResale untuk tokenId #${listing.ticketCacheTokenId} ke ${buyerWalletLower}...`,
+          );
+          const hash = await this.executeWithRetry(
+            async () => {
+              const txHash = await this.walletClient.writeContract({
+                address: this.marketplaceAddress,
+                abi: MARKETPLACE_CONTRACT_ABI,
+                functionName: 'executeResale',
+                args: [
+                  BigInt(listing.ticketCacheTokenId),
+                  buyerWalletLower as `0x${string}`,
+                ],
+              });
+              await this.publicClient.waitForTransactionReceipt({ hash: txHash });
+              return txHash;
+            },
+            2,
+            2000,
+          );
+
+          // Update status listing jadi SOLD
+          listing.status = ResaleStatus.SOLD;
+          await this.resaleListingRepository.save(listing);
+
+          // Update juga alamat pemilik baru (ternormalisasi lowercase) di tabel ticket_cache MySQL
+          await this.ticketCacheRepository.update(
+            { tokenId: listing.ticketCacheTokenId },
+            {
+              ownerWallet: buyerWalletLower,
+              syncedAt: new Date(),
+            },
+          );
+
+          return {
+            status: 'success',
+            message:
+              'Pembayaran resale sukses dan NFT telah berpindah tangan secara on-chain',
+            tokenId: listing.ticketCacheTokenId,
+            newOwner: buyerWalletLower,
+            txHash: hash,
+          };
+        } catch (err: any) {
+          console.error(
+            'Eksekusi executeResale on-chain gagal setelah pembayaran:',
+            err,
+          );
+          const refundAmount =
+            Number(listing.lockedPrice) + (Number(listing.adminFee) || 0);
+          const refundResult = await this.refundMidtransTransaction(
+            midtransOrderId,
+            refundAmount,
+            err?.message || 'Eksekusi resale on-chain gagal',
+          );
+
+          listing.status = ResaleStatus.ACTIVE;
+          listing.lockedUntil = null;
+          listing.buyerWallet = null;
+          listing.adminFee = null;
+          listing.buyerMidtransTransactionId = null;
+          await this.resaleListingRepository.save(listing);
+
+          const failureStatus = refundResult.refunded ? 'refunded' : 'failed';
+          const failureMessage = refundResult.refunded
+            ? 'Transaksi Gagal — Dana Anda telah dikembalikan otomatis.'
+            : 'Transaksi Gagal — Pengembalian dana sedang diproses manual.';
+
+          this.failedResaleOrders.set(midtransOrderId, {
+            status: failureStatus,
+            message: failureMessage,
+            amount: refundAmount,
+          });
+
+          if (buyerWalletLower && this.mailService) {
+            try {
+              const buyerCustomer = await this.customerRepository.findOne({
+                where: { walletAddress: buyerWalletLower },
+                relations: { user: true },
+              });
+              const buyerEmail = buyerCustomer?.user?.email;
+              const buyerName = buyerCustomer?.user?.name || 'Pelanggan';
+              if (buyerEmail) {
+                await this.mailService.sendTransactionFailedEmail(
+                  buyerEmail,
+                  buyerName,
+                  midtransOrderId,
+                  refundAmount,
+                  refundResult.refunded,
+                );
+              }
+            } catch (mailErr) {
+              console.error(
+                '[TicketsService] Gagal mengirim email notifikasi transaksi resale gagal:',
+                mailErr,
+              );
+            }
+          }
+
+          return {
+            status: failureStatus,
+            orderId: midtransOrderId,
+            refunded: refundResult.refunded,
+            message: failureMessage,
+            error: err?.message,
+          };
+        }
+      } else if (['cancel', 'expire', 'deny'].includes(transactionStatus)) {
+        // Kalau pembayaran batal atau kedaluwarsa, buka kembali lock (status kembali ACTIVE)
         listing.status = ResaleStatus.ACTIVE;
         listing.lockedUntil = null;
         listing.buyerWallet = null;
+        listing.adminFee = null;
         listing.buyerMidtransTransactionId = null;
         await this.resaleListingRepository.save(listing);
 
-        const failureStatus = refundResult.refunded ? 'refunded' : 'failed';
-        const failureMessage = refundResult.refunded
-          ? 'Transaksi Gagal — Dana Anda telah dikembalikan otomatis.'
-          : 'Transaksi Gagal — Pengembalian dana sedang diproses manual.';
-
-        this.failedResaleOrders.set(midtransOrderId, {
-          status: failureStatus,
-          message: failureMessage,
-          amount: refundAmount,
-        });
-
-        if (buyerWallet && this.mailService) {
-          try {
-            const buyerCustomer = await this.customerRepository.findOne({
-              where: { walletAddress: buyerWallet },
-              relations: { user: true },
-            });
-            const buyerEmail = buyerCustomer?.user?.email;
-            const buyerName = buyerCustomer?.user?.name || 'Pelanggan';
-            if (buyerEmail) {
-              await this.mailService.sendTransactionFailedEmail(
-                buyerEmail,
-                buyerName,
-                midtransOrderId,
-                refundAmount,
-                refundResult.refunded,
-              );
-            }
-          } catch (mailErr) {
-            console.error(
-              '[TicketsService] Gagal mengirim email notifikasi transaksi resale gagal:',
-              mailErr,
-            );
-          }
-        }
-
         return {
-          status: failureStatus,
+          status: 'resale_payment_cancelled',
           orderId: midtransOrderId,
-          refunded: refundResult.refunded,
-          message: failureMessage,
-          error: err?.message,
+          message:
+            'Pembayaran batal/kedaluwarsa, tiket tetap berstatus ACTIVE di katalog resale',
         };
       }
-    } else if (['cancel', 'expire', 'deny'].includes(transactionStatus)) {
-      // Kalau pembayaran batal atau kedaluwarsa, buka kembali lock (status kembali ACTIVE)
-      listing.status = ResaleStatus.ACTIVE;
-      listing.lockedUntil = null;
-      listing.buyerWallet = null;
-      listing.buyerMidtransTransactionId = null;
-      await this.resaleListingRepository.save(listing);
 
       return {
-        status: 'resale_payment_cancelled',
+        status: 'pending',
         orderId: midtransOrderId,
-        message: 'Pembayaran batal/kedaluwarsa, tiket tetap berstatus ACTIVE di katalog resale',
+        message: `Transaksi resale berstatus ${transactionStatus}, menunggu pembayaran`,
       };
-    }
-
-    return {
-      status: 'pending',
-      orderId: midtransOrderId,
-      message: `Transaksi resale berstatus ${transactionStatus}, menunggu pembayaran`,
-    };
+    });
   }
 }

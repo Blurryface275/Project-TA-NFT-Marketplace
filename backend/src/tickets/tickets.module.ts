@@ -13,11 +13,12 @@ import { EventsService } from '../events/events.service';
 import { ConfigService } from '@nestjs/config';
 import { TicketCache } from './entities/ticket-cache.entity';
 import { ResaleListing } from './entities/resale-listing.entity';
+import { PasskeyCredential } from '../auth/entities/passkey-credential.entity';
 
 @Module({
   // Impor EventsModule spy TicketsService bisa baca data kuota event dari database
   imports: [
-    TypeOrmModule.forFeature([Order, TicketCache, ResaleListing, Customer]), // daftarin entity
+    TypeOrmModule.forFeature([Order, TicketCache, ResaleListing, Customer, PasskeyCredential]), // daftarin entity
     EventsModule, // harus di import spy service bisa akses data event/kuota
     AuthModule, // untuk akses MailService
   ],

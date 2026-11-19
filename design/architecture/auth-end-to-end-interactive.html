@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arsitektur Interaktif: Auth, Session JWT &amp; Passkey Wallet</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #F8FAFC;
+      color: #0F172A;
+      padding: 24px;
+      line-height: 1.5;
+    }
+    .container { max-width: 1480px; margin: 0 auto; }
+
+    /* Header */
+    .header {
+      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+      gap: 16px; margin-bottom: 20px; background: #FFFFFF; padding: 20px 24px;
+      border-radius: 16px; border: 1px solid #E2E8F0;
+    }
+    .header h1 { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
+    .header p { font-size: 13px; color: #64748B; margin-top: 2px; }
+
+    /* Controls */
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .tab-btn {
+      padding: 8px 14px; border-radius: 10px; border: 1px solid #E2E8F0;
+      background: #FFFFFF; color: #475569; font-size: 12.5px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .tab-btn:hover { background: #F1F5F9; color: #0F172A; }
+    .tab-btn.active { background: #0F172A; color: #FFFFFF; border-color: #0F172A; }
+    .play-btn {
+      padding: 8px 16px; border-radius: 10px; border: none;
+      background: #FF5A36; color: #FFFFFF; font-size: 12.5px; font-weight: 700;
+      cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+      transition: background 0.15s;
+    }
+    .play-btn:hover { background: #E04826; }
+
+    /* Main Grid */
+    .workspace { display: grid; grid-template-columns: 1fr 370px; gap: 20px; align-items: start; }
+    @media (max-width: 1150px) { .workspace { grid-template-columns: 1fr; } }
+
+    /* Canvas Card */
+    .canvas-card {
+      background: #FFFFFF; border-radius: 16px; border: 1px solid #E2E8F0;
+      padding: 20px; overflow-x: auto;
+    }
+    svg { width: 100%; height: auto; min-width: 960px; display: block; }
+
+    /* Interactive SVG Nodes */
+    .node-group { cursor: pointer; transition: opacity 0.2s, transform 0.2s; }
+    .node-group:hover .node-box { stroke: #FF5A36; stroke-width: 2.2; }
+    .node-group.active .node-box {
+      stroke: #FF5A36; stroke-width: 2.8;
+      filter: drop-shadow(0 6px 14px rgba(255, 90, 54, 0.18));
+    }
+    .dimmed { opacity: 0.22; }
+
+    /* Animated flow dot */
+    @keyframes pulseEdge {
+      0% { stroke-dashoffset: 24; }
+      100% { stroke-dashoffset: 0; }
+    }
+    .edge-active {
+      stroke: #FF5A36 !important;
+      stroke-width: 2.5 !important;
+      stroke-dasharray: 6 6;
+      animation: pulseEdge 0.7s linear infinite;
+    }
+
+    /* Inspector Panel */
+    .inspector {
+      background: #FFFFFF; border-radius: 16px; border: 1px solid #E2E8F0;
+      padding: 20px; position: sticky; top: 20px;
+    }
+    .badge {
+      display: inline-block; padding: 4px 10px; border-radius: 999px;
+      font-size: 11px; font-weight: 700; background: #FFF1EE; color: #FF5A36;
+      margin-bottom: 10px;
+    }
+    .inspector h2 { font-size: 16px; font-weight: 800; margin-bottom: 6px; }
+    .inspector .file-pill {
+      display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11.5px; background: #F1F5F9; color: #0F172A; padding: 4px 8px;
+      border-radius: 6px; margin-bottom: 14px; border: 1px solid #E2E8F0; word-break: break-all;
+    }
+    .sec-title {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; color: #64748B; margin: 14px 0 6px;
+    }
+    .info-box {
+      background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px;
+      padding: 10px 12px; font-size: 12.5px; color: #1E293B;
+    }
+    .info-box code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11.5px; color: #EA580C; font-weight: 600;
+    }
+    pre.payload {
+      background: #0F172A; color: #E2E8F0; padding: 10px 12px; border-radius: 10px;
+      font-size: 11.5px; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .step-nav { display: flex; gap: 8px; margin-top: 16px; }
+    .step-nav button {
+      flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #E2E8F0;
+      background: #FFFFFF; font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .step-nav button:hover { background: #F1F5F9; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>Arsitektur Visual End-to-End: Register, Login &amp; Passkey Wallet</h1>
+        <p>Klik ikon komponen mana saja atau tekan <strong>Simulasi Alur</strong> untuk melihat file, function, payload, dan algoritma di baliknya.</p>
+      </div>
+      <div class="controls">
+        <button class="tab-btn active" onclick="setPhase('all', this)">Semua Fase</button>
+        <button class="tab-btn" onclick="setPhase('p1', this)">1. Register &amp; OTP</button>
+        <button class="tab-btn" onclick="setPhase('p2', this)">2. Login &amp; JWT</button>
+        <button class="tab-btn" onclick="setPhase('p3', this)">3. Passkey Wallet</button>
+        <button class="play-btn" id="playBtn" onclick="togglePlay()">▶ Simulasi Alur</button>
+      </div>
+    </div>
+
+    <div class="workspace">
+      <div class="canvas-card">
+        <svg viewBox="0 0 1120 880" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#0F172A"/>
+            </marker>
+            <marker id="arr-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#FF5A36"/>
+            </marker>
+          </defs>
+
+          <!-- Swimlane Backgrounds -->
+          <rect x="10" y="16" width="1100" height="270" rx="14" fill="#FAFAFA" stroke="#E2E8F0"/>
+          <text x="26" y="40" font-size="11.5" font-weight="800" fill="#0F172A">FASE 1: REGISTRASI &amp; VERIFIKASI OTP EMAIL</text>
+
+          <rect x="10" y="302" width="1100" height="270" rx="14" fill="#FAFAFA" stroke="#E2E8F0"/>
+          <text x="26" y="326" font-size="11.5" font-weight="800" fill="#0F172A">FASE 2: LOGIN, SESSION JWT (HS256) &amp; MIDDLEWARE</text>
+
+          <rect x="10" y="588" width="1100" height="276" rx="14" fill="#FAFAFA" stroke="#E2E8F0"/>
+          <text x="26" y="612" font-size="11.5" font-weight="800" fill="#0F172A">FASE 3: AKTIVASI DOMPET PASSKEY (WEBAUTHN P-256 + CREATE2)</text>
+
+          <!-- ==================== FASE 1 EDGES ==================== -->
+          <path id="e-1" class="phase-p1" d="M 105 128 L 210 128" fill="none" stroke="#0F172A" stroke-width="1.8" marker-end="url(#arr)"/>
+          <text x="157" y="110" font-size="10" font-weight="700" fill="#0F172A" text-anchor="middle">1. Isi Form</text>
+          <text x="157" y="122" font-size="9" fill="#64748B" text-anchor="middle">name, nik, email, pass</text>
+
+          <path id="e-2" class="phase-p1" d="M 355 128 L 440 128" fill="none" stroke="#0F172A" stroke-width="1.8" marker-end="url(#arr)"/>
+          <text x="397" y="110" font-size="10" font-weight="700" fill="#0F172A" text-anchor="middle">2. FormData</text>
+          <text x="397" y="122" font-size="9" fill="#64748B" text-anchor="middle">Zod safeParse</text>
+
+          <path id="e-3" class="phase-p1" d="M 590 128 L 680 128" fill="none" stroke="#0F172A" stroke-width="1.8" marker-end="url(#arr)"/>
+          <text x="635" y="110" font-size="10" font-weight="700" fill="#0F172A" text-anchor="middle">3. POST</text>
+          <text x="635" y="122" font-size="9" fill="#64748B" text-anchor="middle">/api/auth/register</text>
+
+          <path id="e-4" class="phase-p1" d="M 850 112 L 945 100" fill="none" stroke="#0F172A" stroke-width="1.8" marker-end="url(#arr)"/>
+          <text x="896" y="96" font-size="9.5" font-weight="700" fill="#0F172A" text-anchor="middle">4. Tx</text>
+
+          <path id="e-5" class="phase-p1" d="M 850 150 L 945 198" fill="none" stroke="#0F172A" stroke-width="1.8" marker-end="url(#arr)"/>
+          <text x="896" y="188" font-size="9.5" font-weight="700" fill="#0F172A" text-anchor="middle">5. OTP</text>
+
+          <path id="e-6" class="phase-p1" d="M 945 232 L 105 232 L 105 178" fill="none" stroke="#64748B" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+          <text x="530" y="250" font-size="10" font-weight="700" fill="#0F172A" text-anchor="middle">6. User input 6 digit OTP → POST /api/auth/verify-otp → isEmailVerified = true → Redirect /login</text>
+
+          <!-- ==================== FASE 1 NODES ==================== -->
+          <!-- Node 1: User -->
+          <g id="n-user1" class="node-group phase-p1" onclick="selectStep(1)">
+            <rect class="node-box" x="25" y="84" width="80" height="90" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
+            <circle cx="65" cy="112" r="13" fill="#0F172A"/>
+            <path d="M 43 148 C 43 132, 87 132, 87 148 Z" fill="#0F172A"/>
+            <text x="65" y="165" font-size="11" font-weight="700" fill="#0F172A" text-anchor="middle">User</text>
+          </g>
+
+          <!-- Node 2: Next.js SignUpForm.tsx -->
+          <g id="n-signup-ui" class="node-group phase-p1" onclick="selectStep(2)">
+            <rect class="node-box" x="215" y="74" width="140" height="108" rx="12" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.5"/>
+            <!-- Next.js Icon -->
+            <circle cx="285" cy="103" r="16" fill="#000000"/>
+            <text x="285" y="108" font-size="13" font-weight="900" fill="#FFFFFF" text-anchor="middle">N</text>
+            <text x="285" y="136" font-size="11" font-weight="800" fill="#0F172A" text-anchor="middle">Frontend (Next.js)</text>
+            <text x="285" y="152" font-size="10" font-weight="600" fill="#FF5A36" text-anchor="middle">SignUpForm.tsx</text>
+            <text x="285" y="167" font-size="9" fill="#64748B" text-anchor="middle">useActionState(signup)</text>
+          </g>
+
+          <!-- Node 3: signup/actions.ts -->
+          <g id="n-signup-sa" class="node-group phase-p1" onclick="selectStep(3)">
+            <rect class="node-box" x="445" y="74" width="145" height="108" rx="12" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.5"/>
+            <rect x="498" y="88" width="38" height="26" rx="5" fill="#0F172A"/>
+            <text x="517" y="105" font-size="10" font-weight="800" fill="#FFFFFF" text-anchor="middle">SA</text>
+            <text x="517" y="132" font-size="11" font-weight="800" fill="#0F172A" text-anchor="middle">Server Action</text>
+            <text x="517" y="148" font-size="10" font-weight="600" fill="#FF5A36" text-anchor="middle">signup/actions.ts</text>
+            <text x="517" y="164" font-size="9" fill="#64748B" text-anchor="middle">Zod SignUpFormSchema</text>
+          </g>
+
+          <!-- Node 4: NestJS AuthService.register -->
+          <g id="n-reg-be" class="node-group phase-p1" onclick="selectStep(4)">
+            <rect class="node-box" x="685" y="70" width="165" height="118" rx="12" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.5"/>
+            <!-- NestJS Shield Icon -->
+            <path d="M 767 82 L 782 88 L 779 104 L 767 112 L 755 104 L 752 88 Z" fill="#E0234E"/>
+            <text x="767" y="101" font-size="10" font-weight="900" fill="#FFFFFF" text-anchor="middle">N</text>
+            <text x="767" y="128" font-size="11" font-weight="800" fill="#0F172A" text-anchor="middle">Backend (NestJS)</text>
+            <text x="767" y="144" font-size="10" font-weight="600" fill="#FF5A36" text-anchor="middle">auth.service.ts</text>
+            <text x="767" y="159" font-size="9" fill="#0F172A" text-anchor="middle">keccak256(NIK) • bcrypt(10)</text>
+            <text x="767" y="173" font-size="9" fill="#64748B" text-anchor="middle">crypto.randomInt() OTP 6d</text>
+          </g>
+
+          <!-- Node 5: MySQL -->
+          <g id="n-reg-db" class="node-group phase-p1" onclick="selectStep(5)">
+            <rect class="node-box" x="950" y="56" width="142" height="84" rx="12" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.5"/>
+            <!-- DB Cylinder Icon -->
+            <ellipse cx="1021" cy="74" rx="16" ry="5" fill="#0284C7"/>
+            <path d="M 1005 74 L 1005 92 C 1005 95, 1037 95, 1037 92 L 1037 74" fill="#0284C7"/>
+            <ellipse cx="1021" cy="74" rx="16" ry="5" fill="#38BDF8"/>
+            <text x="1021" y="112" font-size="11" font-weight="800" fill="#0F172A" text-anchor="middle">MySQL DB</text>
+            <text x="1021" y="127" font-size="9" fill="#64748B" text-anchor="middle">users &amp; customers (nik_hash)</text>
+          </g>
+
+          <!-- Node 6: Mailtrap -->
+          <g id="n-reg-mail" class="node-group phase-p1" onclick="selectStep(6)">
+            <rect class="node-box" x="950" y="154" width="142" height="74" rx="12" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.5"/>
+            <!-- Envelope Icon -->
+            <rect x="1003" y="166" width="36" height="24" rx="4" fill="#10B981"/>
+            <path d="M 1004 168 L 1021 180 L 1038 168" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+            <text x="1021" y="206" font-size="10.5" font-weight="800" fill="#0F172A" text-anchor="middle">mail.service.ts</text>
+            <text x="1021" y="219" font-size="9" fill="#64748B" text-anchor="middle">Mailtrap SMTP (OTP 10m)</text>
+          </g>
+
+          <!-- ==================== FASE 2 EDGES ==================== -->
+          <path id="e-7" class="phase-p2" d="M 105 414 L 210 414" fill="none" stroke="#0F172A" stroke-width="1.8" marker-end="url(#arr)"/>
+          <text x="157" y="396" font-size="10" font-weight="700" fill="#0F172A" text-anchor="middle">7. Login</text>
+          <text x="157" y="408" font-size="9" fill="#64748B" text-anchor="middle">email &amp; password</text>
+
+          <path id="e-8" class="phase-p2" d="M 355 414 L 440 414" fill="none" stroke="#0F172A" stroke-width="1.8" marker-end="url(#arr)"/>
+          <text x="397" y="406" font-size="9.5" fill="#64748B" text-anchor="middle">loginSchema</text>
+
+          <path id="e-9" class="phase-p2" d="M 590 414 L 680 414" fill="none" stroke="#0F172A" stroke-width="1.8" marker-end="url(#arr)"/>
+          <text x="635" y="396" font-size="10" font-weight="700" fill="#0F172A" text-anchor="middle">8. POST</text>
+          <text x="635" y="408" font-size="9" fill="#64748B" text-anchor="middle">/api/auth/login</text>
+
+          <path id="e-10" class="phase-p2" d="M 850 414 L 945 414" fill="none" stroke="#0F172A" stroke-width="1.8" marker-end="url(#arr)"/>
+          <text x="897" y="406" font-size="9.5" font-weight="700" fill="#0F172A" text-anchor="middle">9. Role</text>
+
+          <path id="e-11" class="phase-p2" d="M 767 474 L 767 506 L 595 506" fill="none" stroke="#64748B" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+          <text x="682" y="498" font-size="9" font-weight="700" fill="#475563" text-anchor="middle">User DTO</text>
+
+          <path id="e-12" class="phase-p2" d="M 445 506 L 65 506 L 65 466" fill="none" stroke="#0F172A" stroke-width="1.8" marker-end="url(#arr)"/>
+          <text x="255" y="524" font-size="10" font-weight="700" fill="#0F172A" text-anchor="middle">10. Set-Cookie: session=&lt;JWT HS256&gt; (HttpOnly, 7 hari) → middleware.ts proteksi /dashboard/*</text>
+
+          <!-- ==================== FASE 2 NODES ==================== -->
+          <g id="n-user2" class="node-group phase-p2" onclick="selectStep(7)">
+            <rect class="node-box" x="25" y="370" width="80" height="90" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
+            <circle cx="65" cy="398" r="13" fill="#0F172A"/>
+            <path d="M 43 434 C 43 418, 87 418, 87 434 Z" fill="#0F172A"/>
+            <text x="65" y="451" font-size="11" font-weight="700" fill="#0F172A" text-anchor="middle">User</text>
+          </g>
+
+          <g id="n-login-ui" class="node-group phase-p2" onclick="selectStep(7)">
+            <rect class="node-box" x="215" y="360" width="140" height="108" rx="12" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.5"/>
+            <circle cx="285" cy="389" r="16" fill="#000000"/>
+            <text x="285" y="394" font-size="13" font-weight="900" fill="#FFFFFF" text-anchor="middle">N</text>
+            <text x="285" y="422" font-size="11" font-weight="800" fill="#0F172A" text-anchor="middle">Frontend (Next.js)</text>
+            <text x="285" y="438" font-size="10" font-weight="600" fill="#FF5A36" text-anchor="middle">LoginForm.tsx</text>
+            <text x="285" y="453" font-size="9" fill="#64748B" text-anchor="middle">useActionState(login)</text>
+          </g>
+
+          <g id="n-login-sa" class="node-group phase-p2" onclick="selectStep(8)">
+            <rect class="node-box" x="445" y="360" width="145" height="108" rx="12" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.5"/>
+            <rect x="498" y="374" width="38" height="26" rx="5" fill="#0F172A"/>
+            <text x="517" y="391" font-size="10" font-weight="800" fill="#FFFFFF" text-anchor="middle">SA</text>
+            <text x="517" y="418" font-size="11" font-weight="800" fill="#0F172A" text-anchor="middle">Server Action</text>
+            <text x="517" y="434" font-size="10" font-weight="600" fill="#FF5A36" text-anchor="middle">login/actions.ts</text>
+            <text x="517" y="450" font-size="9" fill="#64748B" text-anchor="middle">Zod loginSchema</text>
+          </g>
+
+          <g id="n-login-be" class="node-group phase-p2" onclick="selectStep(9)">
+            <rect class="node-box" x="685" y="356" width="165" height="118" rx="12" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.5"/>
+            <path d="M 767 368 L 782 374 L 779 390 L 767 398 L 755 390 L 752 374 Z" fill="#E0234E"/>
+            <text x="767" y="387" font-size="10" font-weight="900" fill="#FFFFFF" text-anchor="middle">N</text>
+            <text x="767" y="414" font-size="11" font-weight="800" fill="#0F172A" text-anchor="middle">AuthService.login()</text>
+            <text x="767" y="430" font-size="10" font-weight="600" fill="#FF5A36" text-anchor="middle">bcrypt.compare()</text>
+            <text x="767" y="445" font-size="9" fill="#0F172A" text-anchor="middle">Cek isEmailVerified</text>
+            <text x="767" y="459" font-size="9" fill="#64748B" text-anchor="middle">Role: ORGANIZER/CUSTOMER</text>
+          </g>
+
+          <g id="n-login-db" class="node-group phase-p2" onclick="selectStep(9)">
+            <rect class="node-box" x="950" y="366" width="142" height="94" rx="12" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.5"/>
+            <ellipse cx="1021" cy="386" rx="16" ry="5" fill="#0284C7"/>
+            <path d="M 1005 386 L 1005 404 C 1005 407, 1037 407, 1037 404 L 1037 386" fill="#0284C7"/>
+            <ellipse cx="1021" cy="386" rx="16" ry="5" fill="#38BDF8"/>
+            <text x="1021" y="424" font-size="11" font-weight="800" fill="#0F172A" text-anchor="middle">MySQL DB</text>
+            <text x="1021" y="440" font-size="9" fill="#64748B" text-anchor="middle">users, customers, organizers</text>
+          </g>
+
+          <g id="n-session" class="node-group phase-p2" onclick="selectStep(10)">
+            <rect class="node-box" x="445" y="478" width="145" height="62" rx="10" fill="#FFF7ED" stroke="#EA580C" stroke-width="1.5"/>
+            <text x="517" y="499" font-size="10.5" font-weight="800" fill="#0F172A" text-anchor="middle">lib/session.ts &amp; jwt.ts</text>
+            <text x="517" y="514" font-size="9.5" font-weight="700" fill="#EA580C" text-anchor="middle">SignJWT (HS256)</text>
+            <text x="517" y="528" font-size="8.5" fill="#475569" text-anchor="middle">middleware.ts (jwtVerify)</text>
+          </g>
+
+          <!-- ==================== FASE 3 EDGES ==================== -->
+          <path id="e-13" class="phase-p3" d="M 105 700 L 210 700" fill="none" stroke="#0F172A" stroke-width="1.8" marker-end="url(#arr)"/>
+          <text x="157" y="684" font-size="10" font-weight="700" fill="#0F172A" text-anchor="middle">11. Klik</text>
+          <text x="157" y="695" font-size="9" fill="#64748B" text-anchor="middle">Aktifkan Dompet</text>
+
+          <path id="e-14" class="phase-p3" d="M 380 680 L 460 665" fill="none" stroke="#0F172A" stroke-width="1.8" marker-end="url(#arr)"/>
+          <path id="e-15" class="phase-p3" d="M 380 722 L 460 740" fill="none" stroke="#0F172A" stroke-width="1.8" marker-end="url(#arr)"/>
+
+          <path id="e-16" class="phase-p3" d="M 635 700 L 710 700" fill="none" stroke="#0F172A" stroke-width="1.8" marker-end="url(#arr)"/>
+          <text x="672" y="683" font-size="9.5" font-weight="700" fill="#0F172A" text-anchor="middle">13. POST</text>
+          <text x="672" y="694" font-size="8.5" fill="#64748B" text-anchor="middle">setup-wallet</text>
+
+          <path id="e-17" class="phase-p3" d="M 885 700 L 945 700" fill="none" stroke="#0F172A" stroke-width="1.8" marker-end="url(#arr)"/>
+
+          <path id="e-18" class="phase-p3" d="M 797 758 L 797 822 L 65 822 L 65 752" fill="none" stroke="#059669" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+          <text x="430" y="840" font-size="10" font-weight="700" fill="#059669" text-anchor="middle">15. updateSessionWallet(walletAddress) → Re-sign JWT HS256 Cookie tanpa re-login</text>
+
+          <!-- ==================== FASE 3 NODES ==================== -->
+          <g id="n-user3" class="node-group phase-p3" onclick="selectStep(11)">
+            <rect class="node-box" x="25" y="656" width="80" height="90" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
+            <circle cx="65" cy="684" r="13" fill="#0F172A"/>
+            <path d="M 43 720 C 43 704, 87 704, 87 720 Z" fill="#0F172A"/>
+            <text x="65" y="737" font-size="11" font-weight="700" fill="#0F172A" text-anchor="middle">User</text>
+          </g>
+
+          <g id="n-passkey-lib" class="node-group phase-p3" onclick="selectStep(11)">
+            <rect class="node-box" x="215" y="646" width="165" height="108" rx="12" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.5"/>
+            <circle cx="297" cy="675" r="16" fill="#000000"/>
+            <text x="297" y="680" font-size="13" font-weight="900" fill="#FFFFFF" text-anchor="middle">N</text>
+            <text x="297" y="707" font-size="11" font-weight="800" fill="#0F172A" text-anchor="middle">lib/passkey.ts</text>
+            <text x="297" y="723" font-size="10" font-weight="600" fill="#FF5A36" text-anchor="middle">registerPasskey(email)</text>
+            <text x="297" y="738" font-size="9" fill="#64748B" text-anchor="middle">NavbarWallet / BuyCard</text>
+          </g>
+
+          <!-- WebAuthn Biometric -->
+          <g id="n-webauthn" class="node-group phase-p3" onclick="selectStep(12)">
+            <rect class="node-box" x="465" y="624" width="170" height="72" rx="12" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.5"/>
+            <!-- Fingerprint rings -->
+            <circle cx="490" cy="655" r="12" fill="none" stroke="#FF5A36" stroke-width="2"/>
+            <circle cx="490" cy="655" r="7" fill="none" stroke="#FF5A36" stroke-width="2"/>
+            <circle cx="490" cy="655" r="2.5" fill="#FF5A36"/>
+            <text x="512" y="649" font-size="10.5" font-weight="800" fill="#0F172A">WebAuthn Enclave</text>
+            <text x="512" y="664" font-size="9.5" font-weight="700" fill="#FF5A36">NIST P-256 (secp256r1)</text>
+            <text x="512" y="678" font-size="8.5" fill="#64748B">Output: pubX, pubY, credId</text>
+          </g>
+
+          <!-- ZeroDev CREATE2 -->
+          <g id="n-zerodev" class="node-group phase-p3" onclick="selectStep(12)">
+            <rect class="node-box" x="465" y="706" width="170" height="72" rx="12" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.5"/>
+            <!-- Diamond ETH icon -->
+            <polygon points="490,722 500,738 490,744 480,738" fill="#6366F1"/>
+            <polygon points="490,754 500,740 490,746 480,740" fill="#4338CA"/>
+            <text x="512" y="731" font-size="10.5" font-weight="800" fill="#0F172A">ZeroDev Kernel v3.3</text>
+            <text x="512" y="746" font-size="9.5" font-weight="700" fill="#4338CA">CREATE2 (EntryPoint 0.7)</text>
+            <text x="512" y="760" font-size="8.5" fill="#64748B">Alamat 0x... deterministik</text>
+          </g>
+
+          <!-- Backend setupWallet -->
+          <g id="n-setup-be" class="node-group phase-p3" onclick="selectStep(13)">
+            <rect class="node-box" x="715" y="646" width="170" height="110" rx="12" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.5"/>
+            <path d="M 800 658 L 815 664 L 812 680 L 800 688 L 788 680 L 785 664 Z" fill="#E0234E"/>
+            <text x="800" y="677" font-size="10" font-weight="900" fill="#FFFFFF" text-anchor="middle">N</text>
+            <text x="800" y="704" font-size="11" font-weight="800" fill="#0F172A" text-anchor="middle">AuthService</text>
+            <text x="800" y="720" font-size="10" font-weight="600" fill="#FF5A36" text-anchor="middle">setupWallet()</text>
+            <text x="800" y="736" font-size="9" fill="#64748B" text-anchor="middle">via buy/actions.ts</text>
+          </g>
+
+          <!-- MySQL Passkey -->
+          <g id="n-setup-db" class="node-group phase-p3" onclick="selectStep(14)">
+            <rect class="node-box" x="950" y="652" width="142" height="98" rx="12" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.5"/>
+            <ellipse cx="1021" cy="672" rx="16" ry="5" fill="#0284C7"/>
+            <path d="M 1005 672 L 1005 690 C 1005 693, 1037 693, 1037 690 L 1037 672" fill="#0284C7"/>
+            <ellipse cx="1021" cy="672" rx="16" ry="5" fill="#38BDF8"/>
+            <text x="1021" y="710" font-size="11" font-weight="800" fill="#0F172A" text-anchor="middle">MySQL DB</text>
+            <text x="1021" y="726" font-size="8.8" fill="#64748B" text-anchor="middle">UPDATE customers.wallet</text>
+            <text x="1021" y="739" font-size="8.8" fill="#64748B" text-anchor="middle">INSERT passkey_credentials</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Detail Inspector -->
+      <aside class="inspector" id="inspector">
+        <span class="badge" id="ins-badge">Langkah 1 / 14</span>
+        <h2 id="ins-title">Pilih Komponen atau Tekan Simulasi</h2>
+        <div class="file-pill" id="ins-file">frontend/src/app/signup/SignUpForm.tsx</div>
+
+        <div class="sec-title">Function &amp; Proses</div>
+        <div class="info-box" id="ins-desc"></div>
+
+        <div class="sec-title">Algoritma / Keamanan</div>
+        <div class="info-box" id="ins-algo"></div>
+
+        <div class="sec-title">Payload Data</div>
+        <pre class="payload" id="ins-payload"></pre>
+
+        <div class="step-nav">
+          <button onclick="prevStep()">◀ Sebelumnya</button>
+          <button onclick="nextStep()">Berikutnya ▶</button>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const STEPS = [
+      {
+        id: 1, phase: 'p1', node: 'n-user1', edge: 'e-1',
+        badge: 'Fase 1 • Step 1/14 (Register)',
+        title: 'User Mengisi Formulir Pendaftaran',
+        file: 'frontend/src/app/signup/SignUpForm.tsx',
+        desc: 'User mengisi <code>name</code>, <code>nik</code> (16 digit KTP), <code>email</code>, dan <code>password</code> pada komponen <code>SignUpForm()</code>.',
+        algo: 'HTML5 input validation + React 19 <code>useActionState(signup, undefined)</code>.',
+        payload: '{\n  "name": "Budi Santoso",\n  "nik": "3578012345678901",\n  "email": "budi@email.com",\n  "password": "Pass@1234"\n}'
+      },
+      {
+        id: 2, phase: 'p1', node: 'n-signup-ui', edge: 'e-1',
+        badge: 'Fase 1 • Step 2/14 (Client UI)',
+        title: 'Submit FormData ke Server Action',
+        file: 'frontend/src/app/signup/SignUpForm.tsx',
+        desc: 'Form memicu <code>signupAction</code> yang mengeksekusi Server Action <code>signup()</code> di Next.js Server.',
+        algo: 'Transmisi FormData terenkripsi TLS/HTTPS menuju Next.js Server Action.',
+        payload: 'FormData { name, nik, email, password }'
+      },
+      {
+        id: 3, phase: 'p1', node: 'n-signup-sa', edge: 'e-2',
+        badge: 'Fase 1 • Step 3/14 (Validasi)',
+        title: 'Validasi Zod & Fetch ke Backend',
+        file: 'frontend/src/app/signup/actions.ts → lib/definitions.ts',
+        desc: '<code>signup()</code> memvalidasi input lewat <code>SignUpFormSchema.safeParse()</code> lalu mengirim <code>POST /api/auth/register</code>.',
+        algo: 'Zod Schema Validation: NIK wajib tepat 16 digit angka (<code>/^\\d+$/</code>), password min 8 karakter + huruf + angka + simbol.',
+        payload: 'POST /api/auth/register\n{\n  "name": "Budi Santoso",\n  "email": "budi@email.com",\n  "nik": "3578012345678901",\n  "password": "Pass@1234"\n}'
+      },
+      {
+        id: 4, phase: 'p1', node: 'n-reg-be', edge: 'e-3',
+        badge: 'Fase 1 • Step 4/14 (Crypto Backend)',
+        title: 'Hashing NIK, Password & Generate OTP',
+        file: 'backend/src/auth/auth.service.ts → AuthService.register()',
+        desc: 'Cek duplikasi email & <code>nik_hash</code>, hash NIK & password, serta buat OTP 6 digit dengan masa berlaku 10 menit.',
+        algo: '• <code>keccak256(stringToBytes(nik))</code> via <code>viem</code> (UU PDP, RAM-only)<br>• <code>bcrypt.genSalt(10) + bcrypt.hash()</code> (Blowfish)<br>• <code>crypto.randomInt(100000, 1000000)</code> (CSPRNG)',
+        payload: 'computedNikHash: "0x8f3a...c91b"\nhashedPassword: "$2b$10$..."\notp: "482910" (TTL: 10 menit)'
+      },
+      {
+        id: 5, phase: 'p1', node: 'n-reg-db', edge: 'e-4',
+        badge: 'Fase 1 • Step 5/14 (Database)',
+        title: 'Simpan User & Customer (DB Transaction)',
+        file: 'backend/src/auth/auth.service.ts → dataSource.transaction()',
+        desc: 'Insert atomik ke tabel <code>users</code> (<code>isEmailVerified=false</code>) dan <code>customers</code> (<code>nik_hash</code>, <code>wallet_address=NULL</code>).',
+        algo: 'ACID Database Transaction (TypeORM). NIK mentah tidak pernah menyentuh disk/database.',
+        payload: 'INSERT users (email, password, email_verification_token)\nINSERT customers (nik_hash, wallet_address=NULL, users_id)'
+      },
+      {
+        id: 6, phase: 'p1', node: 'n-reg-mail', edge: 'e-5',
+        badge: 'Fase 1 • Step 6/14 (OTP Email)',
+        title: 'Kirim OTP & Verifikasi Email',
+        file: 'backend/src/auth/mail.service.ts → verifyOtp()',
+        desc: '<code>sendOtpEmail()</code> mengirim 6 digit OTP via Mailtrap SMTP. User submit OTP ke <code>verifyOtpAction()</code> → <code>AuthService.verifyOtp()</code>.',
+        algo: 'Validasi kecocokan token & expiry (10 menit), lalu set <code>isEmailVerified = true</code> & hapus token.',
+        payload: 'POST /api/auth/verify-otp\n{ "email": "budi@email.com", "otp": "482910" }\n→ Redirect /login?verified=true'
+      },
+      {
+        id: 7, phase: 'p2', node: 'n-login-ui', edge: 'e-7',
+        badge: 'Fase 2 • Step 7/14 (Login UI)',
+        title: 'User Submit Form Login',
+        file: 'frontend/src/app/login/LoginForm.tsx',
+        desc: 'User memasukkan <code>email</code> dan <code>password</code> pada <code>LoginForm()</code> yang terikat ke <code>useActionState(login, undefined)</code>.',
+        algo: 'Form submission via Next.js Server Action.',
+        payload: 'FormData { email: "budi@email.com", password: "••••••••" }'
+      },
+      {
+        id: 8, phase: 'p2', node: 'n-login-sa', edge: 'e-8',
+        badge: 'Fase 2 • Step 8/14 (Validasi Login)',
+        title: 'Validasi loginSchema & Fetch Backend',
+        file: 'frontend/src/app/login/actions.ts → login()',
+        desc: 'Validasi <code>loginSchema.safeParse()</code> (email valid & password min 8 karakter), lalu kirim <code>POST /api/auth/login</code>.',
+        algo: 'Zod Schema Validation.',
+        payload: 'POST /api/auth/login\n{ "email": "budi@email.com", "password": "Pass@1234" }'
+      },
+      {
+        id: 9, phase: 'p2', node: 'n-login-be', edge: 'e-9',
+        badge: 'Fase 2 • Step 9/14 (Verifikasi Auth)',
+        title: 'Cocokkan Hash Bcrypt & Role User',
+        file: 'backend/src/auth/auth.service.ts → AuthService.login()',
+        desc: 'Query <code>users</code> + <code>customers</code>, verifikasi password, cek <code>isEmailVerified === true</code>, dan cek tabel <code>organizers</code>.',
+        algo: '<code>bcrypt.compare(inputPassword, user.password)</code>. Gagal → HTTP <code>401 UnauthorizedException</code>.',
+        payload: 'Response DTO:\n{\n  "id": 12,\n  "name": "Budi Santoso",\n  "walletAddress": "",\n  "role": "CUSTOMER"\n}'
+      },
+      {
+        id: 10, phase: 'p2', node: 'n-session', edge: 'e-12',
+        badge: 'Fase 2 • Step 10/14 (JWT & Middleware)',
+        title: 'Buat HttpOnly Cookie & Proteksi Rute',
+        file: 'frontend/src/lib/session.ts & middleware.ts',
+        desc: '<code>createSession()</code> mengenkripsi payload user ke JWT lalu menyimpannya di cookie <code>session</code>. <code>middleware()</code> memverifikasi cookie di setiap request.',
+        algo: '<code>SignJWT</code> &amp; <code>jwtVerify</code> (library <code>jose</code>) dengan algoritma <code>HS256</code> (HMAC-SHA256) + <code>SESSION_SECRET</code>. Flag <code>httpOnly: true</code> mencegah XSS.',
+        payload: 'Cookie: session=eyJhbGciOiJIUzI1NiJ9...\nMaxAge: 7 hari | Redirect → /dashboard'
+      },
+      {
+        id: 11, phase: 'p3', node: 'n-passkey-lib', edge: 'e-13',
+        badge: 'Fase 3 • Step 11/14 (Passkey Trigger)',
+        title: 'Aktivasi Dompet Passkey (Pasca-Login)',
+        file: 'frontend/src/lib/passkey.ts → registerPasskey(email)',
+        desc: 'Dipanggil dari <code>NavbarWalletButton.tsx</code> atau <code>BuyTicketCard.tsx</code> saat user pertama kali mengaktifkan dompet tiket.',
+        algo: 'Progressive Onboarding (Web2.5): user tidak perlu paham seed phrase atau gas fee saat daftar.',
+        payload: 'registerPasskey("budi@email.com")'
+      },
+      {
+        id: 12, phase: 'p3', node: 'n-webauthn', edge: 'e-14',
+        badge: 'Fase 3 • Step 12/14 (WebAuthn & CREATE2)',
+        title: 'Biometrik P-256 & Alamat Smart Account',
+        file: 'frontend/src/lib/passkey.ts → toWebAuthnKey() & createKernelAccount()',
+        desc: 'Hardware Secure Enclave membuat kunci biometrik, lalu ZeroDev SDK menghitung alamat Smart Account Sepolia secara deterministik.',
+        algo: '• <b>WebAuthn NIST P-256 (secp256r1)</b>: Private key terkunci di perangkat.<br>• <b>CREATE2</b>: <code>keccak256(0xff, factory, salt(pubX, pubY), initCode)</code>.',
+        payload: '{\n  "pubX": "10492...",\n  "pubY": "88371...",\n  "credentialId": "AZ9x...",\n  "walletAddress": "0x71C...9A2"\n}'
+      },
+      {
+        id: 13, phase: 'p3', node: 'n-setup-be', edge: 'e-16',
+        badge: 'Fase 3 • Step 13/14 (Sync Wallet)',
+        title: 'Kirim Public Key & Wallet ke Backend',
+        file: 'frontend/src/app/dashboard/buy/actions.ts → auth.service.ts',
+        desc: '<code>activateWalletAction()</code> mengirim <code>POST /api/auth/setup-wallet</code> menuju <code>AuthService.setupWallet()</code>.',
+        algo: 'Validasi sesi aktif lewat <code>getSession()</code> sebelum meneruskan ke backend.',
+        payload: 'POST /api/auth/setup-wallet\n{ userId, pubX, pubY, credentialId, walletAddress }'
+      },
+      {
+        id: 14, phase: 'p3', node: 'n-setup-db', edge: 'e-18',
+        badge: 'Fase 3 • Step 14/14 (Persist & Re-sign)',
+        title: 'Simpan Passkey & Update Session Cookie',
+        file: 'auth.service.ts → lib/session.ts (updateSessionWallet)',
+        desc: 'Backend menyimpan <code>wallet_address</code> &amp; <code>passkey_credentials</code>, lalu frontend memanggil <code>updateSessionWallet()</code> untuk memperbarui JWT.',
+        algo: 'DB Transaction MySQL + Re-sign JWT <code>HS256</code> agar user tidak perlu login ulang.',
+        payload: 'UPDATE customers SET wallet_address = "0x71C...9A2"\nINSERT passkey_credentials (public_key_x, public_key_y, credential_id)'
+      }
+    ];
+
+    let currentIdx = 0;
+    let playTimer = null;
+
+    function selectStep(stepId) {
+      const idx = STEPS.findIndex(s => s.id === stepId);
+      if (idx === -1) return;
+      currentIdx = idx;
+      const step = STEPS[idx];
+
+      document.querySelectorAll('.node-group').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('path[id^="e-"]').forEach(el => el.classList.remove('edge-active'));
+
+      const nodeEl = document.getElementById(step.node);
+      if (nodeEl) nodeEl.classList.add('active');
+      const edgeEl = document.getElementById(step.edge);
+      if (edgeEl) edgeEl.classList.add('edge-active');
+
+      document.getElementById('ins-badge').textContent = step.badge;
+      document.getElementById('ins-title').textContent = step.title;
+      document.getElementById('ins-file').textContent = step.file;
+      document.getElementById('ins-desc').innerHTML = step.desc;
+      document.getElementById('ins-algo').innerHTML = step.algo;
+      document.getElementById('ins-payload').textContent = step.payload;
+    }
+
+    function nextStep() {
+      selectStep(STEPS[(currentIdx + 1) % STEPS.length].id);
+    }
+
+    function prevStep() {
+      selectStep(STEPS[(currentIdx - 1 + STEPS.length) % STEPS.length].id);
+    }
+
+    function setPhase(phase, btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+
+      const allItems = document.querySelectorAll('.phase-p1, .phase-p2, .phase-p3');
+      allItems.forEach(el => {
+        if (phase === 'all' || el.classList.contains('phase-' + phase)) {
+          el.classList.remove('dimmed');
+        } else {
+          el.classList.add('dimmed');
+        }
+      });
+
+      if (phase === 'p1') selectStep(1);
+      if (phase === 'p2') selectStep(7);
+      if (phase === 'p3') selectStep(11);
+    }
+
+    function togglePlay() {
+      const btn = document.getElementById('playBtn');
+      if (playTimer) {
+        clearInterval(playTimer);
+        playTimer = null;
+        btn.textContent = '▶ Simulasi Alur';
+        return;
+      }
+      btn.textContent = '⏸ Berhenti';
+      selectStep(STEPS[currentIdx].id);
+      playTimer = setInterval(() => {
+        nextStep();
+      }, 2400);
+    }
+
+    // Init
+    selectStep(1);
+  </script>
+</body>
+</html>
+

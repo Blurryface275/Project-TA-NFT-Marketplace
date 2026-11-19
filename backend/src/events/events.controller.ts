@@ -13,22 +13,12 @@ import {
 } from '@nestjs/common';
 import { InternalApiGuard } from '../common/internal-api-guard';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
+import { memoryStorage } from 'multer';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 
-// Konfigurasi Multer untuk penyimpanan lokal background gambar tiket
-const storage = diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, join(process.cwd(), 'uploads'));
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = extname(file.originalname);
-    cb(null, `ticket-bg-${uniqueSuffix}${ext}`);
-  },
-});
+// Simpan buffer file di RAM untuk langsung di-upload ke IPFS Pinata
+const storage = memoryStorage();
 
 const fileFilter = (req: any, file: any, cb: any) => {
   if (file.mimetype.match(/\/(jpg|jpeg|png|webp)$/)) {

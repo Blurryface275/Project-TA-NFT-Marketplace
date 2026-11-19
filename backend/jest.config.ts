@@ -15,8 +15,22 @@ const config: Config = {
   rootDir: '.',
   testRegex: '.*\\.spec\\.ts$',
   transform: {
-    '^.+\\.(t|j)s$': 'ts-jest',
+    '^.+\\.ts$': [
+      'ts-jest',
+      {
+        tsconfig: {
+          module: 'commonjs',
+          moduleResolution: 'node',
+          resolvePackageJsonExports: false,
+          ignoreDeprecations: '6.0',
+        },
+      },
+    ],
+    '^.+\\.m?js$': '<rootDir>/jest-esm-transformer.cjs',
   },
+  transformIgnorePatterns: [
+    'node_modules[/\\\\](?!(@nestjs|bcryptjs|nodemailer|abitype|@adraffy)[/\\\\])',
+  ],
   moduleNameMapper: pathsToModuleNameMapper(paths, { prefix: '<rootDir>/' }),
   collectCoverageFrom: [
     'src/**/*.(t|j)s',

@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   Calendar,
   MapPin,
-  Sparkles,
   Ticket,
   Upload,
   Plus,
@@ -45,7 +44,7 @@ export default function CreateEventForm({
   });
   const [venueLocation, setVenueLocation] = useState("");
   const [capacity, setCapacity] = useState<number>(300);
-  const [maxPerWallet, setMaxPerWallet] = useState<number>(1);
+  const maxPerWallet = 1;
 
   // Pengaturan Jadwal Flash Sale Time-Window oleh Penjual
   const [hasFlashSale, setHasFlashSale] = useState(false);
@@ -229,7 +228,7 @@ export default function CreateEventForm({
       formData.append("startDate", startDate);
       formData.append("venueLocation", venueLocation.trim());
       formData.append("capacity", String(capacity));
-      formData.append("maxPerWallet", String(maxPerWallet));
+      formData.append("maxPerWallet", "1");
       formData.append("organizersId", String(organizersId));
 
       if (imageFile) {
@@ -251,9 +250,11 @@ export default function CreateEventForm({
         }
 
         setSubmitResult(result);
-      } catch (err: any) {
+      } catch (err: unknown) {
         setClientError(
-          err?.message || "Encountered an issue creating the event.",
+          err instanceof Error
+            ? err.message
+            : "Encountered an issue creating the event.",
         );
       }
     });
@@ -431,11 +432,11 @@ export default function CreateEventForm({
                   <input
                     type="number"
                     min="1"
-                    max="10"
-                    required
+                    max="1"
                     value={maxPerWallet}
-                    onChange={(e) => setMaxPerWallet(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#F0EDE4] border border-black/[0.08] text-[#171717] text-xs font-medium focus:outline-none focus:border-[#D94520]"
+                    readOnly
+                    disabled
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#F0EDE4]/70 border border-black/[0.08] text-[#736E65] text-xs font-semibold cursor-not-allowed focus:outline-none"
                   />
                 </div>
               </div>
@@ -659,9 +660,13 @@ export default function CreateEventForm({
                   <span className="text-rose-600 font-bold flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5" /> Exceeds Capacity
                   </span>
-                ) : (
+                ) : totalAllocatedQuota === capacity ? (
                   <span className="text-emerald-700 font-bold flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Capacity Matched
+                  </span>
+                ) : (
+                  <span className="text-amber-700 font-bold flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" /> {capacity - totalAllocatedQuota} Unallocated
                   </span>
                 )}
               </div>

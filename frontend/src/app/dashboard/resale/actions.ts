@@ -1,5 +1,6 @@
 "use server";
 
+import { backendFetch } from "@/lib/backend";
 import { getSession } from "@/lib/session";
 
 // Server Action untuk membuat transaksi Midtrans Snap saat membeli tiket resale
@@ -13,10 +14,8 @@ export async function buyResaleTicketAction(listingId: string) {
     };
   }
 
-  const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
-
   try {
-    const response = await fetch(`${backendUrl}/api/tickets/resale/buy`, {
+    const response = await backendFetch("/api/tickets/resale/buy", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -56,9 +55,8 @@ export async function buyResaleTicketAction(listingId: string) {
 
 // Cek status pembayaran order resale untuk auto-polling & rekonsiliasi
 export async function checkResaleOrderStatusAction(orderId: string) {
-  const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
   try {
-    const response = await fetch(`${backendUrl}/api/tickets/order-status/${orderId}`, {
+    const response = await backendFetch(`/api/tickets/order-status/${orderId}`, {
       method: "GET",
       cache: "no-store",
     });

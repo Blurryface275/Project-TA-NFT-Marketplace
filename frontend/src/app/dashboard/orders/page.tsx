@@ -1,3 +1,4 @@
+import { backendFetch } from "@/lib/backend";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import OrdersList, { OrderItem } from "./OrdersList";
@@ -16,9 +17,8 @@ export default async function OrdersPage() {
   // Ambil riwayat order dari endpoint backend yang baru kamu buat
   if (walletAddress) {
     try {
-      const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
-      const res = await fetch(
-        `${backendUrl}/api/tickets/my-orders/${walletAddress}`,
+      const res = await backendFetch(
+        `/api/tickets/my-orders/${walletAddress}`,
         { cache: "no-store" }, // Data selalu real-time
       );
       if (res.ok) {

@@ -24,10 +24,21 @@ export default async function middleware(req: NextRequest) {
   }
 
   // Proteksi route /dashboard/create-event khusus role organizer
-  if (isAdminRoute && session?.role?.toString().toUpperCase() !== "ORGANIZER") {
+  const isOrganizer = session?.role?.toString().toUpperCase() === "ORGANIZER";
+  if (isAdminRoute && !isOrganizer) {
     console.log(
       `⛔ [Middleware] Akses ke /dashboard/create-event ditolak! User bukan organizer`,
     );
+    return NextResponse.redirect(new URL("/dashboard", req.nextUrl));
+  }
+
+  // Organizer tidak boleh akses rute pembelian/tiket/resale customer
+  const isCustomerOnlyRoute =
+    path.startsWith("/dashboard/tickets") ||
+    path.startsWith("/dashboard/orders") ||
+    path.startsWith("/dashboard/resale") ||
+    path.startsWith("/dashboard/flash-sale");
+  if (isCustomerOnlyRoute && isOrganizer) {
     return NextResponse.redirect(new URL("/dashboard", req.nextUrl));
   }
 

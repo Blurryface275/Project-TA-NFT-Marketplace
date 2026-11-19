@@ -65,6 +65,7 @@ contract TicketContract is ERC721, Ownable, EIP712 {
     mapping(address => bytes32) private userIdentities; // data hash KYC KTP (wallet siap, milik identity hash yang mana)
     mapping(uint256 => bool) private usedNonces; // mekanisme anti replay attack signature, jadi nandain kalau nonce ini sudah eprnah dipakai
     mapping(uint256 => EventInfo) private events;
+    mapping(uint256 => string) private _eventURIs; // simpan ipfs://<META_CID> di mapping terpisah
     mapping(uint256 => mapping(uint256 => TicketCategory)) private categories;
     mapping(uint256 => mapping(address => uint32)) private walletPurchases;
 
@@ -108,7 +109,8 @@ contract TicketContract is ERC721, Ownable, EIP712 {
         uint256 eventId,
         address organizer,
         uint64 eventTimestamp,
-        uint32 maxPerWallet
+        uint32 maxPerWallet,
+        string calldata eventURI
     ) external onlyOwner {
         if (eventId == 0) {
             // jika tidak ada event id maka revert
@@ -139,6 +141,7 @@ contract TicketContract is ERC721, Ownable, EIP712 {
             salesOpen: true,
             saleStartTime: 0
         });
+        _eventURIs[eventId] = eventURI;
 
         // emit log event
         emit EventCreated(eventId, organizer, eventTimestamp, maxPerWallet);
@@ -318,6 +321,13 @@ contract TicketContract is ERC721, Ownable, EIP712 {
     ) external view returns (TicketInfo memory) {
         if (_ownerOf(tokenId) == address(0)) revert TicketNotFound(tokenId);
         return _tickets[tokenId];
+    }
+
+    function tokenURI(
+        uint256 tokenId
+    ) public view override returns (string memory) {
+        _requireOwned(tokenId);
+        return _eventURIs[_tickets[tokenId].eventId];
     }
 
     // function ini nantinya akan dibaca oleh MarketplaceContract untuk cek tanggal event

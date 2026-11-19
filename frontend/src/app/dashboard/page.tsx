@@ -1,3 +1,4 @@
+import { backendFetch } from "@/lib/backend";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import DashboardClient from "./DashboardClient";
@@ -22,9 +23,8 @@ export default async function DashboardPage() {
       (session?.organizationName as string) || "Penyelenggara Event";
 
     try {
-      const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
-      const res = await fetch(
-        `${backendUrl}/api/events/user/${session.userId}`,
+      const res = await backendFetch(
+        `/api/events/user/${session.userId}`,
         { cache: "no-store" }
       );
       if (res.ok) {
@@ -56,9 +56,8 @@ export default async function DashboardPage() {
   let totalTickets = 0;
   if (walletAddress) {
     try {
-      const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
-      const res = await fetch(
-        `${backendUrl}/api/tickets/my-tickets/${walletAddress}`,
+      const res = await backendFetch(
+        `/api/tickets/my-tickets/${walletAddress}`,
         { cache: "no-store" }
       );
       if (res.ok) {
@@ -76,9 +75,8 @@ export default async function DashboardPage() {
   let totalOrders = 0;
   if (walletAddress) {
     try {
-      const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
-      const res = await fetch(
-        `${backendUrl}/api/tickets/my-orders/${walletAddress}`,
+      const res = await backendFetch(
+        `/api/tickets/my-orders/${walletAddress}`,
         { cache: "no-store" }
       );
       if (res.ok) {
@@ -94,8 +92,7 @@ export default async function DashboardPage() {
 
   let events = [];
   try {
-    const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
-    const res = await fetch(`${backendUrl}/api/events`, {
+    const res = await backendFetch("/api/events", {
       cache: "no-store",
     });
     if (res.ok) {

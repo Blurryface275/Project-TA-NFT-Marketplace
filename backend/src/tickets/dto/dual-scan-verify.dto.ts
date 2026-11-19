@@ -24,4 +24,20 @@ export class DualScanVerifyDto {
   @IsNumber()
   @IsOptional()
   organizerUserId?: number;
+
+  @IsString()
+  @IsOptional()
+  authenticatorData?: string;
+
+  @IsString()
+  @IsOptional()
+  clientDataJSON?: string;
+
+  @IsString()
+  @IsOptional()
+  credentialId?: string;
+
+  @IsNumber()
+  @IsOptional()
+  nonce?: number;
 }

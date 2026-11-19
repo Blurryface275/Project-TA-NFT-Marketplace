@@ -7,7 +7,8 @@
     "dev:https": "next dev -H 0.0.0.0 --experimental-https",
     "build": "next build",
     "start": "next start -H 0.0.0.0",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --no-warnings=ExperimentalWarning --import ./tests/loader.mjs --test --test-reporter=spec tests/auth-and-backend.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { resolveIpfsUrl } from "@/lib/utils";
 import {
   Calendar,
   MapPin,
@@ -91,7 +92,7 @@ export default function DashboardClient({
       : "Confirmed Event Schedule";
     const venue = matchedEvt?.venueLocation || "Official Venue";
     const poster =
-      matchedEvt?.imageIpfsCid ||
+      resolveIpfsUrl(matchedEvt?.imageIpfsCid) ||
       "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&w=800&q=80";
 
     return (
@@ -319,7 +320,7 @@ export default function DashboardClient({
                         <div className="sm:w-56 h-48 sm:h-auto relative overflow-hidden bg-stone-100 shrink-0">
                           <img
                             src={
-                              evt.imageIpfsCid ||
+                              resolveIpfsUrl(evt.imageIpfsCid) ||
                               "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&w=800&q=80"
                             }
                             alt={evt.eventName || "Event"}

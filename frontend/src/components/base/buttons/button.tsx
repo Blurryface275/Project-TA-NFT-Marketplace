@@ -257,5 +257,11 @@ export const Button: {
         return <AriaLink {...commonProps} href={disabled ? undefined : href} />;
     }
 
-    return <AriaButton {...commonProps} type={commonProps.type || "button"} isPending={loading} />;
+    return (
+        <AriaButton
+            {...commonProps}
+            type={(commonProps as { type?: ButtonProps["type"] }).type || "button"}
+            isPending={loading}
+        />
+    );
 };

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { resolveIpfsUrl } from "@/lib/utils";
 import {
   Clock,
   CheckCircle2,
@@ -198,15 +199,9 @@ export default function OrdersList({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs items-center">
                 <div className="flex items-center gap-3.5">
                   {(() => {
-                    const rawImage = order.ticketCategory?.event?.imageIpfsCid;
-                    const backendUrl =
-                      process.env.NEXT_PUBLIC_BACKEND_URL ||
-                      "http://localhost:3001";
-                    const thumbSrc = rawImage
-                      ? rawImage.startsWith("/")
-                        ? `${backendUrl}${rawImage}`
-                        : rawImage
-                      : null;
+                    const thumbSrc = resolveIpfsUrl(
+                      order.ticketCategory?.event?.imageIpfsCid,
+                    );
 
                     return thumbSrc ? (
                       <img

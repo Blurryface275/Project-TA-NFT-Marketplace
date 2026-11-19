@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1900 1120" width="1900" height="1120" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <title>Gambar 4.2b Mekanisme Pembuatan dan Penandatanganan Sesi JWT (HS256)</title>
+  <desc>Diagram arsitektur 5 kolom gaya seragam untuk proses createSession() dan encrypt() di lib/session.ts menggunakan jose SignJWT HS256</desc>
+
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#111827"/></marker>
+    <marker id="arr-ok" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#059669"/></marker>
+    <filter id="yed-shadow" x="-15%" y="-15%" width="135%" height="135%"><feDropShadow dx="1.5" dy="2.5" stdDeviation="2" flood-color="#000000" flood-opacity="0.18"/></filter>
+    <linearGradient id="g-blue" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#60A5FA"/><stop offset="100%" stop-color="#1D4ED8"/></linearGradient>
+    <linearGradient id="g-orange" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FDBA74"/><stop offset="100%" stop-color="#C2410C"/></linearGradient>
+    <linearGradient id="g-purple" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#DDD6FE"/><stop offset="100%" stop-color="#5B21B6"/></linearGradient>
+    <linearGradient id="g-green" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#6EE7B7"/><stop offset="100%" stop-color="#047857"/></linearGradient>
+    <linearGradient id="g-mw" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#99F6E4"/><stop offset="100%" stop-color="#0F766E"/></linearGradient>
+  </defs>
+
+  <rect width="1900" height="1120" fill="#FFFFFF"/>
+
+  <!-- 5-Column Vertical Dividers (Exact Match with Other Diagrams) -->
+  <line x1="360" y1="60" x2="360" y2="1020" stroke="#CBD5E1" stroke-width="1.5"/>
+  <line x1="740" y1="60" x2="740" y2="1020" stroke="#111827" stroke-width="2"/>
+  <line x1="1120" y1="60" x2="1120" y2="1020" stroke="#111827" stroke-width="2"/>
+  <line x1="1500" y1="60" x2="1500" y2="1020" stroke="#CBD5E1" stroke-width="1.5"/>
+
+  <text x="190" y="92" font-size="15" font-weight="800" fill="#1E3A8A" text-anchor="middle">1. LOGIN ACTION (actions.ts)</text>
+  <text x="550" y="92" font-size="15" font-weight="800" fill="#1E3A8A" text-anchor="middle">2. PAYLOAD &amp; SECRET KEY</text>
+  <text x="930" y="92" font-family="'Times New Roman', Georgia, serif" font-size="20" font-weight="800" fill="#111827" text-anchor="middle">3. ENCODING &amp; SIGNING (jose)</text>
+  <text x="1310" y="92" font-size="15" font-weight="800" fill="#9F1239" text-anchor="middle">4. JWT &amp; HTTPONLY COOKIE</text>
+  <text x="1700" y="92" font-size="15" font-weight="800" fill="#0369A1" text-anchor="middle">5. MIDDLEWARE (jwt.ts)</text>
+
+  <!-- ==================== STEP 1: 7 PARAMETER DARI resData ==================== -->
+  <svg x="158" y="130" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48"><g fill="none"><path stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M42 18V40C42 41.1046 41.1046 42 40 42H8C6.89543 42 6 41.1046 6 40V18" /><path fill="#2F88FF" stroke="#000" stroke-linejoin="round" stroke-width="4" d="M6 8C6 6.89543 6.89543 6 8 6H40C41.1046 6 42 6.89543 42 8V18H6V8Z" /><path fill="#fff" fill-rule="evenodd" d="M12 14C13.1046 14 14 13.1046 14 12C14 10.8954 13.1046 10 12 10C10.8954 10 10 10.8954 10 12C10 13.1046 10.8954 14 12 14Z" clip-rule="evenodd" /><path fill="#fff" fill-rule="evenodd" d="M18 14C19.1046 14 20 13.1046 20 12C20 10.8954 19.1046 10 18 10C16.8954 10 16 10.8954 16 12C16 13.1046 16.8954 14 18 14Z" clip-rule="evenodd" /><path fill="#fff" fill-rule="evenodd" d="M24 14C25.1046 14 26 13.1046 26 12C26 10.8954 25.1046 10 24 10C22.8954 10 22 10.8954 22 12C22 13.1046 22.8954 14 24 14Z" clip-rule="evenodd" /></g></svg>
+  <text x="190" y="210" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">1. Kirim 7 Parameter ke createSession()</text>
+  <text x="190" y="228" font-size="11" fill="#4B5563" text-anchor="middle">login/actions.ts:83-91</text>
+  <g font-family="monospace" font-size="10.5" fill="#1D4ED8">
+    <text x="55" y="254">createSession(</text>
+    <text x="70" y="270">userId: "1",</text>
+    <text x="70" y="286">name: "Alice",</text>
+    <text x="70" y="302">walletAddress: "",</text>
+    <text x="70" y="318">email: "alice@gmail.com",</text>
+    <text x="70" y="334">role: "CUSTOMER",</text>
+    <text x="70" y="350">organizersId: null,</text>
+    <text x="70" y="366">organizationName: null</text>
+    <text x="55" y="382">)</text>
+  </g>
+
+  <path d="M 320 280 L 415 280" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+
+  <!-- ==================== STEP 2: GABUNG JSON & SECRET KEY ==================== -->
+  <svg x="518" y="130" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48"><g fill="none" stroke-linejoin="round" stroke-width="4"><path fill="#2F88FF" stroke="#000" d="M6 9.25564L24.0086 4L42 9.25564V20.0337C42 31.3622 34.7502 41.4194 24.0026 45.0005C13.2521 41.4195 6 31.36 6 20.0287V9.25564Z" /><path stroke="#fff" stroke-linecap="round" d="M15 23L22 30L34 18" /></g></svg>
+  <text x="550" y="210" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">2. Gabung Jadi 1 Objek JSON</text>
+  <text x="550" y="228" font-size="11" fill="#4B5563" text-anchor="middle">session.ts:67-77 (+ expiresAt, iat, exp)</text>
+  <g font-family="monospace" font-size="10.2" fill="#5B21B6">
+    <text x="390" y="252">{</text>
+    <text x="405" y="267">"userId": "1",</text>
+    <text x="405" y="282">"expiresAt": "2026-11-25T08:16:53.000Z",</text>
+    <text x="405" y="297">"name": "Alice",</text>
+    <text x="405" y="312">"walletAddress": "",</text>
+    <text x="405" y="327">"email": "alice@gmail.com",</text>
+    <text x="405" y="342">"role": "CUSTOMER",</text>
+    <text x="405" y="357">"organizersId": null, "organizationName": null,</text>
+    <text x="405" y="372">"iat": 1794989813, "exp": 1795594613</text>
+    <text x="390" y="387">}</text>
+  </g>
+
+  <svg x="518" y="460" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48"><g fill="none" stroke="#000" stroke-linejoin="round" stroke-width="4"><path fill="#2F88FF" d="M22.8682 24.2982C25.4105 26.7935 26.4138 30.4526 25.4971 33.8863C24.5805 37.32 21.8844 40.0019 18.4325 40.9137C14.9806 41.8256 11.3022 40.8276 8.79375 38.2986C5.02208 34.4141 5.07602 28.2394 8.91499 24.4206C12.754 20.6019 18.9613 20.5482 22.8664 24.3L22.8682 24.2982Z" /><path stroke-linecap="round" d="M23 24L40 7" /><path fill="#2F88FF" d="M30.3052 16.9001L35.7337 22.3001L42.0671 16.0001L36.6385 10.6001L30.3052 16.9001Z" /></g></svg>
+  <text x="550" y="540" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">Kunci Simetris Server</text>
+  <text x="550" y="558" font-size="11" fill="#4B5563" text-anchor="middle">session.ts:6-7 (.env)</text>
+  <g font-family="monospace" font-size="10.2" fill="#C2410C">
+    <text x="390" y="582">encodedKey = TextEncoder().encode(</text>
+    <text x="405" y="597">process.env.SESSION_SECRET</text>
+    <text x="390" y="612">)</text>
+  </g>
+
+  <!-- ==================== STEP 3: BASE64URL & HMAC-SHA256 ==================== -->
+  <path d="M 695 280 L 795 280" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+  <path d="M 695 570 C 745 570, 755 520, 795 520" fill="none" stroke="#EA580C" stroke-width="2.2" marker-end="url(#arr)"/>
+
+  <text x="930" y="210" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">3. encrypt(payload) (session.ts:22-34)</text>
+  <text x="930" y="226" font-size="10.5" fill="#4B5563" text-anchor="middle">jose SignJWT.sign() menjalankan base64url.encode() (RFC 7515)</text>
+  <g font-family="monospace" font-size="10.2">
+    <text x="765" y="252" font-weight="800" fill="#1D4ED8">a) Header (Base64Url dari UTF-8 JSON):</text>
+    <text x="765" y="268" fill="#111827">{"alg":"HS256"} ➔ base64url()</text>
+    <text x="765" y="284" font-weight="700" fill="#1D4ED8">eyJhbGciOiJIUzI1NiJ9</text>
+
+    <text x="765" y="316" font-weight="800" fill="#6D28D9">b) Payload (Base64Url dari UTF-8 JSON Alice):</text>
+    <text x="765" y="332" fill="#111827">{"userId":"1","name":"Alice",...} ➔ base64url()</text>
+    <text x="765" y="348" font-weight="700" fill="#6D28D9">eyJ1c2VySWQiOiIxIiwibmFtZSI6IkFsaWNlIiw...</text>
+
+    <text x="765" y="485" font-weight="800" fill="#C2410C">c) Signature (HMAC-SHA256 ➔ Base64Url):</text>
+    <text x="765" y="502" fill="#111827">base64url(HMAC_SHA256(Header+"."+Payload, KEY))</text>
+    <text x="765" y="520" font-weight="700" fill="#C2410C">k8xP3mQ9vL2nR7wT5yB1cZ4fH6jK0sD8aE3gV9uN2mY</text>
+    <text x="765" y="544" font-family="Inter, sans-serif" font-size="9.5" fill="#4B5563">*Base64Url: ganti +→-, /→_, hapus = agar aman di Cookie</text>
+  </g>
+
+  <!-- ==================== STEP 4: GABUNG 1 STRING & SIMPAN COOKIE ==================== -->
+  <path d="M 1075 390 L 1175 390" fill="none" stroke="#059669" stroke-width="2.2" marker-end="url(#arr-ok)"/>
+  <svg x="1278" y="220" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48"><g fill="none" stroke-linejoin="round" stroke-width="4"><rect width="36" height="22" x="6" y="22" fill="#2F88FF" stroke="#000" rx="2" /><path stroke="#000" stroke-linecap="round" d="M14 22V14C14 8.47715 18.4772 4 24 4C29.5228 4 34 8.47715 34 14V22" /><path stroke="#fff" stroke-linecap="round" d="M24 30V36" /></g></svg>
+  <text x="1310" y="300" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">4. Gabung &amp; Set Cookie (session.ts:80-85)</text>
+  <g font-family="monospace" font-size="10">
+    <text x="1145" y="330" fill="#111827">token = Header + "." + Payload + "." + Signature:</text>
+    <text x="1145" y="352" font-weight="700" fill="#1D4ED8">eyJhbGciOiJIUzI1NiJ9.</text>
+    <text x="1145" y="368" font-weight="700" fill="#6D28D9">eyJ1c2VySWQiOiIxIiwibmFtZSI6IkFsaWNlIiw...</text>
+    <text x="1145" y="384" font-weight="700" fill="#C2410C">.k8xP3mQ9vL2nR7wT5yB1cZ4fH6jK0sD8aE3gV9uN2mY</text>
+
+    <text x="1145" y="420" fill="#047857" font-weight="700">cookies().set("session", token, {</text>
+    <text x="1160" y="436" fill="#047857">"httpOnly": true,</text>
+    <text x="1160" y="452" fill="#047857">"secure": NODE_ENV === "production",</text>
+    <text x="1160" y="468" fill="#047857">"maxAge": 604800, "path": "/"</text>
+    <text x="1145" y="484" fill="#047857" font-weight="700">})</text>
+    <text x="1145" y="510" fill="#111827" font-weight="700">HTTP Header Set-Cookie:</text>
+    <text x="1145" y="526" fill="#047857">Set-Cookie: session=&lt;JWT&gt;;</text>
+    <text x="1145" y="542" fill="#047857">Path=/; Max-Age=604800; HttpOnly</text>
+  </g>
+
+  <!-- ==================== STEP 5: MIDDLEWARE VERIFY ==================== -->
+  <path d="M 1465 390 L 1575 390" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+  <svg x="1668" y="220" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48"><path fill="#2F88FF" stroke="#000" stroke-linejoin="round" stroke-width="4" d="M6 8.25564L24.0086 3L42 8.25564V19.0337C42 30.3622 34.7502 40.4194 24.0026 44.0005C13.2521 40.4195 6 30.36 6 19.0287V8.25564Z" /></svg>
+  <text x="1700" y="300" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">5. Verifikasi di Middleware</text>
+  <text x="1700" y="318" font-size="11" fill="#4B5563" text-anchor="middle">middleware.ts:15 • lib/jwt.ts:6-19</text>
+  <g font-family="monospace" font-size="10" fill="#047857">
+    <text x="1525" y="346">jwtVerify(session, encodedKey, {</text>
+    <text x="1540" y="362">algorithms: ["HS256"],</text>
+    <text x="1540" y="378">clockTolerance: 60</text>
+    <text x="1525" y="394">})</text>
+    <text x="1525" y="422" fill="#059669" font-weight="700">Signature valid ➔ Return payload Alice</text>
+    <text x="1525" y="440" fill="#DC2626">Diubah / expired ➔ null ➔ Redirect /login</text>
+  </g>
+
+  <text x="950" y="1080" font-family="'Times New Roman', Georgia, serif" font-size="18" font-weight="700" fill="#111827" text-anchor="middle">Gambar 4.2b Mekanisme Pembuatan dan Penandatanganan Sesi JWT (HS256)</text>
+</svg>

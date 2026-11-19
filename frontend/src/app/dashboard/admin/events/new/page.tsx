@@ -1,3 +1,4 @@
+import { backendFetch } from "@/lib/backend";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import CreateEventForm from "./CreateEventForm";
@@ -11,8 +12,7 @@ export default async function CreateEventPage() {
 
   let organizersId = (session?.organizersId as number) || 1;
   try {
-    const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
-    const res = await fetch(`${backendUrl}/api/events/user/${session.userId}`, {
+    const res = await backendFetch(`/api/events/user/${session.userId}`, {
       cache: "no-store",
     });
     if (res.ok) {

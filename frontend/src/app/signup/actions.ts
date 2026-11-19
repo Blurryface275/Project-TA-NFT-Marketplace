@@ -1,6 +1,7 @@
 "use server";
 
 import { SignUpFormSchema, FormState } from "@/lib/definitions";
+import { backendFetch } from "@/lib/backend";
 import { createSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 
@@ -36,7 +37,7 @@ export async function signup(
   let response;
   try {
     // 2. Kirim data registrasi Web2 (nama, email, nik, password) ke Backend NestJS
-    response = await fetch(`${process.env.BACKEND_URL}/api/auth/register`, {
+    response = await backendFetch("/api/auth/register", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -75,7 +76,7 @@ export async function signup(
 
 export async function verifyOtpAction(email: string, otp: string){
   try { // ini yang akan dikirim ke backend
-    const res = await fetch(`${process.env.BACKEND_URL}/api/auth/verify-otp`, {
+    const res = await backendFetch("/api/auth/verify-otp", {
       method: "POST",
       headers: { 
         "Content-Type": "application/json"
@@ -112,7 +113,7 @@ export async function verifyOtpAction(email: string, otp: string){
 // Action untuk meminta kode OTP baru (Resend OTP)
 export async function resendOtpAction(email: string){
   try{
-    const res = await fetch(`${process.env.BACKEND_URL}/api/auth/resend-otp`,{
+    const res = await backendFetch("/api/auth/resend-otp", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"

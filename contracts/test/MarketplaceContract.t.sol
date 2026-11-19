@@ -39,7 +39,7 @@ contract MarketplaceContractTest is Test {
         ticket.setSystemSigner(systemSigner);
         ticket.setMarketplace(address(market));
 
-        ticket.createEvent(EVENT_ID, organizer, futureTimestamp, 2);
+        ticket.createEvent(EVENT_ID, organizer, futureTimestamp, 2, "ipfs://QmTestEvent");
         ticket.addCategory(EVENT_ID, CAT_ID, ORIGINAL_PRICE, 100);
     }
 

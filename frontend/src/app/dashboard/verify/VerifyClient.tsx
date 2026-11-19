@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
+import type { Html5Qrcode } from "html5-qrcode";
 import { verifyDualScanAction, DualScanState } from "./actions";
 import {
   QrCode,
@@ -17,7 +18,6 @@ import {
   ExternalLink,
   Calendar,
   Ticket,
-  Lock,
 } from "lucide-react";
 
 interface ScannedTicketData {
@@ -29,6 +29,9 @@ interface ScannedTicketData {
   signedAt: string;
   expiresInSeconds?: number;
   signature: string;
+  authenticatorData?: string;
+  clientDataJSON?: string;
+  credentialId?: string;
   nonce?: number;
 }
 
@@ -50,7 +53,7 @@ export default function VerifyClient() {
   const [verifyResult, setVerifyResult] = useState<DualScanState | null>(null);
 
   const nikInputElemRef = useRef<HTMLInputElement>(null);
-  const html5QrCodeRef = useRef<any>(null);
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const isVerifyingRef = useRef<boolean>(false);
   const isPausedRef = useRef<boolean>(false);
   const nikInputRef = useRef<string>("");
@@ -184,11 +187,12 @@ export default function VerifyClient() {
             );
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!isMounted) return;
         setCameraError(
-          err?.message ||
-            "Camera permission denied or camera device unavailable. Please use 'Manual Ticket Lookup'.",
+          err instanceof Error
+            ? err.message
+            : "Camera permission denied or camera device unavailable. Please use 'Manual Ticket Lookup'.",
         );
         setCameraActive(false);
       }
@@ -274,6 +278,10 @@ export default function VerifyClient() {
       walletAddress: scannedData.walletAddress,
       signedAt: scannedData.signedAt,
       signature: scannedData.signature,
+      authenticatorData: scannedData.authenticatorData,
+      clientDataJSON: scannedData.clientDataJSON,
+      credentialId: scannedData.credentialId,
+      nonce: scannedData.nonce,
       nik: nikInput.trim(),
     });
 

@@ -1,5 +1,6 @@
 "use server"; // fungsinya untuk memberi tahu next.js bahwa file ini akan berjalan di server
 
+import { backendFetch } from "@/lib/backend";
 import { getSession, updateSessionWallet } from "@/lib/session";
 
 export type SetupWalletInput = {
@@ -32,8 +33,8 @@ export async function activateWalletAction(
       `[ACTIVATE WALLET] User ${session.userId} mengaktifkan dompet: ${input.walletAddress}`,
     );
 
-    const response = await fetch(
-      `${process.env.BACKEND_URL}/api/auth/setup-wallet`,
+    const response = await backendFetch(
+      "/api/auth/setup-wallet",
       {
         method: "POST",
         headers: {
@@ -88,7 +89,7 @@ export type BuyTicketState = {
 export async function createSnapPaymentAction(
   eventId: number,
   categoryId: number,
-  quantity: number,
+  _quantity: number,
   turnstileToken?: string,
 ): Promise<{
   success: boolean;
@@ -98,6 +99,7 @@ export async function createSnapPaymentAction(
   grossAmount?: number;
   message?: string;
 }> {
+  void _quantity;
   const session = await getSession();
 
   if (!session?.walletAddress) {
@@ -107,10 +109,8 @@ export async function createSnapPaymentAction(
     };
   }
 
-  const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
-
   try {
-    const response = await fetch(`${backendUrl}/api/tickets/create-snap`, {
+    const response = await backendFetch("/api/tickets/create-snap", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -118,7 +118,7 @@ export async function createSnapPaymentAction(
       body: JSON.stringify({
         eventId: Number(eventId),
         categoryId: Number(categoryId),
-        quantity: Number(quantity),
+        quantity: 1,
         walletAddress: session.walletAddress,
         turnstileToken,
       }),
@@ -127,9 +127,12 @@ export async function createSnapPaymentAction(
     const data = await response.json();
 
     if (!response.ok) {
+      const normalizedMessage = Array.isArray(data.message)
+        ? data.message.join(", ")
+        : data.message;
       return {
         success: false,
-        message: data.message || "Gagal membuat sesi pembayaran Midtrans.",
+        message: normalizedMessage || "Gagal membuat sesi pembayaran Midtrans.",
       };
     }
 
@@ -153,11 +156,9 @@ export async function createSnapPaymentAction(
 
 // Cek status order di backend (polling tiap 2 detik) untuk update status
 export async function checkOrderStatusAction(orderId: string) {
-  const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
-
   try {
-    const response = await fetch(
-      `${backendUrl}/api/tickets/order-status/${orderId}`,
+    const response = await backendFetch(
+      `/api/tickets/order-status/${orderId}`,
       {
         method: "GET",
         cache: "no-store",
@@ -186,10 +187,9 @@ export async function checkOrderStatusAction(orderId: string) {
 
 // Mengambil seluruh tiket on-chain nyata milik akun user dari backend
 export async function fetchMyTicketsAction(walletAddress: string) {
-  const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
   try {
-    const res = await fetch(
-      `${backendUrl}/api/tickets/my-tickets/${walletAddress}`,
+    const res = await backendFetch(
+      `/api/tickets/my-tickets/${walletAddress}`,
       { cache: "no-store" },
     );
     if (res.ok) {

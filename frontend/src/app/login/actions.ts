@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { backendFetch } from "@/lib/backend";
 import { createSession, deleteSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 
@@ -48,7 +49,7 @@ export async function login(
   let response;
   // ambil data (fetch ke backend api login)
   try {
-    response = await fetch(`${process.env.BACKEND_URL}/api/auth/login`, {
+    response = await backendFetch("/api/auth/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

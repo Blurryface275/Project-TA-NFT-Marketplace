@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
     "*.ngrok-free.app",
     "localhost:3000",
   ],
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "6mb",
+    },
+  },
 };
 
 export default nextConfig;

@@ -25,7 +25,7 @@ contract DeployScript is Script {
         uint256 eventId = 1;
         uint64 eventTimestamp = uint64(block.timestamp + 30 days);
         uint32 maxPerWallet = 2; // Batas maksimal 2 tiket per akun untuk anti-scalping
-        ticket.createEvent(eventId, deployerAddress, eventTimestamp, maxPerWallet);
+        ticket.createEvent(eventId, deployerAddress, eventTimestamp, maxPerWallet, "ipfs://QmSeedEvent");
         console.log("Event 1 created. Organizer:", deployerAddress);
 
         // Initiate 1 dummy ticket category

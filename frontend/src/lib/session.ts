@@ -2,9 +2,13 @@ import "server-only";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-// Take secret key from .env.local and change it into Uint8Array
-const secretKey = process.env.SESSION_SECRET;
-const encodedKey = new TextEncoder().encode(secretKey);
+function getEncodedKey(): Uint8Array {
+  const secretKey = process.env.SESSION_SECRET;
+  if (!secretKey || secretKey.trim() === "") {
+    throw new Error("SESSION_SECRET environment variable is not set");
+  }
+  return new TextEncoder().encode(secretKey);
+}
 
 // payload inside JWT
 type SessionPayload = {
@@ -20,6 +24,7 @@ type SessionPayload = {
 
 // encryption funciton to create JWT from Payload
 export async function encrypt(payload: SessionPayload) {
+  const encodedKey = getEncodedKey();
   console.log("🔒 [Session] Mengenkripsi payload:", payload);
   const token = await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" }) // HS256: using a shared secret key to sign JWT
@@ -35,6 +40,7 @@ export async function encrypt(payload: SessionPayload) {
 
 // decryption function to decrypt JWT
 export async function decrypt(session: string | undefined) {
+  const encodedKey = getEncodedKey();
   console.log("🔍 [Session] Memeriksa & mendekripsi session cookie...");
   if (!session) {
     console.log("⚠️ [Session] Session cookie kosong / tidak ditemukan");
@@ -105,6 +111,8 @@ export async function updateSessionWallet(walletAddress: string) {
     walletAddress,
     email: currentSession.email as string | undefined,
     role: currentSession.role as string | undefined,
+    organizersId: currentSession.organizersId as number | null | undefined,
+    organizationName: currentSession.organizationName as string | null | undefined,
   };
 
 

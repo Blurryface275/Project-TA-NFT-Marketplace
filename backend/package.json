@@ -20,6 +20,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "db:seed": "ts-node src/database/seeds/seed.ts",
+    "db:fresh": "ts-node src/database/seeds/seed.ts --fresh",
     "db:sync-onchain": "ts-node src/database/seeds/sync-onchain.ts",
     "deploy:contract": "ts-node src/database/seeds/deploy-contract.ts"
   },

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { resolveIpfsUrl } from "@/lib/utils";
 import {
   Zap,
   Calendar,
@@ -251,7 +252,7 @@ export default function FlashSaleClient({
                   className="relative aspect-[16/9] bg-cover bg-center overflow-hidden"
                   style={{
                     backgroundImage: item.imageIpfsCid
-                      ? `linear-gradient(to top, rgba(23, 23, 23, 0.9) 0%, rgba(23, 23, 23, 0.2) 60%), url(${item.imageIpfsCid})`
+                      ? `linear-gradient(to top, rgba(23, 23, 23, 0.9) 0%, rgba(23, 23, 23, 0.2) 60%), url(${resolveIpfsUrl(item.imageIpfsCid)})`
                       : "linear-gradient(135deg, #171717 0%, #35302D 100%)",
                   }}
                 >

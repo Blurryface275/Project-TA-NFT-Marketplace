@@ -22,7 +22,7 @@ export class InternalApiGuard implements CanActivate {
     ]);
     if (isPublic) return true;
 
-    const expected = process.env.INTERNAL_API_KEY;
+    const expected = process.env.INTERNAL_API_KEY?.trim();
     if (!expected) {
       throw new UnauthorizedException('INTERNAL_API_KEY belum dikonfigurasi');
     }

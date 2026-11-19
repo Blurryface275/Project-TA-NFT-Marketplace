@@ -1,5 +1,6 @@
 "use server";
 
+import { backendFetch, getBackendUrl } from "@/lib/backend";
 import { getSession } from "@/lib/session";
 
 export type CategoryTxResult = {
@@ -13,8 +14,8 @@ export type CreateEventResult = {
   success: boolean;
   message?: string;
   warning?: string;
-  event?: any;
-  categories?: any[];
+  event?: Record<string, unknown>;
+  categories?: Record<string, unknown>[];
   blockchain?: {
     onChainEventId?: number;
     contractAddress?: string;
@@ -34,10 +35,10 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
   }
 
   try {
-    const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
+    const backendUrl = getBackendUrl();
     console.log(`📡 [Admin Action] Mengirim formulir pendaftaran event ke ${backendUrl}/api/events`);
 
-    const response = await fetch(`${backendUrl}/api/events`, {
+    const response = await backendFetch("/api/events", {
       method: "POST",
       body: formData,
     });
@@ -62,11 +63,11 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
       categories: data.categories,
       blockchain: data.blockchain,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ [Admin Action] Terjadi kesalahan koneksi:", error);
     return {
       success: false,
-      message: `Gagal menghubungi server backend: ${error?.message || "Kesalahan jaringan"}`,
+      message: `Gagal menghubungi server backend: ${error instanceof Error ? error.message : "Kesalahan jaringan"}`,
     };
   }
 }

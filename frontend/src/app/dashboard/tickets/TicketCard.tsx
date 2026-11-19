@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { resolveIpfsUrl } from "@/lib/utils";
 import {
   redeemTicketAction,
   RedeemTicketState,
@@ -104,6 +105,15 @@ function getCSPRNGNonce(): number {
   return Math.floor(Math.random() * 1000000);
 }
 
+function bufferToBase64Url(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
 export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
   const currentEvent = events.find(
     (e) => Number(e.onChainEventId || e.id) === ticket.eventId,
@@ -147,6 +157,10 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
   const [showQR, setShowQR] = useState(false);
   const [isSigning, setIsSigning] = useState(false);
   const [signature, setSignature] = useState<string>("");
+  const [authenticatorData, setAuthenticatorData] = useState<string>("");
+  const [clientDataJSON, setClientDataJSON] = useState<string>("");
+  const [credentialId, setCredentialId] = useState<string>("");
+  const [qrError, setQrError] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(60);
   const [nonce, setNonce] = useState<number>(() => getCSPRNGNonce());
   const [signedAt, setSignedAt] = useState<string>("");
@@ -183,76 +197,71 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
   const handleToggleQR = async () => {
     if (showQR) {
       setShowQR(false);
+      setQrError(null);
       return;
     }
     if (isUsed) return;
 
     setIsSigning(true);
+    setQrError(null);
 
     try {
+      if (typeof window === "undefined" || !window.PublicKeyCredential) {
+        throw new Error(
+          "Browser atau perangkat tidak mendukung passkey WebAuthn.",
+        );
+      }
+
       const currentNonce = getCSPRNGNonce();
       const currentTime = new Date().toISOString();
       const challengeStr = `NFTIX-AUTH:Token#${ticket.tokenId}:Owner#${ticket.owner}:Nonce#${currentNonce}:Time#${currentTime}`;
+      const challengeBuffer = new TextEncoder().encode(challengeStr);
 
-      let generatedSignature = "";
+      const assertion = (await navigator.credentials.get({
+        publicKey: {
+          challenge: challengeBuffer,
+          timeout: 60000,
+          userVerification: "preferred",
+        },
+      })) as PublicKeyCredential | null;
 
-      if (typeof window !== "undefined" && window.PublicKeyCredential) {
-        try {
-          const challengeBuffer = new TextEncoder().encode(challengeStr);
-
-          const assertion = (await navigator.credentials.get({
-            publicKey: {
-              challenge: challengeBuffer,
-              timeout: 60000,
-              userVerification: "preferred",
-            },
-          })) as PublicKeyCredential | null;
-
-          if (assertion && assertion.response) {
-            const resp = assertion.response as AuthenticatorAssertionResponse;
-            const sigBytes = new Uint8Array(resp.signature);
-            generatedSignature =
-              "0x" +
-              Array.from(sigBytes)
-                .map((b) => b.toString(16).padStart(2, "0"))
-                .join("");
-          } else {
-            const randomBytes = crypto.getRandomValues(new Uint8Array(32));
-            generatedSignature =
-              "0x" +
-              Array.from(randomBytes)
-                .map((b) => b.toString(16).padStart(2, "0"))
-                .join("");
-          }
-        } catch (authErr) {
-          console.warn("[WEBAUTHN] Dialog dibatalkan atau dilewati, menggunakan fallback crypto hash:", authErr);
-          const randomBytes = crypto.getRandomValues(new Uint8Array(32));
-          generatedSignature =
-            "0x" +
-            Array.from(randomBytes)
-              .map((b) => b.toString(16).padStart(2, "0"))
-              .join("");
-        }
-      } else {
-        const randomBytes = new Uint8Array(32);
-        crypto.getRandomValues(randomBytes);
-        generatedSignature =
-          "0x" +
-          Array.from(randomBytes)
-            .map((b) => b.toString(16).padStart(2, "0"))
-            .join("");
+      if (!assertion || !assertion.response) {
+        throw new Error(
+          "Verifikasi passkey dibatalkan atau gagal. QR Code dinamis tidak dapat ditampilkan.",
+        );
       }
 
+      const resp = assertion.response as AuthenticatorAssertionResponse;
+      const sigBytes = new Uint8Array(resp.signature);
+      const generatedSignature =
+        "0x" +
+        Array.from(sigBytes)
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+      const authDataB64 = bufferToBase64Url(resp.authenticatorData);
+      const clientDataB64 = bufferToBase64Url(resp.clientDataJSON);
+      const credId = assertion.id || bufferToBase64Url(assertion.rawId);
+
       setSignature(generatedSignature);
+      setAuthenticatorData(authDataB64);
+      setClientDataJSON(clientDataB64);
+      setCredentialId(credId);
       setTimeLeft(60);
       setNonce(currentNonce);
       setSignedAt(currentTime);
       setShowQR(true);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to enable dynamic QR:", error);
       setShowQR(false);
-      alert(
-        "Could not generate dynamic ticket QR. Please ensure browser supports WebAuthn.",
+      setSignature("");
+      setAuthenticatorData("");
+      setClientDataJSON("");
+      setCredentialId("");
+      setSignedAt("");
+      setQrError(
+        error instanceof Error && error.message
+          ? error.message
+          : "Verifikasi passkey WebAuthn dibatalkan atau gagal.",
       );
     } finally {
       setIsSigning(false);
@@ -264,6 +273,10 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
     walletAddress: ticket.owner,
     signedAt: signedAt,
     signature: signature,
+    authenticatorData: authenticatorData,
+    clientDataJSON: clientDataJSON,
+    credentialId: credentialId,
+    nonce: nonce,
   };
 
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=1&data=${encodeURIComponent(
@@ -301,12 +314,14 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
 
   const [isListingResale, setIsListingResale] = useState(false);
   const [isListedOnResale, setIsListedOnResale] = useState(Boolean(ticket.isListed));
+  const [prevIsListedProp, setPrevIsListedProp] = useState(ticket.isListed);
 
-  useEffect(() => {
+  if (ticket.isListed !== prevIsListedProp) {
+    setPrevIsListedProp(ticket.isListed);
     if (ticket.isListed !== undefined) {
       setIsListedOnResale(Boolean(ticket.isListed));
     }
-  }, [ticket.isListed]);
+  }
   const [resaleResult, setResaleResult] = useState<ResaleActionState | null>(null);
   const [showResaleModal, setShowResaleModal] = useState(false);
   const [bankName, setBankName] = useState("BCA");
@@ -345,8 +360,8 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
       } else {
         setResaleFormError(res.message || "Failed to list ticket on resale.");
       }
-    } catch (err: any) {
-      setResaleFormError(err?.message || "Error listing ticket.");
+    } catch (err: unknown) {
+      setResaleFormError(err instanceof Error ? err.message : "Error listing ticket.");
     } finally {
       setIsListingResale(false);
     }
@@ -385,11 +400,7 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
           style={
             currentEvent?.imageIpfsCid
               ? {
-                  backgroundImage: `linear-gradient(to top, rgba(23,23,23,0.9) 0%, rgba(23,23,23,0.35) 100%), url(${
-                    currentEvent.imageIpfsCid.startsWith("/")
-                      ? `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001"}${currentEvent.imageIpfsCid}`
-                      : currentEvent.imageIpfsCid
-                  })`,
+                  backgroundImage: `linear-gradient(to top, rgba(23,23,23,0.9) 0%, rgba(23,23,23,0.35) 100%), url(${resolveIpfsUrl(currentEvent.imageIpfsCid)})`,
                 }
               : undefined
           }
@@ -539,6 +550,13 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
                   </button>
                 )}
               </div>
+            </div>
+          )}
+
+          {qrError && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{qrError}</span>
             </div>
           )}
 

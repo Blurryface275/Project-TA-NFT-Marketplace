@@ -22,6 +22,25 @@ async function runSeed() {
   });
 
   try {
+    const isFresh = process.argv.includes('--fresh');
+    if (isFresh) {
+      console.log('🧹 [db:fresh] Menghapus seluruh data di database...');
+      const [tableRows] = await connection.query('SHOW TABLES');
+      const tables = (tableRows as Array<Record<string, string>>)
+        .map((row) => Object.values(row)[0])
+        .filter(Boolean);
+
+      await connection.query('SET FOREIGN_KEY_CHECKS = 0');
+      try {
+        for (const table of tables) {
+          await connection.query(`TRUNCATE TABLE \`${table}\``);
+        }
+      } finally {
+        await connection.query('SET FOREIGN_KEY_CHECKS = 1');
+      }
+      console.log(`✅ [db:fresh] ${tables.length} tabel berhasil dikosongkan.`);
+    }
+
     // Ambil password dari .env dan hash menggunakan bcrypt dgn salt round : 10
     const rawPassword = process.env.ORGANIZER_SEED_PASSWORD || 'Password123!';
     const hashedPassword = await bcrypt.hash(rawPassword, 10);

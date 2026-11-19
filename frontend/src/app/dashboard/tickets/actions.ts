@@ -1,5 +1,6 @@
 "use server";
 
+import { backendFetch } from "@/lib/backend";
 import { getSession } from "@/lib/session";
 
 export type RedeemTicketState = {
@@ -30,8 +31,8 @@ export async function redeemTicketAction(
     );
 
     // Panggil API Backend Relayer
-    const response = await fetch(
-      `${process.env.BACKEND_URL}/api/tickets/redeem`,
+    const response = await backendFetch(
+      "/api/tickets/redeem",
       {
         method: "POST",
         headers: {
@@ -86,8 +87,7 @@ export async function checkTicketStatusAction(
   tokenId: number,
 ): Promise<{ used: boolean }> {
   try {
-    const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
-    const res = await fetch(`${backendUrl}/api/tickets/status/${tokenId}`, {
+    const res = await backendFetch(`/api/tickets/status/${tokenId}`, {
       cache: "no-store",
     });
     if (res.ok) {
@@ -116,7 +116,7 @@ export async function listTicketForResaleAction(
   try{
     console.log(`[RESALE LIST ACTION] User ${session.userId} mendaftarkan jual Token ID #${tokenId}`,);
 
-    const response = await fetch(`${process.env.BACKEND_URL}/api/tickets/resale/list`,
+    const response = await backendFetch("/api/tickets/resale/list",
       {
         method: "POST",
         headers:{
@@ -164,8 +164,8 @@ export async function cancelResaleListingAction(
     };
   }
   try {
-    const response = await fetch(
-      `${process.env.BACKEND_URL}/api/tickets/resale/cancel`,
+    const response = await backendFetch(
+      "/api/tickets/resale/cancel",
       {
         method: "POST",
         headers: {

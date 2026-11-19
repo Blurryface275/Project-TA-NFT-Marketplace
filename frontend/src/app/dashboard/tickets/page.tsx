@@ -1,3 +1,4 @@
+import { backendFetch } from "@/lib/backend";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import TicketListClient from "./TicketListClient";
@@ -22,16 +23,19 @@ export default async function MyTicketsPage() {
   let tickets: TicketData[] = [];
   if (walletAddress) {
     try {
-      const res = await fetch(
-        `${process.env.BACKEND_URL}/api/tickets/my-tickets/${walletAddress}`,
+      const res = await backendFetch(
+        `/api/tickets/my-tickets/${walletAddress}`,
         { cache: "no-store" },
       );
       if (res.ok) {
-        const data = await res.json();
+        const data: unknown = await res.json();
         tickets = Array.isArray(data)
           ? data
-          : Array.isArray((data as any).value)
-            ? (data as any).value
+          : data &&
+              typeof data === "object" &&
+              "value" in data &&
+              Array.isArray((data as { value: unknown }).value)
+            ? (data as { value: TicketData[] }).value
             : [];
       }
     } catch (error) {
@@ -42,7 +46,7 @@ export default async function MyTicketsPage() {
   // Ambil data seluruh event secara dinamis dari database MySQL via API backend
   let events: EventData[] = [];
   try {
-    const eventsRes = await fetch(`${process.env.BACKEND_URL}/api/events`, {
+    const eventsRes = await backendFetch("/api/events", {
       cache: "no-store",
     });
     if (eventsRes.ok) {

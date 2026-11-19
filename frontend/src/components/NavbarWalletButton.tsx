@@ -136,142 +136,148 @@ export default function NavbarWalletButton({
             </div>
           </div>
 
-          {/* Account status */}
-          <div className="p-2.5 rounded-xl bg-[#F0EDE4] border border-black/[0.06] my-2">
-            <div className="text-[11px] font-medium text-[#736E65] mb-1 flex items-center justify-between">
-              <span className="flex items-center gap-1.5 font-bold text-[#171717]">
-                <Wallet className="w-3.5 h-3.5 text-[#FF5A36]" />
-                <span>Ticket Passkey ID</span>
-              </span>
-              {walletAddress ? (
-                <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">
-                  Active
+          {/* Account status (Customer only) */}
+          {userRole !== "ORGANIZER" && (
+            <div className="p-2.5 rounded-xl bg-[#F0EDE4] border border-black/[0.06] my-2">
+              <div className="text-[11px] font-medium text-[#736E65] mb-1 flex items-center justify-between">
+                <span className="flex items-center gap-1.5 font-bold text-[#171717]">
+                  <Wallet className="w-3.5 h-3.5 text-[#FF5A36]" />
+                  <span>Ticket Passkey ID</span>
                 </span>
-              ) : (
-                <span className="text-[10px] text-[#FF5A36] font-semibold bg-[#FFF5F2] px-1.5 py-0.5 rounded">
-                  Unactivated
-                </span>
-              )}
-            </div>
-
-            {walletAddress ? (
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[11px] font-medium text-[#171717] truncate">
-                  {formatAddress(walletAddress)}
-                </span>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleCopy}
-                    title="Copy wallet address"
-                    className="p-1 rounded hover:bg-stone-200 text-[#736E65] hover:text-[#171717] transition cursor-pointer"
-                  >
-                    {copied ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-                  <a
-                    href={`https://sepolia.etherscan.io/address/${walletAddress}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="Inspect on Sepolia explorer"
-                    className="p-1 rounded hover:bg-stone-200 text-[#736E65] hover:text-[#171717] transition"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
-              </div>
-            ) : (
-              <div className="pt-1 space-y-2">
-                <button
-                  type="button"
-                  onClick={handleActivate}
-                  disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-xs text-white bg-[#FF5A36] hover:bg-[#E54823] disabled:opacity-50 transition cursor-pointer shadow-xs"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Activating...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Wallet className="w-3.5 h-3.5" />
-                      <span>Activate Biometrics</span>
-                    </>
-                  )}
-                </button>
-                {errorMessage && (
-                  <p
-                    role="alert"
-                    className="rounded-lg bg-rose-50 border border-rose-200 px-2.5 py-1.5 text-[11px] font-medium text-rose-700 leading-snug"
-                  >
-                    {errorMessage}
-                  </p>
+                {walletAddress ? (
+                  <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">
+                    Active
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-[#FF5A36] font-semibold bg-[#FFF5F2] px-1.5 py-0.5 rounded">
+                    Unactivated
+                  </span>
                 )}
               </div>
-            )}
-          </div>
+
+              {walletAddress ? (
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[11px] font-medium text-[#171717] truncate">
+                    {formatAddress(walletAddress)}
+                  </span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleCopy}
+                      title="Copy wallet address"
+                      className="p-1 rounded hover:bg-stone-200 text-[#736E65] hover:text-[#171717] transition cursor-pointer"
+                    >
+                      {copied ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                    <a
+                      href={`https://sepolia.etherscan.io/address/${walletAddress}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Inspect on Sepolia explorer"
+                      className="p-1 rounded hover:bg-stone-200 text-[#736E65] hover:text-[#171717] transition"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="pt-1 space-y-2">
+                  <button
+                    type="button"
+                    onClick={handleActivate}
+                    disabled={isLoading}
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-xs text-white bg-[#FF5A36] hover:bg-[#E54823] disabled:opacity-50 transition cursor-pointer shadow-xs"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Activating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Wallet className="w-3.5 h-3.5" />
+                        <span>Activate Biometrics</span>
+                      </>
+                    )}
+                  </button>
+                  {errorMessage && (
+                    <p
+                      role="alert"
+                      className="rounded-lg bg-rose-50 border border-rose-200 px-2.5 py-1.5 text-[11px] font-medium text-rose-700 leading-snug"
+                    >
+                      {errorMessage}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Links */}
-          <div className="space-y-0.5">
-            <Link
-              href="/dashboard/buy"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-stone-100 text-xs text-[#171717] font-medium transition"
-            >
-              <ShoppingBag className="w-4 h-4 text-[#736E65]" />
-              <span>Explore Events</span>
-            </Link>
+          <div className="space-y-0.5 mt-2">
+            {userRole !== "ORGANIZER" ? (
+              <>
+                <Link
+                  href="/dashboard/buy"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-stone-100 text-xs text-[#171717] font-medium transition"
+                >
+                  <ShoppingBag className="w-4 h-4 text-[#736E65]" />
+                  <span>Explore Events</span>
+                </Link>
 
-            <Link
-              href="/dashboard/tickets"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-stone-100 text-xs text-[#171717] font-medium transition"
-            >
-              <Ticket className="w-4 h-4 text-[#736E65]" />
-              <span>My Tickets</span>
-            </Link>
+                <Link
+                  href="/dashboard/tickets"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-stone-100 text-xs text-[#171717] font-medium transition"
+                >
+                  <Ticket className="w-4 h-4 text-[#736E65]" />
+                  <span>My Tickets</span>
+                </Link>
 
-            <Link
-              href="/dashboard/orders"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-stone-100 text-xs text-[#171717] font-medium transition"
-            >
-              <History className="w-4 h-4 text-[#736E65]" />
-              <span>Orders</span>
-            </Link>
+                <Link
+                  href="/dashboard/orders"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-stone-100 text-xs text-[#171717] font-medium transition"
+                >
+                  <History className="w-4 h-4 text-[#736E65]" />
+                  <span>Orders</span>
+                </Link>
 
-            <Link
-              href="/dashboard/resale"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-stone-100 text-xs text-[#171717] font-medium transition"
-            >
-              <Repeat className="w-4 h-4 text-[#736E65]" />
-              <span>Resale Exchange</span>
-            </Link>
+                <Link
+                  href="/dashboard/resale"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-stone-100 text-xs text-[#171717] font-medium transition"
+                >
+                  <Repeat className="w-4 h-4 text-[#736E65]" />
+                  <span>Resale Exchange</span>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/dashboard/admin/events/new"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[#FFF5F2] text-xs text-[#FF5A36] font-medium transition"
+                >
+                  <CalendarPlus className="w-4 h-4 text-[#FF5A36]" />
+                  <span>Create Event</span>
+                </Link>
 
-            {userRole === "ORGANIZER" && (
-              <Link
-                href="/dashboard/admin/events/new"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[#FFF5F2] text-xs text-[#FF5A36] font-medium transition"
-              >
-                <CalendarPlus className="w-4 h-4 text-[#FF5A36]" />
-                <span>Create Event</span>
-              </Link>
+                <Link
+                  href="/dashboard/verify"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-stone-100 text-xs text-[#171717] font-medium transition"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-[#736E65]" />
+                  <span>Gate Terminal</span>
+                </Link>
+              </>
             )}
-
-            <Link
-              href="/dashboard/verify"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-stone-100 text-xs text-[#171717] font-medium transition"
-            >
-              <CheckCircle2 className="w-4 h-4 text-[#736E65]" />
-              <span>Gate Terminal</span>
-            </Link>
           </div>
 
           <div className="h-px bg-black/[0.06] my-1.5" />

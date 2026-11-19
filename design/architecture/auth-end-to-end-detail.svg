@@ -1,0 +1,344 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1640 1380" width="1640" height="1380" font-family="Inter, 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <title>Arsitektur End-to-End Authentication, Session &amp; Passkey Wallet</title>
+  <desc>Diagram alur teknis Register, OTP, Login JWT HS256, Middleware, dan Aktivasi Smart Account Passkey P-256 CREATE2</desc>
+
+  <defs>
+    <!-- Arrowheads -->
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#111827"/>
+    </marker>
+    <marker id="arrow-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#4B5563"/>
+    </marker>
+    <marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#EA580C"/>
+    </marker>
+  </defs>
+
+  <!-- Clean White Background -->
+  <rect width="1640" height="1380" fill="#FFFFFF"/>
+
+  <!-- Header -->
+  <text x="48" y="46" font-size="22" font-weight="700" fill="#111827" letter-spacing="-0.3">ARSITEKTUR END-TO-END AUTHENTICATION &amp; PROGRESSIVE WALLET</text>
+  <text x="48" y="68" font-size="13" fill="#6B7280">Detail Layer, File, Function, Payload, dan Algoritma Kriptografi (Register • OTP • Login JWT HS256 • WebAuthn P-256 CREATE2)</text>
+
+  <!-- Column Headers (Swimlanes) -->
+  <g font-size="12" font-weight="700" fill="#374151" text-anchor="middle">
+    <rect x="48" y="88" width="180" height="32" rx="6" fill="#F9FAFB" stroke="#E5E7EB"/>
+    <text x="138" y="108">1. USER / BROWSER</text>
+
+    <rect x="252" y="88" width="440" height="32" rx="6" fill="#F9FAFB" stroke="#E5E7EB"/>
+    <text x="472" y="108">2. FRONTEND — NEXT.JS (UI &amp; SERVER ACTIONS)</text>
+
+    <rect x="716" y="88" width="450" height="32" rx="6" fill="#F9FAFB" stroke="#E5E7EB"/>
+    <text x="941" y="108">3. BACKEND — NESTJS (CONTROLLER &amp; SERVICE)</text>
+
+    <rect x="1190" y="88" width="402" height="32" rx="6" fill="#F9FAFB" stroke="#E5E7EB"/>
+    <text x="1391" y="108">4. STORAGE &amp; EXTERNAL SERVICES</text>
+  </g>
+
+  <!-- Vertical Swimlane Dividers -->
+  <line x1="240" y1="128" x2="240" y2="1340" stroke="#E5E7EB" stroke-dasharray="4 4"/>
+  <line x1="704" y1="128" x2="704" y2="1340" stroke="#E5E7EB" stroke-dasharray="4 4"/>
+  <line x1="1178" y1="128" x2="1178" y2="1340" stroke="#E5E7EB" stroke-dasharray="4 4"/>
+
+  <!-- ===================================================================== -->
+  <!-- FASE 1: REGISTRASI & VERIFIKASI OTP                                   -->
+  <!-- ===================================================================== -->
+  <rect x="40" y="136" width="1560" height="390" rx="12" fill="#FAFAFA" fill-opacity="0.45" stroke="#E5E7EB" stroke-width="1.2"/>
+  <rect x="56" y="148" width="250" height="24" rx="5" fill="#111827"/>
+  <text x="68" y="164" font-size="11" font-weight="700" fill="#FFFFFF">FASE 1: REGISTRASI &amp; VERIFIKASI OTP</text>
+
+  <!-- User Icon (Phase 1) -->
+  <g transform="translate(106, 200)">
+    <circle cx="32" cy="18" r="14" fill="#111827"/>
+    <path d="M 8 56 C 8 40, 56 40, 56 56 Z" fill="#111827"/>
+    <text x="32" y="74" font-size="12" font-weight="600" fill="#111827" text-anchor="middle">User</text>
+  </g>
+
+  <!-- Arrow 1: User -> SignUpForm.tsx -->
+  <line x1="176" y1="232" x2="274" y2="232" stroke="#111827" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="225" y="210" font-size="10.5" font-weight="600" fill="#111827" text-anchor="middle">1. Isi Form</text>
+  <text x="225" y="224" font-size="9.5" fill="#4B5563" text-anchor="middle">name, nik, email, pass</text>
+
+  <!-- Box: SignUpForm.tsx -->
+  <rect x="280" y="192" width="185" height="86" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="1.5"/>
+  <text x="292" y="212" font-size="11.5" font-weight="700" fill="#111827">SignUpForm.tsx</text>
+  <text x="292" y="227" font-size="9.5" fill="#6B7280">Client Component (/signup)</text>
+  <text x="292" y="246" font-size="10" fill="#111827">• useActionState(signup)</text>
+  <text x="292" y="262" font-size="10" fill="#111827">• handleOtpSubmit()</text>
+
+  <!-- Arrow: SignUpForm -> signup/actions.ts -->
+  <line x1="465" y1="232" x2="503" y2="232" stroke="#111827" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="484" y="224" font-size="9" fill="#4B5563" text-anchor="middle">FormData</text>
+
+  <!-- Box: signup/actions.ts -->
+  <rect x="509" y="192" width="180" height="86" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="1.5"/>
+  <text x="521" y="212" font-size="11.5" font-weight="700" fill="#111827">signup/actions.ts</text>
+  <text x="521" y="227" font-size="9.5" fill="#6B7280">Next.js Server Action</text>
+  <text x="521" y="246" font-size="10" fill="#111827">• signup(state, formData)</text>
+  <text x="521" y="262" font-size="10" fill="#EA580C" font-weight="600">• SignUpFormSchema (Zod)</text>
+
+  <!-- Arrow 2: actions.ts -> AuthController -->
+  <line x1="689" y1="232" x2="736" y2="232" stroke="#111827" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="712" y="208" font-size="10" font-weight="600" fill="#111827" text-anchor="middle">2. POST</text>
+  <text x="712" y="222" font-size="9" fill="#4B5563" text-anchor="middle">/api/auth/register</text>
+
+  <!-- Box: auth.controller.ts -->
+  <rect x="742" y="192" width="175" height="86" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="1.5"/>
+  <text x="754" y="212" font-size="11.5" font-weight="700" fill="#111827">auth.controller.ts</text>
+  <text x="754" y="227" font-size="9.5" fill="#6B7280">NestJS Controller</text>
+  <text x="754" y="246" font-size="10" fill="#111827">• register(RegisterDto)</text>
+  <text x="754" y="262" font-size="10" fill="#111827">• verifyOtp(VerifyOtpDto)</text>
+
+  <!-- Arrow: controller -> service -->
+  <line x1="917" y1="232" x2="945" y2="232" stroke="#111827" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Box: auth.service.ts (register) -->
+  <rect x="951" y="176" width="214" height="122" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="1.5"/>
+  <text x="963" y="196" font-size="11.5" font-weight="700" fill="#111827">auth.service.ts</text>
+  <text x="963" y="211" font-size="9.5" fill="#6B7280">AuthService.register()</text>
+  <text x="963" y="230" font-size="9.5" fill="#111827">• Cek duplikat email &amp; nik_hash</text>
+  <text x="963" y="246" font-size="9.5" fill="#EA580C" font-weight="600">• keccak256(NIK) [viem, RAM]</text>
+  <text x="963" y="262" font-size="9.5" fill="#EA580C" font-weight="600">• bcrypt.hash(pass, salt 10)</text>
+  <text x="963" y="278" font-size="9.5" fill="#EA580C" font-weight="600">• crypto.randomInt() → OTP 6d</text>
+  <text x="963" y="292" font-size="9" fill="#6B7280">(TTL OTP: 10 menit)</text>
+
+  <!-- Arrow 3: AuthService -> MySQL -->
+  <line x1="1165" y1="215" x2="1224" y2="215" stroke="#111827" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="1194" y="206" font-size="9.5" font-weight="600" fill="#111827" text-anchor="middle">3. Tx</text>
+
+  <!-- Box: MySQL (Phase 1) -->
+  <rect x="1230" y="176" width="346" height="84" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="1.5"/>
+  <text x="1244" y="196" font-size="11.5" font-weight="700" fill="#111827">MySQL Database (TypeORM Transaction)</text>
+  <text x="1244" y="214" font-size="9.5" fill="#111827">• INSERT <tspan font-weight="600">users</tspan> (name, email, bcrypt_pass, isEmailVerified=false, otp)</text>
+  <text x="1244" y="230" font-size="9.5" fill="#111827">• INSERT <tspan font-weight="600">customers</tspan> (nik_hash CHAR(66), wallet_address=NULL)</text>
+  <text x="1244" y="246" font-size="9" fill="#6B7280">NIK mentah dibuang dari RAM (Kepatuhan UU PDP No. 27/2022)</text>
+
+  <!-- Arrow: AuthService -> MailService -->
+  <path d="M 1165 276 L 1224 276" fill="none" stroke="#111827" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Box: MailService -->
+  <rect x="1230" y="268" width="346" height="52" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="1.5"/>
+  <text x="1244" y="288" font-size="11" font-weight="700" fill="#111827">mail.service.ts → Mailtrap SMTP (:2525)</text>
+  <text x="1244" y="306" font-size="9.5" fill="#4B5563">sendOtpEmail(email, name, otp) → Kirim 6 digit kode verifikasi</text>
+
+  <!-- Row 1B: Verify OTP Flow -->
+  <rect x="280" y="360" width="885" height="142" rx="8" fill="#FFFFFF" stroke="#D1D5DB" stroke-dasharray="4 3"/>
+  <text x="294" y="380" font-size="11" font-weight="700" fill="#374151">SUB-ALUR VERIFIKASI OTP EMAIL</text>
+
+  <!-- Arrow 4: User -> SignUpForm (OTP) -->
+  <path d="M 138 286 L 138 432 L 294 432" fill="none" stroke="#111827" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="215" y="423" font-size="10" font-weight="600" fill="#111827" text-anchor="middle">4. Input 6 Digit OTP</text>
+
+  <rect x="300" y="396" width="185" height="68" rx="6" fill="#F9FAFB" stroke="#111827" stroke-width="1.2"/>
+  <text x="312" y="415" font-size="10.5" font-weight="700" fill="#111827">SignUpForm.tsx</text>
+  <text x="312" y="431" font-size="9.5" fill="#111827">• handleOtpSubmit()</text>
+  <text x="312" y="447" font-size="9.5" fill="#111827">• verifyOtpAction(email, otp)</text>
+
+  <line x1="485" y1="430" x2="545" y2="430" stroke="#111827" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="515" y="412" font-size="9.5" font-weight="600" fill="#111827" text-anchor="middle">5. POST</text>
+  <text x="515" y="424" font-size="8.5" fill="#4B5563" text-anchor="middle">verify-otp</text>
+
+  <rect x="551" y="396" width="315" height="68" rx="6" fill="#F9FAFB" stroke="#111827" stroke-width="1.2"/>
+  <text x="563" y="415" font-size="10.5" font-weight="700" fill="#111827">AuthService.verifyOtp(VerifyOtpDto)</text>
+  <text x="563" y="431" font-size="9.5" fill="#111827">• Cocokkan emailVerificationToken === dto.otp</text>
+  <text x="563" y="447" font-size="9.5" fill="#111827">• Cek now &lt;= emailVerificationExpires</text>
+
+  <line x1="866" y1="430" x2="914" y2="430" stroke="#111827" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="920" y="396" width="230" height="68" rx="6" fill="#F9FAFB" stroke="#111827" stroke-width="1.2"/>
+  <text x="932" y="415" font-size="10.5" font-weight="700" fill="#111827">Update &amp; Redirect</text>
+  <text x="932" y="431" font-size="9.5" fill="#111827">• UPDATE isEmailVerified = true</text>
+  <text x="932" y="447" font-size="9.5" fill="#059669" font-weight="600">• Redirect /login?verified=true</text>
+
+
+  <!-- ===================================================================== -->
+  <!-- FASE 2: LOGIN, JWT SESSION & MIDDLEWARE                               -->
+  <!-- ===================================================================== -->
+  <rect x="40" y="546" width="1560" height="360" rx="12" fill="#FAFAFA" fill-opacity="0.45" stroke="#E5E7EB" stroke-width="1.2"/>
+  <rect x="56" y="558" width="295" height="24" rx="5" fill="#111827"/>
+  <text x="68" y="574" font-size="11" font-weight="700" fill="#FFFFFF">FASE 2: LOGIN, SESSION JWT &amp; MIDDLEWARE</text>
+
+  <!-- User Icon (Phase 2) -->
+  <g transform="translate(106, 614)">
+    <circle cx="32" cy="18" r="14" fill="#111827"/>
+    <path d="M 8 56 C 8 40, 56 40, 56 56 Z" fill="#111827"/>
+    <text x="32" y="74" font-size="12" font-weight="600" fill="#111827" text-anchor="middle">User</text>
+  </g>
+
+  <!-- Arrow 1: User -> LoginForm.tsx -->
+  <line x1="176" y1="646" x2="274" y2="646" stroke="#111827" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="225" y="624" font-size="10.5" font-weight="600" fill="#111827" text-anchor="middle">1. Login</text>
+  <text x="225" y="638" font-size="9.5" fill="#4B5563" text-anchor="middle">email, password</text>
+
+  <!-- Box: LoginForm.tsx -->
+  <rect x="280" y="606" width="185" height="82" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="1.5"/>
+  <text x="292" y="626" font-size="11.5" font-weight="700" fill="#111827">LoginForm.tsx</text>
+  <text x="292" y="641" font-size="9.5" fill="#6B7280">Client Component (/login)</text>
+  <text x="292" y="660" font-size="10" fill="#111827">• useActionState(login)</text>
+  <text x="292" y="676" font-size="10" fill="#111827">• Submit FormData</text>
+
+  <!-- Arrow: LoginForm -> login/actions.ts -->
+  <line x1="465" y1="646" x2="503" y2="646" stroke="#111827" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Box: login/actions.ts -->
+  <rect x="509" y="606" width="180" height="82" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="1.5"/>
+  <text x="521" y="626" font-size="11.5" font-weight="700" fill="#111827">login/actions.ts</text>
+  <text x="521" y="641" font-size="9.5" fill="#6B7280">Next.js Server Action</text>
+  <text x="521" y="660" font-size="10" fill="#111827">• login(prevState, formData)</text>
+  <text x="521" y="676" font-size="10" fill="#EA580C" font-weight="600">• loginSchema.safeParse()</text>
+
+  <!-- Arrow 2: login/actions.ts -> AuthController -->
+  <line x1="689" y1="646" x2="736" y2="646" stroke="#111827" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="712" y="622" font-size="10" font-weight="600" fill="#111827" text-anchor="middle">2. POST</text>
+  <text x="712" y="636" font-size="9" fill="#4B5563" text-anchor="middle">/api/auth/login</text>
+
+  <!-- Box: auth.controller.ts (login) -->
+  <rect x="742" y="606" width="160" height="82" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="1.5"/>
+  <text x="754" y="626" font-size="11.5" font-weight="700" fill="#111827">auth.controller.ts</text>
+  <text x="754" y="641" font-size="9.5" fill="#6B7280">NestJS Controller</text>
+  <text x="754" y="660" font-size="10" fill="#111827">• login(LoginDto)</text>
+
+  <line x1="902" y1="646" x2="935" y2="646" stroke="#111827" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Box: auth.service.ts (login) -->
+  <rect x="941" y="594" width="224" height="106" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="1.5"/>
+  <text x="953" y="614" font-size="11.5" font-weight="700" fill="#111827">auth.service.ts</text>
+  <text x="953" y="629" font-size="9.5" fill="#6B7280">AuthService.login()</text>
+  <text x="953" y="648" font-size="9.5" fill="#EA580C" font-weight="600">• bcrypt.compare(pass, hash)</text>
+  <text x="953" y="664" font-size="9.5" fill="#111827">• Cek isEmailVerified === true</text>
+  <text x="953" y="680" font-size="9.5" fill="#111827">• Cek role: ORGANIZER / CUSTOMER</text>
+  <text x="953" y="694" font-size="9" fill="#6B7280">Gagal → 401 UnauthorizedException</text>
+
+  <!-- Arrow 3: AuthService <-> MySQL -->
+  <line x1="1165" y1="646" x2="1224" y2="646" stroke="#111827" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="1194" y="636" font-size="9.5" font-weight="600" fill="#111827" text-anchor="middle">3. Query</text>
+
+  <rect x="1230" y="606" width="346" height="82" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="1.5"/>
+  <text x="1244" y="626" font-size="11.5" font-weight="700" fill="#111827">MySQL Database</text>
+  <text x="1244" y="644" font-size="9.5" fill="#111827">• SELECT users + relation customers (by email)</text>
+  <text x="1244" y="660" font-size="9.5" fill="#111827">• SELECT id, organization_name FROM organizers</text>
+  <text x="1244" y="676" font-size="9" fill="#6B7280">Return: { id, name, email, walletAddress, role, organizersId }</text>
+
+  <!-- Dashed Return Arrow 4: AuthService -> lib/session.ts -->
+  <path d="M 1053 700 L 1053 732 L 600 732 L 600 754" fill="none" stroke="#4B5563" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow-muted)"/>
+  <text x="830" y="724" font-size="9.5" font-weight="600" fill="#4B5563" text-anchor="middle">4. Return User DTO (tanpa password) → createSession(...)</text>
+
+  <!-- Box: lib/session.ts -->
+  <rect x="460" y="760" width="230" height="114" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="1.5"/>
+  <text x="472" y="780" font-size="11.5" font-weight="700" fill="#111827">lib/session.ts</text>
+  <text x="472" y="795" font-size="9.5" fill="#6B7280">createSession() &amp; encrypt()</text>
+  <text x="472" y="814" font-size="9.5" fill="#EA580C" font-weight="600">• SignJWT (jose) — Alg: HS256</text>
+  <text x="472" y="830" font-size="9.5" fill="#111827">• Secret: SESSION_SECRET (7 hari)</text>
+  <text x="472" y="846" font-size="9.5" fill="#111827">• Set-Cookie: "session" (HttpOnly)</text>
+  <text x="472" y="862" font-size="9.5" fill="#059669" font-weight="600">• Redirect → /dashboard</text>
+
+  <!-- Arrow 5: session.ts -> User Cookie -->
+  <path d="M 460 818 L 138 818 L 138 704" fill="none" stroke="#111827" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="295" y="810" font-size="9.5" font-weight="600" fill="#111827" text-anchor="middle">5. HttpOnly Cookie "session" (Anti-XSS)</text>
+
+  <!-- Box: middleware.ts & lib/jwt.ts -->
+  <rect x="742" y="760" width="423" height="114" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="1.5"/>
+  <text x="754" y="780" font-size="11.5" font-weight="700" fill="#111827">middleware.ts + lib/jwt.ts (Proteksi Setiap Request)</text>
+  <text x="754" y="798" font-size="9.5" fill="#EA580C" font-weight="600">• decrypt(cookie) via jwtVerify (HS256, clockTolerance: 60s)</text>
+  <text x="754" y="816" font-size="9.5" fill="#111827">• /dashboard/* (kecuali /buy): Wajib session?.userId → else /login</text>
+  <text x="754" y="834" font-size="9.5" fill="#111827">• /dashboard/admin/*: Wajib role === "ORGANIZER" → else /dashboard</text>
+  <text x="754" y="852" font-size="9.5" fill="#111827">• /login &amp; /signup: Jika sudah login → auto redirect /dashboard</text>
+
+
+  <!-- ===================================================================== -->
+  <!-- FASE 3: AKTIVASI DOMPET PASSKEY (PROGRESSIVE ONBOARDING)              -->
+  <!-- ===================================================================== -->
+  <rect x="40" y="926" width="1560" height="400" rx="12" fill="#FAFAFA" fill-opacity="0.45" stroke="#E5E7EB" stroke-width="1.2"/>
+  <rect x="56" y="938" width="390" height="24" rx="5" fill="#111827"/>
+  <text x="68" y="954" font-size="11" font-weight="700" fill="#FFFFFF">FASE 3: AKTIVASI DOMPET PASSKEY (WEBAUTHN + CREATE2)</text>
+
+  <!-- User Icon (Phase 3) -->
+  <g transform="translate(106, 996)">
+    <circle cx="32" cy="18" r="14" fill="#111827"/>
+    <path d="M 8 56 C 8 40, 56 40, 56 56 Z" fill="#111827"/>
+    <text x="32" y="74" font-size="12" font-weight="600" fill="#111827" text-anchor="middle">User</text>
+  </g>
+
+  <!-- Arrow 1: User -> NavbarWalletButton / BuyTicketCard -->
+  <line x1="176" y1="1028" x2="274" y2="1028" stroke="#111827" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="225" y="1008" font-size="10" font-weight="600" fill="#111827" text-anchor="middle">1. Klik Aktifkan</text>
+  <text x="225" y="1021" font-size="9.5" fill="#4B5563" text-anchor="middle">Dompet Tiket</text>
+
+  <!-- Box: UI Trigger + lib/passkey.ts -->
+  <rect x="280" y="982" width="409" height="106" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="1.5"/>
+  <text x="294" y="1002" font-size="11.5" font-weight="700" fill="#111827">NavbarWalletButton.tsx / BuyTicketCard.tsx → lib/passkey.ts</text>
+  <text x="294" y="1018" font-size="9.5" fill="#6B7280">registerPasskey(email)</text>
+  <text x="294" y="1036" font-size="9.5" fill="#111827">• toWebAuthnKey({ passkeyName: email, mode: Register, rpID })</text>
+  <text x="294" y="1052" font-size="9.5" fill="#111827">• toPasskeyValidator(publicClient, EntryPoint v0.7, Kernel v3.3)</text>
+  <text x="294" y="1068" font-size="9.5" fill="#EA580C" font-weight="600">• createKernelAccount() → Hitung walletAddress via CREATE2</text>
+
+  <!-- Arrow 2: passkey.ts -> WebAuthn & ZeroDev -->
+  <path d="M 689 1020 L 1224 1020" fill="none" stroke="#111827" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="955" y="1012" font-size="9.5" font-weight="600" fill="#111827" text-anchor="middle">2. Prompt Biometrik OS &amp; Komputasi Alamat Deterministik (Sepolia Chain 11155111)</text>
+
+  <!-- Box: WebAuthn Hardware Secure Enclave -->
+  <rect x="1230" y="974" width="346" height="68" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="1.5"/>
+  <text x="1244" y="994" font-size="11" font-weight="700" fill="#111827">Browser WebAuthn (Secure Enclave)</text>
+  <text x="1244" y="1012" font-size="9.5" fill="#EA580C" font-weight="600">• Generate Keypair NIST P-256 (secp256r1)</text>
+  <text x="1244" y="1028" font-size="9.5" fill="#111827">• Private Key tetap di HP/Laptop; keluar: pubX, pubY, credId</text>
+
+  <!-- Box: ZeroDev SDK / CREATE2 -->
+  <rect x="1230" y="1050" width="346" height="68" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="1.5"/>
+  <text x="1244" y="1070" font-size="11" font-weight="700" fill="#111827">ZeroDev SDK (Kernel v3.3 + EntryPoint v0.7)</text>
+  <text x="1244" y="1088" font-size="9.5" fill="#EA580C" font-weight="600">• CREATE2 = keccak256(0xff, factory, salt(pubX,pubY), initCode)</text>
+  <text x="1244" y="1104" font-size="9.5" fill="#111827">• Menghasilkan walletAddress (0x...) tanpa gas fee</text>
+
+  <!-- Dashed Return Arrow 3: External -> buy/actions.ts -->
+  <path d="M 1230 1106 L 484 1106 L 484 1144" fill="none" stroke="#4B5563" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow-muted)"/>
+  <text x="860" y="1099" font-size="9.5" font-weight="600" fill="#4B5563" text-anchor="middle">3. Return { pubX, pubY, credentialId, walletAddress } → activateWalletAction()</text>
+
+  <!-- Box: dashboard/buy/actions.ts -->
+  <rect x="280" y="1150" width="409" height="92" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="1.5"/>
+  <text x="294" y="1170" font-size="11.5" font-weight="700" fill="#111827">dashboard/buy/actions.ts</text>
+  <text x="294" y="1186" font-size="9.5" fill="#6B7280">activateWalletAction(SetupWalletInput)</text>
+  <text x="294" y="1204" font-size="9.5" fill="#111827">• Cek session?.userId via getSession()</text>
+  <text x="294" y="1220" font-size="9.5" fill="#111827">• Kirim { userId, pubX, pubY, credentialId, walletAddress }</text>
+  <text x="294" y="1234" font-size="9.5" fill="#059669" font-weight="600">• Panggil updateSessionWallet(walletAddress) (Re-sign JWT HS256)</text>
+
+  <!-- Arrow 4: buy/actions.ts -> AuthService.setupWallet -->
+  <line x1="689" y1="1196" x2="736" y2="1196" stroke="#111827" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="712" y="1174" font-size="9.5" font-weight="600" fill="#111827" text-anchor="middle">4. POST</text>
+  <text x="712" y="1187" font-size="8.5" fill="#4B5563" text-anchor="middle">setup-wallet</text>
+
+  <!-- Box: AuthService.setupWallet -->
+  <rect x="742" y="1150" width="423" height="92" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="1.5"/>
+  <text x="754" y="1170" font-size="11.5" font-weight="700" fill="#111827">auth.controller.ts → auth.service.ts (setupWallet)</text>
+  <text x="754" y="1188" font-size="9.5" fill="#111827">• Validasi user &amp; relasi customer</text>
+  <text x="754" y="1206" font-size="9.5" fill="#111827">• DB Transaction: simpan walletAddress &amp; passkey_credentials</text>
+  <text x="754" y="1224" font-size="9.5" fill="#6B7280">• Return { success: true, walletAddress }</text>
+
+  <!-- Arrow 5: setupWallet -> MySQL -->
+  <line x1="1165" y1="1196" x2="1224" y2="1196" stroke="#111827" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="1194" y="1186" font-size="9.5" font-weight="600" fill="#111827" text-anchor="middle">5. Tx</text>
+
+  <!-- Box: MySQL (Phase 3) -->
+  <rect x="1230" y="1150" width="346" height="92" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="1.5"/>
+  <text x="1244" y="1170" font-size="11.5" font-weight="700" fill="#111827">MySQL Database</text>
+  <text x="1244" y="1190" font-size="9.5" fill="#111827">• UPDATE <tspan font-weight="600">customers</tspan> SET wallet_address = 0x...</text>
+  <text x="1244" y="1208" font-size="9.5" fill="#111827">• INSERT <tspan font-weight="600">passkey_credentials</tspan></text>
+  <text x="1244" y="1224" font-size="9" fill="#6B7280">  (public_key_x, public_key_y, credential_id, counter=0)</text>
+
+  <!-- Arrow 6: updateSessionWallet -> User Cookie -->
+  <path d="M 484 1242 L 484 1280 L 138 1280 L 138 1084" fill="none" stroke="#111827" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="310" y="1272" font-size="9.5" font-weight="600" fill="#111827" text-anchor="middle">6. Update HttpOnly Cookie "session" dengan walletAddress baru</text>
+
+  <!-- Legend -->
+  <g transform="translate(48, 1348)" font-size="10.5" fill="#4B5563">
+    <line x1="0" y1="6" x2="28" y2="6" stroke="#111827" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <text x="36" y="10">Alur Request / Eksekusi</text>
+
+    <line x1="200" y1="6" x2="228" y2="6" stroke="#4B5563" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow-muted)"/>
+    <text x="236" y="10">Return Value / Response</text>
+
+    <rect x="410" y="-2" width="12" height="12" rx="2" fill="#EA580C"/>
+    <text x="428" y="10" fill="#EA580C" font-weight="600">Algoritma Kriptografi &amp; Validasi Keamanan</text>
+  </g>
+</svg>
+

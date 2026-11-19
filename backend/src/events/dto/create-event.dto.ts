@@ -6,6 +6,7 @@ import {
   IsIn,
   IsDateString,
   Min,
+  Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -16,7 +17,7 @@ export class TicketCategoryDto {
 
   @IsNotEmpty({ message: 'Harga tiket wajib diisi' })
   @IsNumber({}, { message: 'Harga tiket harus berupa angka' })
-  @Min(0, { message: 'Harga tiket tidak boleh negatif' })
+  @Min(1, { message: 'Harga tiket minimal 1' })
   @Type(() => Number)
   price: number;
 
@@ -63,6 +64,7 @@ export class CreateEventDto {
   @IsOptional()
   @IsNumber({}, { message: 'Batas tiket per dompet harus berupa angka' })
   @Min(1, { message: 'Batas tiket per dompet minimal 1' })
+  @Max(1, { message: 'Batas tiket per dompet maksimal 1' })
   @Type(() => Number)
   maxPerWallet?: number;
 

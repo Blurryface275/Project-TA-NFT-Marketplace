@@ -1,0 +1,211 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1900 1560" width="1900" height="1560" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <title>Gambar 4.1 Rancangan Arsitektur Registrasi dan Verifikasi OTP (5 Kolom + Full JSON)</title>
+  <desc>Diagram arsitektur 5 kolom dengan panah eksplisit, ikon 3D yEd, narasi detail, dan payload JSON utuh tanpa singkatan</desc>
+
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#111827"/></marker>
+    <marker id="arr-ok" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#059669"/></marker>
+    <marker id="arr-err" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#DC2626"/></marker>
+    <filter id="yed-shadow" x="-15%" y="-15%" width="135%" height="135%"><feDropShadow dx="1.5" dy="2.5" stdDeviation="2" flood-color="#000000" flood-opacity="0.18"/></filter>
+    <radialGradient id="g-skin" cx="35%" cy="30%" r="65%"><stop offset="0%" stop-color="#FFE0BD"/><stop offset="100%" stop-color="#E5A97C"/></radialGradient>
+    <linearGradient id="g-shirt" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#60A5FA"/><stop offset="100%" stop-color="#1E3A8A"/></linearGradient>
+    <linearGradient id="g-shield" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#60A5FA"/><stop offset="100%" stop-color="#1D4ED8"/></linearGradient>
+    <linearGradient id="g-gear" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FB7185"/><stop offset="100%" stop-color="#9F1239"/></linearGradient>
+    <linearGradient id="g-db" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#7DD3FC"/><stop offset="50%" stop-color="#0284C7"/><stop offset="100%" stop-color="#075985"/></linearGradient>
+    <linearGradient id="g-mail" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#6EE7B7"/><stop offset="100%" stop-color="#047857"/></linearGradient>
+    <linearGradient id="g-ok" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#99F6E4"/><stop offset="100%" stop-color="#0F766E"/></linearGradient>
+  </defs>
+
+  <rect width="1900" height="1560" fill="#FFFFFF"/>
+
+  <!-- 5-Column Vertical Dividers -->
+  <line x1="360" y1="60" x2="360" y2="1470" stroke="#CBD5E1" stroke-width="1.5"/>
+  <line x1="740" y1="60" x2="740" y2="1470" stroke="#111827" stroke-width="2"/>
+  <line x1="1120" y1="60" x2="1120" y2="1470" stroke="#111827" stroke-width="2"/>
+  <line x1="1500" y1="60" x2="1500" y2="1470" stroke="#CBD5E1" stroke-width="1.5"/>
+
+  <!-- Column Titles -->
+  <text x="190" y="92" font-size="15" font-weight="800" fill="#1E3A8A" text-anchor="middle">1. USER / BROWSER (UI)</text>
+  <text x="550" y="92" font-size="15" font-weight="800" fill="#1E3A8A" text-anchor="middle">2. NEXT.JS SERVER ACTION</text>
+  <text x="930" y="92" font-family="'Times New Roman', Georgia, serif" font-size="20" font-weight="800" fill="#111827" text-anchor="middle">3. PUBLIC CHANNEL (HTTP/SMTP)</text>
+  <text x="1310" y="92" font-size="15" font-weight="800" fill="#9F1239" text-anchor="middle">4. BACKEND (NestJS)</text>
+  <text x="1700" y="92" font-size="15" font-weight="800" fill="#0369A1" text-anchor="middle">5. MYSQL &amp; MAILTRAP</text>
+
+  <!-- ==================== STEP 1: ALICE INPUT ==================== -->
+  <svg x="158" y="130" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48"><g fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"><circle cx="24" cy="12" r="8" fill="#2F88FF" /><path d="M42 44C42 34.0589 33.9411 26 24 26C14.0589 26 6 34.0589 6 44" /></g></svg>
+  <text x="190" y="210" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">1. Alice isi form pendaftaran</text>
+  <text x="190" y="228" font-size="11" fill="#4B5563" text-anchor="middle">SignUpForm.tsx:12,196-250 (React 19)</text>
+  <g font-family="monospace" font-size="11" fill="#1D4ED8">
+    <text x="65" y="252">{</text>
+    <text x="80" y="268">"name": "Alice",</text>
+    <text x="80" y="284">"email": "alice@gmail.com",</text>
+    <text x="80" y="300">"nik": "1234567890123456",</text>
+    <text x="80" y="316">"password": "Alice12#$"</text>
+    <text x="65" y="332">}</text>
+  </g>
+
+  <!-- Arrow 1 -> 2 -->
+  <path d="M 320 265 C 370 265, 385 265, 420 265" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+
+  <!-- ==================== STEP 2: ZOD VALIDATION ==================== -->
+  <svg x="518" y="130" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48"><path fill="#2F88FF" stroke="#000" stroke-linejoin="round" stroke-width="4" d="M6 8.25564L24.0086 3L42 8.25564V19.0337C42 30.3622 34.7502 40.4194 24.0026 44.0005C13.2521 40.4195 6 30.36 6 19.0287V8.25564Z" /></svg>
+  <text x="550" y="210" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">2. Validasi Zod (signup/actions.ts:12)</text>
+  <text x="550" y="228" font-size="11" fill="#4B5563" text-anchor="middle">definitions.ts:4-34 (Library: zod)</text>
+  <g font-family="monospace" font-size="10.5" fill="#059669">
+    <text x="395" y="252">{</text>
+    <text x="410" y="267">"success": true,</text>
+    <text x="410" y="282">"data": {</text>
+    <text x="425" y="297">"name": "Alice",</text>
+    <text x="425" y="312">"email": "alice@gmail.com",</text>
+    <text x="425" y="327">"nik": "1234567890123456",</text>
+    <text x="425" y="342">"password": "Alice12#$"</text>
+    <text x="410" y="357">}</text>
+    <text x="395" y="372">}</text>
+  </g>
+
+  <!-- Error Arrow 2 -> 1 -->
+  <path d="M 410 415 C 340 415, 290 415, 230 365" fill="none" stroke="#DC2626" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arr-err)"/>
+  <g font-family="monospace" font-size="10" fill="#DC2626">
+    <text x="65" y="395">Jika Zod Gagal (return ke UI):</text>
+    <text x="65" y="411">{</text>
+    <text x="80" y="426">"errors": {</text>
+    <text x="95" y="441">"nik": ["NIK wajib terdiri dari 16 digit angka sesuai KTP"]</text>
+    <text x="80" y="456">},</text>
+    <text x="80" y="471">"message": "Input gagal. Periksa kembali data pendaftaran Anda."</text>
+    <text x="65" y="486">}</text>
+  </g>
+
+  <!-- ==================== STEP 3: HTTP POST /register ==================== -->
+  <path d="M 695 290 C 745 290, 765 250, 815 250" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+  <text x="930" y="195" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">3. HTTP POST Request</text>
+  <g font-family="monospace" font-size="10.5" fill="#1D4ED8">
+    <text x="765" y="218">POST /api/auth/register HTTP/1.1</text>
+    <text x="765" y="233">Host: localhost:3001</text>
+    <text x="765" y="248">Content-Type: application/json</text>
+    <text x="765" y="263">Content-Length: 90</text>
+    <text x="765" y="283" fill="#111827">{</text>
+    <text x="780" y="298" fill="#111827">"name": "Alice",</text>
+    <text x="780" y="313" fill="#111827">"email": "alice@gmail.com",</text>
+    <text x="780" y="328" fill="#111827">"nik": "1234567890123456",</text>
+    <text x="780" y="343" fill="#111827">"password": "Alice12#$"</text>
+    <text x="765" y="358" fill="#111827">}</text>
+  </g>
+  <path d="M 1055 290 C 1110 290, 1130 290, 1175 290" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+
+  <!-- ==================== STEP 4: BACKEND CRYPTO ==================== -->
+  <svg x="1278" y="130" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48"><g fill="none"><path stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M24 40H7C5.34315 40 4 38.6569 4 37V11C4 9.34315 5.34315 8 7 8H41C42.6569 8 44 9.34315 44 11V23.0588" /><path fill="#2F88FF" stroke="#000" stroke-width="4" d="M4 11C4 9.34315 5.34315 8 7 8H41C42.6569 8 44 9.34315 44 11V20H4V11Z" /><circle r="2" fill="#fff" transform="matrix(0 -1 -1 0 10 14)" /><circle r="2" fill="#fff" transform="matrix(0 -1 -1 0 16 14)" /><circle cx="37" cy="34" r="3" stroke="#000" stroke-width="4" /><path stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M37 41V37" /><path stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M37 31V27" /><path stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M30.9378 37.5L34.4019 35.5" /><path stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M39.5979 32.5L43.062 30.5" /><path stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M30.9378 30.5L34.4019 32.5" /><path stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M39.5979 35.5L43.062 37.5" /></g></svg>
+  <text x="1310" y="210" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">4. Hashing &amp; OTP (auth.service.ts:35-72)</text>
+  <text x="1310" y="228" font-size="11" fill="#4B5563" text-anchor="middle">auth.controller.ts:13 • viem, bcryptjs, crypto</text>
+  <g font-family="monospace" font-size="10.5" fill="#C2410C">
+    <text x="1145" y="252">1) Cek email &amp; nik_hash duplikat</text>
+    <text x="1145" y="270">2) keccak256("1234567890123456") [viem:54]</text>
+    <text x="1155" y="286">0x2864b40e7c3d9c5f2b4a1e8d6f0a2c4e6b8d0f1a2b3c4d5e6f7a8b9c0d1e2f3a</text>
+    <text x="1145" y="306">3) bcrypt.hash("Alice12#$", 10) [bcryptjs:67]</text>
+    <text x="1155" y="322">$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy</text>
+    <text x="1145" y="342" fill="#7C3AED">4) crypto.randomInt(100000,1000000) [crypto:70]</text>
+    <text x="1155" y="358" fill="#7C3AED">otp = "482910" (TTL: 10 menit)</text>
+  </g>
+
+  <!-- Arrow 4 -> 5 -->
+  <path d="M 1465 290 C 1515 290, 1530 290, 1575 290" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+
+  <!-- ==================== STEP 5: MYSQL & MAILTRAP ==================== -->
+  <svg x="1668" y="130" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48"><g fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"><path d="M44 31C44 36.5228 39.5228 41 34 41C32.2091 41 30.5281 40.5292 29.0741 39.7046C26.5143 38.2529 24.6579 35.7046 24.1436 32.6983C24.0492 32.1463 24 31.5789 24 31C24 28.4323 24.9678 26.0906 26.5585 24.3198C28.3892 22.2818 31.0449 21 34 21C39.5228 21 44 25.4772 44 31Z" /><path d="M34 12V20V21C31.0449 21 28.3892 22.2818 26.5585 24.3198C24.9678 26.0906 24 28.4323 24 31C24 31.5789 24.0492 32.1463 24.1436 32.6983C24.6579 35.7046 26.5143 38.2529 29.0741 39.7046C26.4116 40.5096 22.8776 41 19 41C10.7157 41 4 38.7614 4 36V28V20V12" /><path fill="#2F88FF" d="M34 12C34 14.7614 27.2843 17 19 17C10.7157 17 4 14.7614 4 12C4 9.23858 10.7157 7 19 7C27.2843 7 34 9.23858 34 12Z" /><path d="M4 28C4 30.7614 10.7157 33 19 33C20.807 33 22.5393 32.8935 24.1436 32.6983" /><path d="M4 20C4 22.7614 10.7157 25 19 25C21.7563 25 24.339 24.7522 26.5585 24.3198" /><path d="M34 41C34 41 30.5 35.1375 30.5 31C30.5 26.8625 34 21 34 21" /><path d="M34 41C34 41 37.5 35.1375 37.5 31C37.5 26.8625 34 21 34 21" /><path d="M44 31H24" /></g></svg>
+  <text x="1700" y="210" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">5. DB Transaction (typeorm:74-105)</text>
+  <g font-family="monospace" font-size="10.2" fill="#0369A1">
+    <text x="1525" y="236">INSERT users:</text>
+    <text x="1525" y="252">{</text>
+    <text x="1540" y="267">"name": "Alice",</text>
+    <text x="1540" y="282">"email": "alice@gmail.com",</text>
+    <text x="1540" y="297">"password": "$2b$10$N9qo8uLOickgx2ZMRZoMye...",</text>
+    <text x="1540" y="312">"isEmailVerified": false,</text>
+    <text x="1540" y="327">"emailVerificationToken": "482910",</text>
+    <text x="1540" y="342">"emailVerificationExpires": "2026-11-17T07:13:22.000Z"</text>
+    <text x="1525" y="357">}</text>
+    <text x="1525" y="380">INSERT customers:</text>
+    <text x="1525" y="396">{</text>
+    <text x="1540" y="411">"walletAddress": null,</text>
+    <text x="1540" y="426">"nikHash": "0x2864b40e7c3d9c5f2b4a1e8d...",</text>
+    <text x="1540" y="441">"usersId": 1</text>
+    <text x="1525" y="456">}</text>
+  </g>
+
+  <!-- Arrow down to MailService -->
+  <path d="M 1700 470 L 1700 520" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+
+  <!-- ==================== STEP 6: MAILTRAP SMTP ==================== -->
+  <svg x="1668" y="535" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48"><g fill="none" stroke-linejoin="round" stroke-width="4"><path fill="#2F88FF" stroke="#000" d="M4 39H44V24V9H24H4V24V39Z" /><path stroke="#fff" stroke-linecap="round" d="M4 9L24 24L44 9" /><path stroke="#000" stroke-linecap="round" d="M24 9H4V24" /><path stroke="#000" stroke-linecap="round" d="M44 24V9H24" /></g></svg>
+  <text x="1700" y="610" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">6. Kirim Email OTP (mail.service.ts:20-77)</text>
+  <text x="1700" y="628" font-size="11" fill="#4B5563" text-anchor="middle">Library: nodemailer → sandbox.smtp.mailtrap.io:2525</text>
+  <g font-family="monospace" font-size="10.2" fill="#047857">
+    <text x="1525" y="650">{</text>
+    <text x="1540" y="665">"from": "\"Web3 NFT Marketplace\" &lt;noreply@nftmarketplace.local&gt;",</text>
+    <text x="1540" y="680">"to": "alice@gmail.com",</text>
+    <text x="1540" y="695">"subject": "482910 is your verification code",</text>
+    <text x="1540" y="710">"html": "&lt;div&gt;Hello Alice, OTP: 482910 (valid 10 minutes)&lt;/div&gt;"</text>
+    <text x="1525" y="725">}</text>
+  </g>
+
+  <!-- Arrow 6 -> User (Email arrives across Public Channel) -->
+  <path d="M 1510 680 C 1280 680, 1180 760, 930 760 C 660 760, 480 760, 290 760" fill="none" stroke="#059669" stroke-width="2.4" stroke-dasharray="6 4" marker-end="url(#arr-ok)"/>
+  <text x="930" y="746" font-size="12.5" font-weight="800" fill="#047857" text-anchor="middle">6b. Email berisi OTP "482910" diterima di inbox Alice</text>
+
+  <!-- ==================== STEP 7: ALICE INPUT OTP ==================== -->
+  <svg x="158" y="735" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48"><g fill="none"><path stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M42 18V40C42 41.1046 41.1046 42 40 42H8C6.89543 42 6 41.1046 6 40V18" /><path fill="#2F88FF" stroke="#000" stroke-linejoin="round" stroke-width="4" d="M6 8C6 6.89543 6.89543 6 8 6H40C41.1046 6 42 6.89543 42 8V18H6V8Z" /><path fill="#fff" fill-rule="evenodd" d="M12 14C13.1046 14 14 13.1046 14 12C14 10.8954 13.1046 10 12 10C10.8954 10 10 10.8954 10 12C10 13.1046 10.8954 14 12 14Z" clip-rule="evenodd" /><path fill="#fff" fill-rule="evenodd" d="M18 14C19.1046 14 20 13.1046 20 12C20 10.8954 19.1046 10 18 10C16.8954 10 16 10.8954 16 12C16 13.1046 16.8954 14 18 14Z" clip-rule="evenodd" /><path fill="#fff" fill-rule="evenodd" d="M24 14C25.1046 14 26 13.1046 26 12C26 10.8954 25.1046 10 24 10C22.8954 10 22 10.8954 22 12C22 13.1046 22.8954 14 24 14Z" clip-rule="evenodd" /></g></svg>
+  <text x="190" y="806" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">7. Alice input OTP "482910"</text>
+  <text x="190" y="824" font-size="11" fill="#4B5563" text-anchor="middle">SignUpForm.tsx:25-45 → handleOtpSubmit()</text>
+  <text x="190" y="844" font-family="monospace" font-size="11" font-weight="700" fill="#1D4ED8" text-anchor="middle">verifyOtpAction("alice@gmail.com", "482910")</text>
+
+  <!-- Arrow 7 -> 8 (Action -> Channel -> Backend) -->
+  <path d="M 330 835 C 390 835, 415 885, 480 885" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+  <text x="550" y="868" font-size="12.5" font-weight="800" fill="#111827" text-anchor="middle">signup/actions.ts:76-110</text>
+  <text x="550" y="886" font-family="monospace" font-size="10.5" fill="#1D4ED8" text-anchor="middle">fetch POST /api/auth/verify-otp</text>
+
+  <path d="M 675 885 C 725 885, 745 920, 795 920" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+  <text x="930" y="870" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">8. HTTP POST Verifikasi OTP</text>
+  <g font-family="monospace" font-size="10.5" fill="#1D4ED8">
+    <text x="765" y="892">POST /api/auth/verify-otp HTTP/1.1</text>
+    <text x="765" y="907">Content-Type: application/json (42 bytes)</text>
+    <text x="765" y="927" fill="#111827">{</text>
+    <text x="780" y="942" fill="#111827">"email": "alice@gmail.com",</text>
+    <text x="780" y="957" fill="#111827">"otp": "482910"</text>
+    <text x="765" y="972" fill="#111827">}</text>
+  </g>
+  <path d="M 1055 935 C 1105 935, 1130 935, 1175 935" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+
+  <!-- ==================== STEP 9: VERIFY & UPDATE MYSQL ==================== -->
+  <text x="1310" y="910" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">9. Validasi OTP (auth.service.ts:206-249)</text>
+  <text x="1310" y="930" font-size="11" fill="#4B5563" text-anchor="middle">auth.controller.ts:28 • verifyOtp(VerifyOtpDto)</text>
+  <g font-family="monospace" font-size="10.5" fill="#059669">
+    <text x="1150" y="952">• user.emailVerificationToken === "482910"</text>
+    <text x="1150" y="968">• new Date() &lt;= user.emailVerificationExpires</text>
+  </g>
+
+  <path d="M 1465 940 C 1515 940, 1530 940, 1575 940" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arr)"/>
+  <text x="1700" y="910" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">10. Update Status Verified (MySQL)</text>
+  <g font-family="monospace" font-size="10.5" fill="#0369A1">
+    <text x="1535" y="935">UPDATE users SET {</text>
+    <text x="1550" y="950">"isEmailVerified": true,</text>
+    <text x="1550" y="965">"emailVerificationToken": null,</text>
+    <text x="1550" y="980">"emailVerificationExpires": null</text>
+    <text x="1535" y="995">}</text>
+  </g>
+
+  <!-- ==================== STEP 11: RESPONSE & REDIRECT ==================== -->
+  <path d="M 1295 1015 C 1240 1135, 1150 1155, 1060 1155" fill="none" stroke="#059669" stroke-width="2.4" marker-end="url(#arr-ok)"/>
+  <text x="930" y="1115" font-size="13" font-weight="800" fill="#047857" text-anchor="middle">11. HTTP Response 201 OK</text>
+  <g font-family="monospace" font-size="10.5" fill="#059669">
+    <text x="765" y="1138">{</text>
+    <text x="780" y="1153">"success": true,</text>
+    <text x="780" y="1168">"message": "Email berhasil diverifikasi! Silakan login ke akun Anda."</text>
+    <text x="765" y="1183">}</text>
+  </g>
+  <path d="M 760 1155 C 650 1155, 420 1185, 290 1185" fill="none" stroke="#059669" stroke-width="2.4" marker-end="url(#arr-ok)"/>
+
+  <svg x="158" y="1145" xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 48 48"><g fill="none" stroke-linejoin="round" stroke-width="4"><path fill="#2F88FF" stroke="#000" d="M24 44C29.5228 44 34.5228 41.7614 38.1421 38.1421C41.7614 34.5228 44 29.5228 44 24C44 18.4772 41.7614 13.4772 38.1421 9.85786C34.5228 6.23858 29.5228 4 24 4C18.4772 4 13.4772 6.23858 9.85786 9.85786C6.23858 13.4772 4 18.4772 4 24C4 29.5228 6.23858 34.5228 9.85786 38.1421C13.4772 41.7614 18.4772 44 24 44Z" /><path stroke="#fff" stroke-linecap="round" d="M16 24L22 30L34 18" /></g></svg>
+  <text x="190" y="1224" font-size="13" font-weight="800" fill="#111827" text-anchor="middle">12. Redirect ke Halaman Login</text>
+  <text x="190" y="1244" font-family="monospace" font-size="11" font-weight="700" fill="#059669" text-anchor="middle">router.push("/login?verified=true&amp;email=alice%40gmail.com")</text>
+  <text x="190" y="1262" font-size="11" fill="#6B7280" text-anchor="middle">File: SignUpForm.tsx:41-44</text>
+
+  <text x="950" y="1520" font-family="'Times New Roman', Georgia, serif" font-size="18" font-weight="700" fill="#111827" text-anchor="middle">Gambar 4.1 Rancangan Arsitektur Registrasi Akun dan Verifikasi OTP</text>
+</svg>

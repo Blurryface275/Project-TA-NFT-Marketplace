@@ -1,3 +1,4 @@
+import { backendFetch } from "@/lib/backend";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import ResaleCatalogClient, { ResaleListingItem } from "./ResaleCatalogClient";
@@ -11,8 +12,8 @@ export default async function ResaleMarketplacePage() {
 
   let listings: ResaleListingItem[] = [];
   try {
-    const res = await fetch(
-      `${process.env.BACKEND_URL}/api/tickets/resale/active`,
+    const res = await backendFetch(
+      "/api/tickets/resale/active",
       { cache: "no-store" },
     );
     if (res.ok) {

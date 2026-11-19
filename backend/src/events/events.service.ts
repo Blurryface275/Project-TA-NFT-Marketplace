@@ -47,10 +47,68 @@ export class EventsService {
       chain: sepolia,
       transport: http(RPC_URL),
     });
-    this.walletClient = createWalletClient({
+       this.walletClient = createWalletClient({
       account: this.account,
       chain: sepolia,
       transport: http(RPC_URL),
+    });
+  }
+
+  private async uploadFileToPinata(
+    blob: Blob,
+    fileName: string,
+  ): Promise<{ id: string | null; cid: string; uri: string }> {
+    const pinataJwt = this.configService.get<string>('PINATA_JWT');
+    if (!pinataJwt) {
+      throw new InternalServerErrorException(
+        'PINATA_JWT belum dikonfigurasi di backend/.env',
+      );
+    }
+
+    const formData = new FormData();
+    formData.append('file', blob, fileName);
+    formData.append('network', 'public');
+    formData.append('name', fileName);
+
+    const res = await fetch('https://uploads.pinata.cloud/v3/files', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${pinataJwt}`,
+      },
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const errBody = await res.text();
+      throw new InternalServerErrorException(
+        `Gagal upload ke Pinata (${res.status}): ${errBody}`,
+      );
+    }
+
+    const json = (await res.json()) as { data?: { id?: string; cid?: string } };
+    const cid = json?.data?.cid;
+    if (!cid) {
+      throw new InternalServerErrorException('Response Pinata tidak menyertakan CID');
+    }
+
+    return {
+      id: json?.data?.id ?? null,
+      cid,
+      uri: `ipfs://${cid}`,
+    };
+  }
+
+  private async unpinFromPinata(fileId: string | null): Promise<void> {
+    const pinataJwt = this.configService.get<string>('PINATA_JWT');
+    if (!fileId || !pinataJwt) return;
+
+    await fetch(`https://api.pinata.cloud/v3/files/public/${fileId}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${pinataJwt}`,
+      },
+    }).catch((err) => {
+      console.warn(`[Pinata] Gagal unpin file ${fileId}:`, err);
     });
   }
 
@@ -171,28 +229,66 @@ export class EventsService {
       throw new BadRequestException(`Organizer dengan ID ${orgId} tidak ditemukan`);
     }
 
-    // 1. Tentukan URL / path gambar background tiket
+    // 1. Upload gambar background & metadata JSON ERC-721 ke IPFS Pinata
+    const pinIdsToCleanup: string[] = [];
     let imageIpfsCid = dto.imageIpfsCid || null;
     if (file) {
-      // File berhasil diunggah via Multer ke folder uploads/
-      imageIpfsCid = `http://localhost:3001/uploads/${file.filename}`;
-      console.log('📸 [EventsService] Gambar background tiket tersimpan di:', imageIpfsCid);
+      const imgPin = await this.uploadFileToPinata(
+        new Blob([new Uint8Array(file.buffer)], { type: file.mimetype }),
+        `ticket-bg-${Date.now()}-${file.originalname}`,
+      );
+      imageIpfsCid = imgPin.uri;
+      if (imgPin.id) pinIdsToCleanup.push(imgPin.id);
+      console.log('📸 [EventsService] Banner terunggah ke IPFS Pinata:', imageIpfsCid);
     } else if (!imageIpfsCid) {
-      // Default background concert jika tidak ada file yang diunggah
       imageIpfsCid =
         'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&w=1200&q=80';
     }
 
-    // 2. Parsing kategori tiket
+    let eventMetadataUri = imageIpfsCid;
+    if (file || this.configService.get<string>('PINATA_JWT')) {
+      const metadataBlob = new Blob(
+        [
+          JSON.stringify({
+            name: dto.eventName,
+            description: `${dto.eventName} - ${dto.venueLocation}`,
+            image: imageIpfsCid,
+            attributes: [
+              { trait_type: 'Category', value: dto.category },
+              { trait_type: 'Venue', value: dto.venueLocation },
+              { trait_type: 'Date', value: dto.startDate },
+            ],
+          }),
+        ],
+        { type: 'application/json' },
+      );
+      const metaPin = await this.uploadFileToPinata(
+        metadataBlob,
+        `event-meta-${Date.now()}.json`,
+      );
+      eventMetadataUri = metaPin.uri;
+      if (metaPin.id) pinIdsToCleanup.push(metaPin.id);
+    }
+
+    // 2. Parsing & validasi kategori tiket sebelum transaksi on-chain / DB
     let parsedCategories: TicketCategoryDto[] = [];
     if (typeof dto.ticketCategories === 'string') {
       try {
-        parsedCategories = JSON.parse(dto.ticketCategories);
-      } catch (e) {
+        const decoded: unknown = JSON.parse(dto.ticketCategories);
+        if (!Array.isArray(decoded)) {
+          throw new BadRequestException('Format ticketCategories JSON harus berupa array');
+        }
+        parsedCategories = decoded as TicketCategoryDto[];
+      } catch (err: unknown) {
+        if (err instanceof BadRequestException) {
+          throw err;
+        }
         throw new BadRequestException('Format ticketCategories JSON tidak valid');
       }
     } else if (Array.isArray(dto.ticketCategories)) {
       parsedCategories = dto.ticketCategories;
+    } else if (dto.ticketCategories !== undefined && dto.ticketCategories !== null) {
+      throw new BadRequestException('Format ticketCategories harus berupa array atau JSON string array');
     }
 
     if (parsedCategories.length === 0) {
@@ -206,10 +302,27 @@ export class EventsService {
       ];
     }
 
+    for (const cat of parsedCategories) {
+      const catName = typeof cat?.name === 'string' ? cat.name.trim() : '';
+      const catPrice = Number(cat?.price);
+      const catQuota = Number(cat?.quota);
+      if (!catName) {
+        throw new BadRequestException('Nama kategori tiket wajib diisi');
+      }
+      if (!Number.isFinite(catPrice) || Math.round(catPrice) < 1) {
+        throw new BadRequestException(`Harga tiket kategori "${catName}" minimal 1`);
+      }
+      if (!Number.isInteger(catQuota) || catQuota < 1) {
+        throw new BadRequestException(`Kuota tiket kategori "${catName}" minimal 1`);
+      }
+    }
+
     // 3. Validasi waktu event (wajib di masa depan sesuai guard smart contract TicketContract.sol)
-    const eventTimestamp = BigInt(
-      Math.floor(new Date(dto.startDate).getTime() / 1000),
-    );
+    const startTimeMs = new Date(dto.startDate).getTime();
+    if (Number.isNaN(startTimeMs)) {
+      throw new BadRequestException('Format startDate tidak valid');
+    }
+    const eventTimestamp = BigInt(Math.floor(startTimeMs / 1000));
     const currentTimestamp = BigInt(Math.floor(Date.now() / 1000));
     if (eventTimestamp <= currentTimestamp) {
       throw new BadRequestException(
@@ -217,7 +330,21 @@ export class EventsService {
       );
     }
 
-    // 4. Hitung on_chain_event_id berikutnya dari database
+    const rawMaxPerWallet = dto.maxPerWallet as unknown;
+    const maxPerWallet =
+      rawMaxPerWallet !== undefined &&
+      rawMaxPerWallet !== null &&
+      rawMaxPerWallet !== ''
+        ? Number(rawMaxPerWallet)
+        : 1;
+    if (!Number.isInteger(maxPerWallet) || maxPerWallet < 1) {
+      throw new BadRequestException('Batas tiket per dompet minimal 1');
+    }
+    if (maxPerWallet > 1) {
+      throw new BadRequestException('Batas tiket per dompet maksimal 1');
+    }
+
+    // 4. Alokasi on_chain_event_id & category id di memori (read-only) sebelum menulis ke DB
     const maxOnChainQuery = await this.eventRepository
       .createQueryBuilder('e')
       .select('MAX(CAST(e.onChainEventId AS UNSIGNED))', 'max')
@@ -225,46 +352,20 @@ export class EventsService {
     const nextOnChainEventId = (Number(maxOnChainQuery?.max) || 0) + 1;
     console.log(`🔢 [EventsService] on_chain_event_id baru yang dialokasikan: #${nextOnChainEventId}`);
 
-    // 5. Simpan data Event ke MySQL
-    const newEvent = this.eventRepository.create({
-      onChainEventId: String(nextOnChainEventId),
-      eventName: dto.eventName,
-      startDate: new Date(dto.startDate),
-      venueLocation: dto.venueLocation,
-      category: dto.category,
-      capacity: Number(dto.capacity),
-      imageIpfsCid: imageIpfsCid,
-      maxPerWallet: Number(dto.maxPerWallet || 2),
-      organizersId: orgId,
-      saleStartTime: dto.saleStartTime ? new Date(dto.saleStartTime) : null,
-      saleEndTime: dto.saleEndTime ? new Date(dto.saleEndTime) : null,
-    });
-
-    const savedEvent = await this.eventRepository.save(newEvent);
-    console.log(`💾 [EventsService] Event tersimpan di MySQL ID #${savedEvent.id}`);
-
-    // 6. Hitung category id berikutnya dan simpan ke MySQL
     const maxCatQuery = await this.ticketCategoryRepository
       .createQueryBuilder('c')
       .select('MAX(CAST(c.id AS UNSIGNED))', 'max')
       .getRawOne();
     let nextCatId = (Number(maxCatQuery?.max) || 0) + 1;
 
-    const savedCategories: TicketCategory[] = [];
-    for (const cat of parsedCategories) {
-      const categoryRecord = this.ticketCategoryRepository.create({
-        id: String(nextCatId++),
-        name: cat.name,
-        price: Number(cat.price),
-        quota: Number(cat.quota),
-        eventsId: savedEvent.id,
-      });
-      const savedCat = await this.ticketCategoryRepository.save(categoryRecord);
-      savedCategories.push(savedCat);
-    }
-    console.log(`💾 [EventsService] ${savedCategories.length} kategori tiket tersimpan di MySQL`);
+    const preparedCategories = parsedCategories.map((cat) => ({
+      id: String(nextCatId++),
+      name: cat.name.trim(),
+      price: Number(cat.price),
+      quota: Number(cat.quota),
+    }));
 
-    // 7. Daftarkan Event & Kategori ke Smart Contract Sepolia
+    // 5. Daftarkan Event & Kategori ke Smart Contract Sepolia TERLEBIH DAHULU
     let createEventTxHash: `0x${string}` | null = null;
     let createBlockNumber: string | null = null;
     const categoryTxResults: {
@@ -284,7 +385,8 @@ export class EventsService {
           BigInt(nextOnChainEventId),
           this.account.address,
           eventTimestamp,
-          Number(dto.maxPerWallet || 2),
+          maxPerWallet,
+          eventMetadataUri,
         ],
       });
       console.log(`🚀 [EventsService] Transaksi createEvent terkirim: ${createEventTxHash}`);
@@ -292,13 +394,16 @@ export class EventsService {
       const createReceipt = await this.publicClient.waitForTransactionReceipt({
         hash: createEventTxHash,
       });
+      if (createReceipt.status !== 'success') {
+        throw new Error(`Transaksi createEvent reverted di Sepolia (tx: ${createEventTxHash})`);
+      }
       createBlockNumber = createReceipt.blockNumber.toString();
       console.log(
         `✅ [EventsService] Event #${nextOnChainEventId} terverifikasi on-chain di Sepolia (Blok #${createBlockNumber})`,
       );
 
       // Pendaftaran masing-masing kategori tiket ke smart contract
-      for (const cat of savedCategories) {
+      for (const cat of preparedCategories) {
         console.log(`⏳ [EventsService] Menambahkan kategori on-chain #${cat.id} (${cat.name})...`);
         const catTxHash = await this.walletClient.writeContract({
           address: this.contractAddress,
@@ -307,14 +412,19 @@ export class EventsService {
           args: [
             BigInt(nextOnChainEventId),
             BigInt(cat.id),
-            BigInt(Math.round(Number(cat.price))),
-            Number(cat.quota),
+            BigInt(Math.round(cat.price)),
+            cat.quota,
           ],
         });
 
         const catReceipt = await this.publicClient.waitForTransactionReceipt({
           hash: catTxHash,
         });
+        if (catReceipt.status !== 'success') {
+          throw new Error(
+            `Transaksi addCategory #${cat.id} (${cat.name}) reverted di Sepolia (tx: ${catTxHash})`,
+          );
+        }
         categoryTxResults.push({
           categoryId: cat.id,
           name: cat.name,
@@ -325,26 +435,59 @@ export class EventsService {
           `✅ [EventsService] Kategori #${cat.id} aktif on-chain (Blok #${catReceipt.blockNumber})`,
         );
       }
-    } catch (chainErr: any) {
-      console.warn(
-        '⚠️ [EventsService] Transaksi blockchain mengalami kendala jaringan Sepolia:',
-        chainErr?.shortMessage || chainErr?.message || chainErr,
+    } catch (chainErr: unknown) {
+      await Promise.all(pinIdsToCleanup.map((id) => this.unpinFromPinata(id)));
+      const errMsg =
+        (chainErr as { shortMessage?: string; message?: string })?.shortMessage ||
+        (chainErr instanceof Error ? chainErr.message : String(chainErr));
+      console.error('❌ [EventsService] Transaksi blockchain Sepolia gagal:', errMsg);
+      throw new InternalServerErrorException(
+        `Gagal mendaftarkan event ke blockchain Sepolia: ${errMsg}`,
       );
-
-      return {
-        success: true,
-        warning: `Event berhasil disimpan ke database MySQL, namun proses blockchain Sepolia mengalami keterlambatan: ${chainErr?.shortMessage || chainErr?.message}`,
-        event: savedEvent,
-        categories: savedCategories,
-        blockchain: {
-          onChainEventId: nextOnChainEventId,
-          contractAddress: this.contractAddress,
-          createEventTx: createEventTxHash,
-          createBlockNumber: createBlockNumber,
-          categoriesTx: categoryTxResults,
-        },
-      };
     }
+
+    // 6. Simpan data Event & TicketCategory secara atomik ke MySQL hanya setelah Sepolia terkonfirmasi
+    const { savedEvent, savedCategories } = await this.dataSource.transaction(
+      async (manager) => {
+        const newEvent = this.eventRepository.create({
+          onChainEventId: String(nextOnChainEventId),
+          eventName: dto.eventName,
+          startDate: new Date(dto.startDate),
+          venueLocation: dto.venueLocation,
+          category: dto.category,
+          capacity: Number(dto.capacity),
+          imageIpfsCid: imageIpfsCid,
+          maxPerWallet,
+          organizersId: orgId,
+          saleStartTime: dto.saleStartTime ? new Date(dto.saleStartTime) : null,
+          saleEndTime: dto.saleEndTime ? new Date(dto.saleEndTime) : null,
+        });
+
+        const persistedEvent = await manager.save(newEvent);
+        console.log(`💾 [EventsService] Event tersimpan di MySQL ID #${persistedEvent.id}`);
+
+        const persistedCategories: TicketCategory[] = [];
+        for (const cat of preparedCategories) {
+          const categoryRecord = this.ticketCategoryRepository.create({
+            id: cat.id,
+            name: cat.name,
+            price: cat.price,
+            quota: cat.quota,
+            eventsId: persistedEvent.id,
+          });
+          const savedCat = await manager.save(categoryRecord);
+          persistedCategories.push(savedCat);
+        }
+        console.log(
+          `💾 [EventsService] ${persistedCategories.length} kategori tiket tersimpan di MySQL`,
+        );
+
+        return {
+          savedEvent: persistedEvent,
+          savedCategories: persistedCategories,
+        };
+      },
+    );
 
     return {
       success: true,

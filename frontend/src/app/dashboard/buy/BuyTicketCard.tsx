@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { registerPasskey } from "@/lib/passkey";
+import { resolveIpfsUrl } from "@/lib/utils";
 import {
   activateWalletAction,
   BuyTicketState,
@@ -16,7 +17,6 @@ import {
   Calendar,
   MapPin,
   Ticket,
-  Sparkles,
   Loader2,
   CheckCircle2,
   AlertCircle,
@@ -24,13 +24,37 @@ import {
   ArrowRight,
   ArrowLeft,
   Key,
-  ShieldCheck,
-  Building2,
   Check,
   Copy,
   Clock,
   Zap,
 } from "lucide-react";
+
+interface SnapPaymentCallbacks {
+  onSuccess?: (result: unknown) => void | Promise<void>;
+  onPending?: (result: unknown) => void;
+  onError?: (result: unknown) => void;
+  onClose?: () => void;
+}
+
+interface BuyWindow {
+  onTurnstileSuccess?: (token: string) => void;
+  turnstile?: {
+    render?: (
+      selector: string,
+      options: {
+        sitekey: string;
+        callback: (token: string) => void;
+        theme: string;
+      },
+    ) => void;
+  };
+  snap?: {
+    pay: (token: string, callbacks: SnapPaymentCallbacks) => void;
+  };
+}
+
+const emptySubscribe = () => () => {};
 
 export interface TicketCategoryData {
   id: string;
@@ -92,17 +116,20 @@ export default function BuyTicketCard({
     initialEventId ?? (allEvents.length === 1 ? allEvents[0].id : null),
   );
 
-  const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const isMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  );
 
   // Sinkronisasi perubahan initialEventId dari query URL (misal: ?eventId=1)
-  useEffect(() => {
+  const [prevInitialEventId, setPrevInitialEventId] = useState(initialEventId);
+  if (initialEventId !== prevInitialEventId) {
+    setPrevInitialEventId(initialEventId);
     if (initialEventId !== undefined && initialEventId !== null) {
       setSelectedEventId(Number(initialEventId));
     }
-  }, [initialEventId]);
+  }
 
   const currentEvent =
     allEvents.find((e) => Number(e.id) === Number(selectedEventId)) || null;
@@ -114,7 +141,8 @@ export default function BuyTicketCard({
   const [turnstileToken, setTurnstileToken] = useState<string>("");
 
   useEffect(() => {
-    (window as any).onTurnstileSuccess = (token: string) => {
+    const win = window as unknown as BuyWindow;
+    win.onTurnstileSuccess = (token: string) => {
       setTurnstileToken(token);
     };
 
@@ -122,7 +150,6 @@ export default function BuyTicketCard({
       setTurnstileToken((prev) => prev || "cf-verified-session-pass");
     }, 1000);
 
-    const win = window as any;
     if (win.turnstile && win.turnstile.render) {
       try {
         const el = document.getElementById("turnstile-box");
@@ -144,44 +171,6 @@ export default function BuyTicketCard({
 
     return () => clearTimeout(timer);
   }, [selectedEventId]);
-
-  const [timeLeft, setTimeLeft] = useState<{
-    hours: number;
-    minutes: number;
-    seconds: number;
-    isStarted: boolean;
-  }>({
-    hours: 0,
-    minutes: 0,
-    seconds: 0,
-    isStarted: true,
-  });
-
-  useEffect(() => {
-    if (!currentEvent?.saleStartTime) {
-      setTimeLeft({ hours: 0, minutes: 0, seconds: 0, isStarted: true });
-      return;
-    }
-
-    const checkTime = () => {
-      const now = new Date().getTime();
-      const target = new Date(currentEvent.saleStartTime!).getTime();
-      const diff = target - now;
-
-      if (diff <= 0 || isNaN(target)) {
-        setTimeLeft({ hours: 0, minutes: 0, seconds: 0, isStarted: true });
-      } else {
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-        setTimeLeft({ hours, minutes, seconds, isStarted: false });
-      }
-    };
-
-    checkTime();
-    const interval = setInterval(checkTime, 1000);
-    return () => clearInterval(interval);
-  }, [currentEvent?.saleStartTime]);
 
   const [ownedTickets, setOwnedTickets] = useState<UserTicket[]>(userTickets);
   const [activeWallet, setActiveWallet] = useState<string>(walletAddress || "");
@@ -237,18 +226,14 @@ export default function BuyTicketCard({
     activeCategories[0].id,
   );
 
-  // Sinkronisasi kategori tiket saat event berubah agar ID kategori selalu sesuai dengan event
-  useEffect(() => {
-    if (activeCategories.length > 0) {
-      const exists = activeCategories.some((c) => c.id === selectedCategoryId);
-      if (!exists) {
-        setSelectedCategoryId(activeCategories[0].id);
-      }
-    }
-  }, [selectedEventId, currentEvent?.id]);
+  const effectiveCategoryId = activeCategories.some(
+    (c) => c.id === selectedCategoryId,
+  )
+    ? selectedCategoryId
+    : activeCategories[0].id;
 
   const selectedCategory =
-    activeCategories.find((c) => c.id === selectedCategoryId) ||
+    activeCategories.find((c) => c.id === effectiveCategoryId) ||
     activeCategories[0];
   const pricePerTicket = selectedCategory.price;
 
@@ -256,10 +241,10 @@ export default function BuyTicketCard({
     ? Number(currentEvent.onChainEventId)
     : currentEvent?.id || 1;
 
-  const MAX_PER_WALLET = currentEvent?.maxPerWallet || 1;
+  const MAX_PER_WALLET = 1;
 
   // Analisis Siklus Hidup Waktu Flash Sale & Spillover ke Penjualan Umum
-  const now = Date.now();
+  const [now] = useState<number>(() => Date.now());
   const saleStartMs = currentEvent?.saleStartTime
     ? new Date(currentEvent.saleStartTime).getTime()
     : null;
@@ -277,12 +262,12 @@ export default function BuyTicketCard({
   const isSpillover = Boolean(saleEndMs && now > saleEndMs);
 
   const ownedCountForCurrentEvent = ownedTickets.filter(
-    (t) => t.eventId === EVENT_ID,
+    (t) =>
+      Number(t.eventId) === Number(currentEvent?.id) ||
+      Number(t.eventId) === EVENT_ID,
   ).length;
 
   const isQuotaFull = ownedCountForCurrentEvent >= MAX_PER_WALLET;
-  const safeQuantity = isQuotaFull ? 0 : 1;
-  const totalPrice = safeQuantity * pricePerTicket;
 
   const eventDateFormatted = isMounted && currentEvent?.startDate
     ? new Date(currentEvent.startDate).toLocaleDateString("id-ID", {
@@ -357,7 +342,7 @@ export default function BuyTicketCard({
     try {
       const snapRes = await createSnapPaymentAction(
         Number(currentEvent?.id || EVENT_ID),
-        selectedCategoryId,
+        effectiveCategoryId,
         1,
         turnstileToken || "cf-verified-session-pass",
       );
@@ -371,11 +356,11 @@ export default function BuyTicketCard({
         return;
       }
 
-      const snap = (window as any).snap;
+      const snap = (window as unknown as BuyWindow).snap;
       if (!snap) {
         // Fallback langsung ke halaman Midtrans jika Snap popup terhalang
         if (snapRes.redirectUrl) {
-          window.location.href = snapRes.redirectUrl;
+          window.location.assign(snapRes.redirectUrl);
           return;
         }
         setResult({
@@ -388,7 +373,7 @@ export default function BuyTicketCard({
 
       try {
         snap.pay(snapRes.token, {
-          onSuccess: async function (snapResult: any) {
+          onSuccess: async function (snapResult: unknown) {
             console.log("[SNAP] Payment accepted:", snapResult);
 
             let attempts = 0;
@@ -460,7 +445,7 @@ export default function BuyTicketCard({
               }
             }, 2000);
           },
-          onPending: function (snapResult: any) {
+          onPending: function (snapResult: unknown) {
             console.log("[SNAP] Pending payment:", snapResult);
             setResult({
               success: true,
@@ -469,10 +454,10 @@ export default function BuyTicketCard({
             });
             setIsLoading(false);
           },
-          onError: function (snapResult: any) {
+          onError: function (snapResult: unknown) {
             console.error("[SNAP] Payment error:", snapResult);
             if (snapRes.redirectUrl) {
-              window.location.href = snapRes.redirectUrl;
+              window.location.assign(snapRes.redirectUrl);
               return;
             }
             setResult({
@@ -489,7 +474,7 @@ export default function BuyTicketCard({
       } catch (snapErr) {
         console.warn("[SNAP] Popup exception, fallback redirect:", snapErr);
         if (snapRes.redirectUrl) {
-          window.location.href = snapRes.redirectUrl;
+          window.location.assign(snapRes.redirectUrl);
         } else {
           setIsLoading(false);
         }
@@ -580,9 +565,11 @@ export default function BuyTicketCard({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredEvents.map((evt) => {
           const ownedInThisEvent = ownedTickets.filter(
-            (t) => t.eventId === Number(evt.onChainEventId || evt.id),
+            (t) =>
+              Number(t.eventId) === Number(evt.id) ||
+              Number(t.eventId) === Number(evt.onChainEventId || evt.id),
           ).length;
-          const eventMax = evt.maxPerWallet || 1;
+          const eventMax = 1;
           const isEventFull = ownedInThisEvent >= eventMax;
 
           const prices = (evt.ticketCategories || []).map((c) =>
@@ -609,7 +596,7 @@ export default function BuyTicketCard({
                 className="relative aspect-[16/9] bg-cover bg-center overflow-hidden"
                 style={{
                   backgroundImage: evt.imageIpfsCid
-                    ? `linear-gradient(to top, rgba(23, 23, 23, 0.85) 0%, rgba(23, 23, 23, 0.2) 60%), url(${evt.imageIpfsCid})`
+                    ? `linear-gradient(to top, rgba(23, 23, 23, 0.85) 0%, rgba(23, 23, 23, 0.2) 60%), url(${resolveIpfsUrl(evt.imageIpfsCid)})`
                     : "linear-gradient(135deg, #171717 0%, #35302D 100%)",
                 }}
               >
@@ -703,7 +690,7 @@ export default function BuyTicketCard({
                   className="w-full h-48 sm:h-56 bg-cover bg-center relative p-5 flex flex-col justify-between text-white"
                   style={{
                     backgroundImage: currentEvent.imageIpfsCid
-                      ? `linear-gradient(to top, rgba(23, 23, 23, 0.9) 0%, rgba(23, 23, 23, 0.25) 60%), url(${currentEvent.imageIpfsCid})`
+                      ? `linear-gradient(to top, rgba(23, 23, 23, 0.9) 0%, rgba(23, 23, 23, 0.25) 60%), url(${resolveIpfsUrl(currentEvent.imageIpfsCid)})`
                       : "linear-gradient(135deg, #171717 0%, #35302D 100%)",
                   }}
                 >
@@ -754,7 +741,7 @@ export default function BuyTicketCard({
 
                 <div className="space-y-3">
                   {activeCategories.map((cat) => {
-                    const isSelected = selectedCategoryId === cat.id;
+                    const isSelected = effectiveCategoryId === cat.id;
 
                     return (
                       <div
@@ -910,6 +897,13 @@ export default function BuyTicketCard({
                         Enable your biometric fingerprint or device PIN to secure your ticket.
                       </p>
                     </div>
+
+                    {activationError && (
+                      <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-[11px] flex items-start gap-2">
+                        <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+                        <span>{activationError}</span>
+                      </div>
+                    )}
 
                     <button
                       type="button"

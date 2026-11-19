@@ -13,10 +13,10 @@ export class MintTicketDto{
     @IsNumber()
     categoryId: number;
 
-    // Jumlah tiket yang ingin dibeli (opsional, default 1, maksimal 2 per akun)
+    // Jumlah tiket yang ingin dibeli (opsional, default 1, maksimal 1 per akun)
     @IsOptional()
     @IsNumber()
     @Min(1, { message: 'Jumlah pembelian minimal 1 tiket' })
-    @Max(2, { message: 'Jumlah pembelian maksimal 2 tiket per akun' })
+    @Max(1, { message: 'Jumlah pembelian maksimal 1 tiket per akun' })
     quantity?: number;
 }
