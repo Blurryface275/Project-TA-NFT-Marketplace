@@ -61,6 +61,23 @@ const TICKET_CONTRACT_ABI = [
     outputs: [{ name: '', type: 'uint256' }],
     stateMutability: 'nonpayable',
   },
+  {
+    type: 'function',
+    name: 'registerIdentity',
+    inputs: [
+      { name: 'user', type: 'address' },
+      { name: 'nikHash', type: 'bytes32' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getUserIdentity',
+    inputs: [{ name: 'user', type: 'address' }],
+    outputs: [{ name: '', type: 'bytes32' }],
+    stateMutability: 'view',
+  },
 ] as const;
 
 async function syncEventsToBlockchain() {
@@ -116,6 +133,60 @@ async function syncEventsToBlockchain() {
   console.log('📦 Mengambil data events dan categories dari MySQL...');
 
   try {
+    const identitiesOnly = process.argv.includes('--identities-only');
+
+    // 2.5. Sinkronkan identitas NIK (registerIdentity) untuk customer yang sudah punya wallet
+    console.log('\n🪪 Memeriksa customer dengan wallet aktif untuk registerIdentity...');
+    const [customerRows] = await dbConnection.query(
+      "SELECT id, wallet_address, nik_hash FROM customers WHERE wallet_address IS NOT NULL AND wallet_address <> '' AND nik_hash IS NOT NULL AND nik_hash <> '' ORDER BY id ASC",
+    );
+    const customers = customerRows as Array<{
+      id: number;
+      wallet_address: string;
+      nik_hash: string;
+    }>;
+    console.log(`Ditemukan ${customers.length} wallet customer di database.`);
+
+    for (const cust of customers) {
+      const wallet = cust.wallet_address as `0x${string}`;
+      const nikHash = cust.nik_hash as `0x${string}`;
+      try {
+        const currentOnChainHash = await publicClient.readContract({
+          address: contractAddress,
+          abi: TICKET_CONTRACT_ABI,
+          functionName: 'getUserIdentity',
+          args: [wallet],
+        });
+
+        if (currentOnChainHash.toLowerCase() === nikHash.toLowerCase()) {
+          console.log(`  ℹ️ Customer #${cust.id} (${wallet}) sudah terdaftar on-chain.`);
+          continue;
+        }
+
+        console.log(`  ⏳ Mendaftarkan registerIdentity untuk Customer #${cust.id} (${wallet})...`);
+        const idTxHash = await walletClient.writeContract({
+          address: contractAddress,
+          abi: TICKET_CONTRACT_ABI,
+          functionName: 'registerIdentity',
+          args: [wallet, nikHash],
+        });
+        const idReceipt = await publicClient.waitForTransactionReceipt({ hash: idTxHash });
+        console.log(
+          `  ✅ Identitas Customer #${cust.id} terdaftar di Sepolia! (Blok #${idReceipt.blockNumber}, Tx: ${idTxHash})`,
+        );
+      } catch (idErr: any) {
+        console.warn(
+          `  ⚠️ Gagal registerIdentity untuk ${wallet}:`,
+          idErr?.shortMessage || idErr?.message || idErr,
+        );
+      }
+    }
+
+    if (identitiesOnly) {
+      console.log('\n🎉 SINKRONISASI IDENTITAS SELESAI!');
+      return;
+    }
+
     const [eventsRows] = await dbConnection.query('SELECT * FROM events ORDER BY id ASC');
     const events = eventsRows as any[];
 

@@ -88,7 +88,8 @@ contract TicketContract is ERC721, Ownable, EIP712 {
         uint256 indexed eventId,
         uint256 categoryId,
         address indexed buyer,
-        uint96 price
+        uint96 price,
+        uint256 seatNumber
     );
     event TicketUsed(
         uint256 indexed tokenId,
@@ -267,7 +268,13 @@ contract TicketContract is ERC721, Ownable, EIP712 {
         // Mutasi kuota dan hitung tokenId baru
         cat.minted++;
         walletPurchases[eventId][to]++;
-        uint256 tokenId = ++_nextTokenId;
+        uint256 seq = ++_nextTokenId;
+        uint256 tokenId = (uint256(
+            keccak256(abi.encode(eventId, categoryId, seq))
+        ) % 900_000_000) + 100_000_000;
+        while (_ownerOf(tokenId) != address(0)) {
+            tokenId = ((tokenId - 100_000_000 + 1) % 900_000_000) + 100_000_000;
+        }
 
         // Kunci metadata tiket ke on-chain
         _tickets[tokenId] = TicketInfo({
@@ -281,7 +288,7 @@ contract TicketContract is ERC721, Ownable, EIP712 {
         _safeMint(to, tokenId);
 
         // Tulsikan event lgo ek blockchain
-        emit TicketMinted(tokenId, eventId, categoryId, to, cat.price);
+        emit TicketMinted(tokenId, eventId, categoryId, to, cat.price, cat.minted);
 
         // kembalikan ID token yang baru dibuat
         return tokenId;

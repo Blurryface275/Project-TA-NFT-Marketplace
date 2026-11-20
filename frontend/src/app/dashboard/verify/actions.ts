@@ -26,6 +26,14 @@ export async function verifyDualScanAction(payload: {
   try {
     const session = await getSession();
 
+    if(!session?.userId || session.role !== "ORGANIZER"){
+      return {
+        success: false,
+        message: "Akses ditolak: hanya organizer yang boleh verifikasi tiket."
+      };
+    }
+
+
     const response = await backendFetch("/api/tickets/verify-dual-scan", {
       method: "POST",
       headers: {
@@ -33,7 +41,7 @@ export async function verifyDualScanAction(payload: {
       },
       body: JSON.stringify({
         ...payload,
-        organizerUserId: session?.userId ? Number(session.userId) : undefined,
+        organizerUserId: Number(session.userId),
       }),
       cache: "no-store",
     });

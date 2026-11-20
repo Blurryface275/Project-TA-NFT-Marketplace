@@ -91,10 +91,15 @@ export class EventsService {
       throw new InternalServerErrorException('Response Pinata tidak menyertakan CID');
     }
 
+    const pinataGateway = this.configService.get<string>('PINATA_GATEWAY');
+    const cleanGateway = (pinataGateway || 'gateway.pinata.cloud')
+      .replace(/^https?:\/\//, '')
+      .replace(/\/$/, '');
+
     return {
       id: json?.data?.id ?? null,
       cid,
-      uri: `ipfs://${cid}`,
+      uri: `https://${cleanGateway}/ipfs/${cid}`,
     };
   }
 

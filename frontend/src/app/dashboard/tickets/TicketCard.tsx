@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { resolveIpfsUrl } from "@/lib/utils";
+import { resolveIpfsUrl, formatTicketId } from "@/lib/utils";
 import {
   redeemTicketAction,
   RedeemTicketState,
@@ -32,7 +32,7 @@ export interface TicketData {
   originalPrice: number;
   used: boolean;
   owner: string;
-  seatIndex?: number;
+  seatIndex?: number | null;
   isListed?: boolean;
 }
 
@@ -134,8 +134,9 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
         ? "REG"
         : "FEST";
 
-  const seatIndex = ticket.seatIndex || ticket.tokenId;
-  const seatNumber = `${seatPrefix}-${String(seatIndex).padStart(2, "0")}`;
+  const seatNumber = ticket.seatIndex
+    ? `${seatPrefix}-${String(ticket.seatIndex).padStart(2, "0")}`
+    : `${seatPrefix}-—`;
 
   const dateObj = currentEvent?.startDate
     ? new Date(currentEvent.startDate)
@@ -287,7 +288,7 @@ export default function TicketCard({ ticket, events = [] }: TicketCardProps) {
     if (isUsed) return;
 
     const confirmRedeem = confirm(
-      `Redeem Ticket #${ticket.tokenId} at venue gate?`,
+      `Redeem Ticket #${formatTicketId(ticket.tokenId)} at venue gate?`,
     );
 
     if (!confirmRedeem) return;

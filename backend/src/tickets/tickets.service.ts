@@ -7,7 +7,14 @@ import {
   Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createPublicClient, createWalletClient, http, keccak256, toHex, stringToBytes } from 'viem';
+import {
+  createPublicClient,
+  createWalletClient,
+  http,
+  keccak256,
+  toHex,
+  stringToBytes,
+} from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { TICKET_CONTRACT_ABI } from './ticket-abi';
 import { MARKETPLACE_CONTRACT_ABI } from './marketplace-abi';
@@ -139,7 +146,7 @@ export class TicketsService {
         },
       );
 
-      const data = await response.json().catch(() => ({} as any));
+      const data = await response.json().catch(() => ({}) as any);
       if (
         !response.ok ||
         (data?.status_code && !String(data.status_code).startsWith('2'))
@@ -248,9 +255,11 @@ export class TicketsService {
   async mintTicket(dto: MintTicketDto) {
     const qty = 1; // pembatasan 1 tiket untuk 1 wallet
 
-    console.log(`[TicketsService] Memproses pencetakan ${qty} tiket untuk dompet: ${dto.walletAddress}`,);
+    console.log(
+      `[TicketsService] Memproses pencetakan ${qty} tiket untuk dompet: ${dto.walletAddress}`,
+    );
 
-    // Nonce anti-replay 
+    // Nonce anti-replay
     const nonce = BigInt(Date.now() * 1000);
 
     // Domain separator EIP-712
@@ -258,20 +267,20 @@ export class TicketsService {
       name: 'NFTix',
       version: '1',
       chainId: 11155111,
-      verifyingContract: this.contractAddress
+      verifyingContract: this.contractAddress,
     } as const;
 
-    // Tipe struktur data EIP-712 
+    // Tipe struktur data EIP-712
     const types = {
       MintAuth: [
         { name: 'to', type: 'address' },
         { name: 'eventId', type: 'uint256' },
         { name: 'categoryId', type: 'uint256' },
-        { name: 'nonce', type: 'uint256' }
+        { name: 'nonce', type: 'uint256' },
       ],
     } as const;
 
-    // Message EIP-712 
+    // Message EIP-712
     const message = {
       to: dto.walletAddress as `0x${string}`,
       eventId: BigInt(dto.eventId),
@@ -279,7 +288,7 @@ export class TicketsService {
       nonce: nonce,
     } as const;
 
-    // Pembuatan signature untuk EIP-712 
+    // Pembuatan signature untuk EIP-712
     const signature = await this.account.signTypedData({
       domain,
       types,
@@ -308,15 +317,22 @@ export class TicketsService {
     const logs = parseEventLogs({
       abi: TICKET_CONTRACT_ABI,
       eventName: 'TicketMinted',
-      logs: receipt.logs,     
+      logs: receipt.logs,
     });
-    const mintedTokenId = logs[0]?.args?.tokenId ? Number(logs[0].args.tokenId) : null;
+    const seatNumber = logs[0]?.args?.seatNumber
+      ? Number(logs[0].args.seatNumber)
+      : null;
+
+    const mintedTokenId = logs[0]?.args?.tokenId
+      ? Number(logs[0].args.tokenId)
+      : null;
 
     return {
       success: true,
       tokenId: mintedTokenId,
       recipient: dto.walletAddress,
       txHash: hash,
+      seatNumber,
     };
   }
 
@@ -391,14 +407,20 @@ export class TicketsService {
       // 1. Validasi masa berlaku Dynamic QR Code (Maksimal 60 detik) & kelengkapan WebAuthn jika bukan mode manual
       if (isManualMode) {
         if (!dto.nik || dto.nik.trim().length !== 16) {
-          throw new BadRequestException('Verifikasi KTP Wajib: Masukkan 16 digit NIK fisik pengunjung.');
+          throw new BadRequestException(
+            'Verifikasi KTP Wajib: Masukkan 16 digit NIK fisik pengunjung.',
+          );
         }
       } else {
         if (!walletTrimmed) {
-          throw new BadRequestException('Dynamic QR code tidak valid: alamat dompet tidak ditemukan.');
+          throw new BadRequestException(
+            'Dynamic QR code tidak valid: alamat dompet tidak ditemukan.',
+          );
         }
         if (!dto.signedAt) {
-          throw new BadRequestException('Dynamic QR code tidak valid: timestamp penandatanganan tidak ditemukan.');
+          throw new BadRequestException(
+            'Dynamic QR code tidak valid: timestamp penandatanganan tidak ditemukan.',
+          );
         }
         const signedTime = new Date(dto.signedAt).getTime();
         const currentTime = Date.now();
@@ -445,32 +467,31 @@ export class TicketsService {
       const ticket = await this.getTicket(dto.tokenId);
 
       // Isolasi akses organizer: pastikan tiket milik event dari organizer yang sedang login
-      if (dto.organizerUserId !== undefined && dto.organizerUserId !== null) {
-        const organizerRows = await this.orderRepository.manager.query(
-          'SELECT id FROM organizers WHERE users_id = ? LIMIT 1',
-          [dto.organizerUserId],
-        );
-        const eventRows = cachedTicket?.eventsId
-          ? await this.orderRepository.manager.query(
-              'SELECT id, organizers_id FROM events WHERE id = ? LIMIT 1',
-              [cachedTicket.eventsId],
-            )
-          : await this.orderRepository.manager.query(
-              'SELECT id, organizers_id FROM events WHERE on_chain_event_id = ? LIMIT 1',
-              [String(ticket.eventId)],
-            );
 
-        if (
-          !organizerRows ||
-          organizerRows.length === 0 ||
-          !eventRows ||
-          eventRows.length === 0 ||
-          Number(eventRows[0].organizers_id) !== Number(organizerRows[0].id)
-        ) {
-          throw new ForbiddenException(
-            'Akses ditolak: Tiket ini bukan milik event organizer Anda.',
+      const organizerRows = await this.orderRepository.manager.query(
+        'SELECT id FROM organizers WHERE users_id = ? LIMIT 1',
+        [dto.organizerUserId],
+      );
+      const eventRows = cachedTicket?.eventsId
+        ? await this.orderRepository.manager.query(
+            'SELECT id, organizers_id FROM events WHERE id = ? LIMIT 1',
+            [cachedTicket.eventsId],
+          )
+        : await this.orderRepository.manager.query(
+            'SELECT id, organizers_id FROM events WHERE on_chain_event_id = ? LIMIT 1',
+            [String(ticket.eventId)],
           );
-        }
+
+      if (
+        !organizerRows ||
+        organizerRows.length === 0 ||
+        !eventRows ||
+        eventRows.length === 0 ||
+        Number(eventRows[0].organizers_id) !== Number(organizerRows[0].id)
+      ) {
+        throw new ForbiddenException(
+          'Akses ditolak: Tiket ini bukan milik event organizer Anda.',
+        );
       }
 
       if (ticket.used) {
@@ -486,7 +507,10 @@ export class TicketsService {
 
       const targetWallet = (walletTrimmed || ticket.owner).toLowerCase();
 
-      if (!isManualMode && ticket.owner.toLowerCase() !== walletTrimmed.toLowerCase()) {
+      if (
+        !isManualMode &&
+        ticket.owner.toLowerCase() !== walletTrimmed.toLowerCase()
+      ) {
         throw new BadRequestException(
           'Alamat dompet di QR Code tidak cocok dengan pemilik sah tiket di blockchain!',
         );
@@ -529,7 +553,8 @@ export class TicketsService {
 
         if (
           !registeredNikHash ||
-          registeredNikHash === '0x0000000000000000000000000000000000000000000000000000000000000000' ||
+          registeredNikHash ===
+            '0x0000000000000000000000000000000000000000000000000000000000000000' ||
           registeredNikHash.toLowerCase() !== computedNikHash.toLowerCase()
         ) {
           throw new BadRequestException(
@@ -559,12 +584,19 @@ export class TicketsService {
           );
         }
 
-        const clientDataBuf = Buffer.from(dto.clientDataJSON!.trim(), 'base64url');
-        let parsedClientData: { type?: unknown; challenge?: unknown } | null = null;
+        const clientDataBuf = Buffer.from(
+          dto.clientDataJSON!.trim(),
+          'base64url',
+        );
+        let parsedClientData: { type?: unknown; challenge?: unknown } | null =
+          null;
         try {
           const decoded: unknown = JSON.parse(clientDataBuf.toString('utf8'));
           if (decoded && typeof decoded === 'object') {
-            parsedClientData = decoded as { type?: unknown; challenge?: unknown };
+            parsedClientData = decoded as {
+              type?: unknown;
+              challenge?: unknown;
+            };
           }
         } catch {
           parsedClientData = null;
@@ -592,7 +624,10 @@ export class TicketsService {
           );
         }
 
-        const authDataBuf = Buffer.from(dto.authenticatorData!.trim(), 'base64url');
+        const authDataBuf = Buffer.from(
+          dto.authenticatorData!.trim(),
+          'base64url',
+        );
         if (authDataBuf.length < 37 || (authDataBuf[32] & 0x01) === 0) {
           throw new BadRequestException(
             'Data autentikator WebAuthn tidak valid atau kehadiran pengguna tidak terverifikasi.',
@@ -604,7 +639,9 @@ export class TicketsService {
         if (/^0x/i.test(sigRaw)) {
           const hex = sigRaw.slice(2);
           if (!hex || hex.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(hex)) {
-            throw new BadRequestException('Format hex tanda tangan WebAuthn tidak valid.');
+            throw new BadRequestException(
+              'Format hex tanda tangan WebAuthn tidak valid.',
+            );
           }
           signatureBuf = Buffer.from(hex, 'hex');
         } else if (/^[0-9a-fA-F]+$/.test(sigRaw) && sigRaw.length % 2 === 0) {
@@ -614,7 +651,9 @@ export class TicketsService {
         }
 
         if (signatureBuf.length === 0) {
-          throw new BadRequestException('Tanda tangan WebAuthn kosong atau tidak valid.');
+          throw new BadRequestException(
+            'Tanda tangan WebAuthn kosong atau tidak valid.',
+          );
         }
 
         const clientDataHash = crypto
@@ -716,11 +755,16 @@ export class TicketsService {
       }
     } catch (error: any) {
       console.error('[Dual-Scan] Verifikasi gagal:', error);
-      if (error instanceof ForbiddenException || error instanceof BadRequestException) {
+      if (
+        error instanceof ForbiddenException ||
+        error instanceof BadRequestException
+      ) {
         throw error;
       }
       throw new BadRequestException(
-        error?.shortMessage || error?.message || 'Verifikasi tiket di gerbang gagal',
+        error?.shortMessage ||
+          error?.message ||
+          'Verifikasi tiket di gerbang gagal',
       );
     }
   }
@@ -815,14 +859,13 @@ export class TicketsService {
 
     // Ambil daftar token yang saat ini sedang aktif di pasar resale
     const activeResales = await this.resaleListingRepository.find({
-      where: [
-        { status: ResaleStatus.ACTIVE },
-        { status: ResaleStatus.LOCKED },
-      ],
+      where: [{ status: ResaleStatus.ACTIVE }, { status: ResaleStatus.LOCKED }],
     });
-    const listedTokenIds = new Set(activeResales.map((r) => r.ticketCacheTokenId));
+    const listedTokenIds = new Set(
+      activeResales.map((r) => r.ticketCacheTokenId),
+    );
 
-    return cachedTickets.map((t, index) => {
+    return cachedTickets.map((t) => {
       const rawOrderCatId =
         t.order?.ticketCategoriesId ?? t.order?.ticketCategory?.id;
       const parsedOrderCatId =
@@ -851,7 +894,7 @@ export class TicketsService {
         originalPrice: Number(t.originalPrice),
         used: Boolean(t.used),
         owner: t.ownerWallet,
-        seatIndex: index + 1,
+        seatIndex: t.seatNumber,
         isListed: listedTokenIds.has(t.tokenId),
       };
     });
@@ -866,7 +909,9 @@ export class TicketsService {
     const qty = 1;
 
     // Validasi Cloudflare Turnstile sebelum transaksi database
-    const turnstileSecret = this.configService.get<string>('TURNSTILE_SECRET_KEY');
+    const turnstileSecret = this.configService.get<string>(
+      'TURNSTILE_SECRET_KEY',
+    );
     if (turnstileSecret) {
       if (!dto.turnstileToken) {
         throw new BadRequestException(
@@ -966,7 +1011,10 @@ export class TicketsService {
         const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
         const activeOrders = await manager.find(Order, {
           where: [
-            { ticketCategoriesId: String(lockedCategory.id), status: OrderStatus.PAID },
+            {
+              ticketCategoriesId: String(lockedCategory.id),
+              status: OrderStatus.PAID,
+            },
             {
               ticketCategoriesId: String(lockedCategory.id),
               status: OrderStatus.PENDING,
@@ -1014,7 +1062,8 @@ export class TicketsService {
         throw new Error('MIDTRANS_SERVER_KEY tidak ditemukan di environment');
       }
       const basicAuth = Buffer.from(`${serverKey}:`).toString('base64');
-      const midtransUrl = 'https://app.sandbox.midtrans.com/snap/v1/transactions';
+      const midtransUrl =
+        'https://app.sandbox.midtrans.com/snap/v1/transactions';
 
       const response = await fetch(midtransUrl, {
         method: 'POST',
@@ -1071,7 +1120,6 @@ export class TicketsService {
       throw snapErr;
     }
   }
-  
 
   /**
    * Helper rekonsiliasi status pesanan langsung dengan API Midtrans.
@@ -1089,14 +1137,17 @@ export class TicketsService {
 
     try {
       const basicAuth = Buffer.from(`${serverKey}:`).toString('base64');
-      const response = await fetch(`https://api.sandbox.midtrans.com/v2/${order.id}/status`, {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-          Authorization: `Basic ${basicAuth}`,
+      const response = await fetch(
+        `https://api.sandbox.midtrans.com/v2/${order.id}/status`,
+        {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            Authorization: `Basic ${basicAuth}`,
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         return;
@@ -1105,11 +1156,14 @@ export class TicketsService {
       const midtransData = await response.json();
       const isPaymentSuccess =
         midtransData.transaction_status === 'settlement' ||
-        (midtransData.transaction_status === 'capture' && midtransData.fraud_status === 'accept');
+        (midtransData.transaction_status === 'capture' &&
+          midtransData.fraud_status === 'accept');
 
       if (isPaymentSuccess) {
         await this.processPaidOrder(order, midtransData.transaction_id);
-      } else if (['cancel', 'expire', 'deny'].includes(midtransData.transaction_status)) {
+      } else if (
+        ['cancel', 'expire', 'deny'].includes(midtransData.transaction_status)
+      ) {
         order.status =
           midtransData.transaction_status === 'cancel'
             ? OrderStatus.CANCELLED
@@ -1119,7 +1173,10 @@ export class TicketsService {
         await this.orderRepository.save(order);
       }
     } catch (error) {
-      console.error(`[Midtrans Reconciliation] Gagal merekonsiliasi order ${order.id}:`, error);
+      console.error(
+        `[Midtrans Reconciliation] Gagal merekonsiliasi order ${order.id}:`,
+        error,
+      );
     }
   }
 
@@ -1207,7 +1264,9 @@ export class TicketsService {
             totalPrice: failedInfo.amount,
           };
         }
-        throw new BadRequestException(`Order resale #${orderId} tidak ditemukan`);
+        throw new BadRequestException(
+          `Order resale #${orderId} tidak ditemukan`,
+        );
       }
 
       if (listing.status === ResaleStatus.LOCKED) {
@@ -1216,10 +1275,14 @@ export class TicketsService {
 
       return {
         orderId,
-        status: listing.status === ResaleStatus.SOLD ? OrderStatus.PAID : listing.status.toLowerCase(),
+        status:
+          listing.status === ResaleStatus.SOLD
+            ? OrderStatus.PAID
+            : listing.status.toLowerCase(),
         midtransTransactionId: listing.buyerMidtransTransactionId,
         amount: 1,
-        totalPrice: Number(listing.lockedPrice) + (Number(listing.adminFee) || 0),
+        totalPrice:
+          Number(listing.lockedPrice) + (Number(listing.adminFee) || 0),
         createdAt: listing.listedAt,
       };
     }
@@ -1248,7 +1311,8 @@ export class TicketsService {
     }
 
     const isFailedOrRefunded =
-      order.status === OrderStatus.REFUNDED || order.status === OrderStatus.FAILED;
+      order.status === OrderStatus.REFUNDED ||
+      order.status === OrderStatus.FAILED;
     const failureMessage =
       order.status === OrderStatus.REFUNDED
         ? 'Transaksi Gagal — Dana Anda telah dikembalikan otomatis.'
@@ -1295,7 +1359,8 @@ export class TicketsService {
       { id: order.id, status: OrderStatus.PENDING },
       {
         status: OrderStatus.PAID,
-        midtransTransactionId: transactionId || order.midtransTransactionId || null,
+        midtransTransactionId:
+          transactionId || order.midtransTransactionId || null,
       },
     );
     if (!claimResult.affected) {
@@ -1305,7 +1370,8 @@ export class TicketsService {
       };
     }
     order.status = OrderStatus.PAID;
-    order.midtransTransactionId = transactionId || order.midtransTransactionId || null;
+    order.midtransTransactionId =
+      transactionId || order.midtransTransactionId || null;
 
     // Pastikan relasi customer (beserta user) dan ticketCategory tersedia jika order belum di-load secara lengkap
     if (!order.customer || !order.customer.user || !order.ticketCategory) {
@@ -1320,7 +1386,9 @@ export class TicketsService {
     }
 
     try {
-      console.log(`[TicketsService] Memulai minting on-chain untuk order #${order.id}...`);
+      console.log(
+        `[TicketsService] Memulai minting on-chain untuk order #${order.id}...`,
+      );
       const mintResult = await this.executeWithRetry(
         () =>
           this.mintTicket({
@@ -1348,13 +1416,17 @@ export class TicketsService {
           syncedAt: new Date(),
           eventsId: order.ticketCategory.eventsId,
           ordersId: order.id,
+          seatNumber: mintResult.seatNumber,
         });
-        console.log(`[TicketsService] Berhasil minting tiket #${mintResult.tokenId} untuk order #${order.id}`);
+        console.log(
+          `[TicketsService] Berhasil minting tiket #${mintResult.tokenId} untuk order #${order.id}`,
+        );
       }
 
       return {
         status: 'success',
-        message: 'Pembayaran sukses dan tiket telah dicetak dan dapat dilihat secara on-chain',
+        message:
+          'Pembayaran sukses dan tiket telah dicetak dan dapat dilihat secara on-chain',
         orderId: order.id,
         mintResult,
       };
@@ -1414,7 +1486,7 @@ export class TicketsService {
 
     // Susun parameter menjadi sebuah payload
     const {
-      order_id, 
+      order_id,
       status_code,
       gross_amount,
       signature_key,
@@ -1468,7 +1540,9 @@ export class TicketsService {
     });
 
     if (!order) {
-      console.warn(`[TicketsService] Webhook diabaikan: Order #${order_id} tidak ditemukan di database lokal`);
+      console.warn(
+        `[TicketsService] Webhook diabaikan: Order #${order_id} tidak ditemukan di database lokal`,
+      );
       return {
         status: 'ignored_order_not_found',
         orderId: order_id,
@@ -1485,7 +1559,7 @@ export class TicketsService {
     }
 
     // Re-check status pembayaran dari Midtrans
-    // 'settlement' digunakan untuk QRIS / VA / E-Wallet 
+    // 'settlement' digunakan untuk QRIS / VA / E-Wallet
     // 'capture' dan 'fraud_status === 'accept' digunakan untuk Kartu Kredit / Debit
     const isPaymentSuccess =
       transaction_status === 'settlement' ||
@@ -1494,7 +1568,10 @@ export class TicketsService {
     if (isPaymentSuccess) {
       return this.processPaidOrder(order, payload.transaction_id || null);
     } else if (['cancel', 'expire', 'deny'].includes(transaction_status)) {
-      order.status = transaction_status === 'cancel' ? OrderStatus.CANCELLED : OrderStatus.FAILED;
+      order.status =
+        transaction_status === 'cancel'
+          ? OrderStatus.CANCELLED
+          : OrderStatus.FAILED;
       order.midtransTransactionId = payload.transaction_id || null;
       await this.orderRepository.save(order);
 
@@ -1677,7 +1754,9 @@ export class TicketsService {
       }
 
       // Pastikan yang membatalkan adalah penjual aslinya
-      if (listing.sellerWallet.toLowerCase() !== sellerWallet.trim().toLowerCase()) {
+      if (
+        listing.sellerWallet.toLowerCase() !== sellerWallet.trim().toLowerCase()
+      ) {
         throw new BadRequestException(
           'Hanya penjual asli yang dapat membatalkan listing ini',
         );
@@ -1741,7 +1820,9 @@ export class TicketsService {
       },
     });
     if (!listing) {
-      throw new NotFoundException('Tiket resale tidak ditemukan atau sudah tidak aktif.');
+      throw new NotFoundException(
+        'Tiket resale tidak ditemukan atau sudah tidak aktif.',
+      );
     }
     return listing;
   }
@@ -2019,7 +2100,9 @@ export class TicketsService {
                   buyerWalletLower as `0x${string}`,
                 ],
               });
-              await this.publicClient.waitForTransactionReceipt({ hash: txHash });
+              await this.publicClient.waitForTransactionReceipt({
+                hash: txHash,
+              });
               return txHash;
             },
             2,

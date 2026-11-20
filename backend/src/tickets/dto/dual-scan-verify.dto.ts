@@ -22,8 +22,8 @@ export class DualScanVerifyDto {
   nik?: string;
 
   @IsNumber()
-  @IsOptional()
-  organizerUserId?: number;
+  @IsNotEmpty()
+  organizerUserId: number;
 
   @IsString()
   @IsOptional()

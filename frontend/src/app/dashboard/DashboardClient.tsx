@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { resolveIpfsUrl } from "@/lib/utils";
+import { resolveIpfsUrl, formatTicketId } from "@/lib/utils";
 import {
   Calendar,
   MapPin,
@@ -128,7 +128,7 @@ export default function DashboardClient({
                 </span>
               )}
               <span className="text-[11px] font-mono text-[#736E65]">
-                #TKT-{t.tokenId}
+                #TKT-{formatTicketId(t.tokenId)}
               </span>
             </div>
 
@@ -146,7 +146,7 @@ export default function DashboardClient({
               <div className="flex items-center gap-2">
                 <Ticket className="w-3.5 h-3.5 text-[#736E65]" />
                 <span>
-                  Pass #{t.tokenId} • Rp{" "}
+                  Pass #{formatTicketId(t.tokenId)} • Rp{" "}
                   {Number(t.originalPrice).toLocaleString("id-ID")}
                 </span>
               </div>

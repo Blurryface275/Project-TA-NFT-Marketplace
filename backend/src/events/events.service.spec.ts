@@ -375,7 +375,7 @@ describe('EventsService - Sepolia-first create synchronization', () => {
       const res = await service.create(buildDto(), mockFile);
 
       const expectedUri =
-        'ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi';
+        'https://teal-odd-tahr-397.mypinata.cloud/ipfs/bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi';
       expect(res.success).toBe(true);
       expect(res.event.imageIpfsCid).toBe(expectedUri);
       expect(eventRepository.create).toHaveBeenCalledWith(

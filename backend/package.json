@@ -22,6 +22,7 @@
     "db:seed": "ts-node src/database/seeds/seed.ts",
     "db:fresh": "ts-node src/database/seeds/seed.ts --fresh",
     "db:sync-onchain": "ts-node src/database/seeds/sync-onchain.ts",
+    "db:sync-identities": "ts-node src/database/seeds/sync-onchain.ts --identities-only",
     "deploy:contract": "ts-node src/database/seeds/deploy-contract.ts"
   },
   "dependencies": {

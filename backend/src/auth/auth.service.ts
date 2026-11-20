@@ -4,7 +4,10 @@ import {
   UnauthorizedException,
   NotFoundException,
   BadRequestException,
+  InternalServerErrorException,
+  Optional,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 // Conflict Exception (HTTP 409) digunakan untuk error ketika user sudah terdaftar
 // Unauthorized Exception (HTTP 401) digunakan untuk error ketika login gagal
 import { User } from '../users/entities/user.entity';
@@ -22,7 +25,16 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 
 import crypto from 'crypto';
 import { MailService } from './mail.service';
-import { keccak256, stringToBytes } from 'viem';
+import {
+  createPublicClient,
+  createWalletClient,
+  http,
+  keccak256,
+  stringToBytes,
+} from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { sepolia } from 'viem/chains';
+import { TICKET_CONTRACT_ABI } from '../tickets/ticket-abi';
 
 @Injectable()
 export class AuthService {
@@ -31,6 +43,7 @@ export class AuthService {
     private readonly userRepository: Repository<User>, // hasil tabel users dipetakan ke variabel userRepository
     private readonly dataSource: DataSource, // wajib hukumnya krn dibutuhin buat jalanin DB Transaction saat registrasi (nanti insert ke tabel user, customer, passkey)
     private readonly mailService: MailService,
+    @Optional() private readonly configService?: ConfigService,
   ) {}
   async register(registerDto: RegisterDto) {
     // cek dulu apakah email udh dipake apa blom
@@ -194,10 +207,66 @@ export class AuthService {
       });
       await manager.save(passkeyCredential);
 
+      // 3. Daftarkan hash identitas NIK ke Smart Contract Sepolia (registerIdentity)
+      let identityTxHash: `0x${string}` | null = null;
+      const rpcUrl = this.configService?.get<string>('SEPOLIA_RPC_URL');
+      const privateKey = this.configService?.get<string>('ADMIN_PRIVATE_KEY') as
+        | `0x${string}`
+        | undefined;
+      const contractAddress = this.configService?.get<string>(
+        'TICKET_CONTRACT_ADDRESS',
+      ) as `0x${string}` | undefined;
+
+      if (user.customer.nikHash && rpcUrl && privateKey && contractAddress) {
+        try {
+          const account = privateKeyToAccount(privateKey);
+          const publicClient = createPublicClient({
+            chain: sepolia,
+            transport: http(rpcUrl),
+          });
+          const walletClient = createWalletClient({
+            account,
+            chain: sepolia,
+            transport: http(rpcUrl),
+          });
+
+          identityTxHash = await walletClient.writeContract({
+            address: contractAddress,
+            abi: TICKET_CONTRACT_ABI,
+            functionName: 'registerIdentity',
+            args: [
+              setupWalletDto.walletAddress as `0x${string}`,
+              user.customer.nikHash as `0x${string}`,
+            ],
+          });
+
+          const receipt = await publicClient.waitForTransactionReceipt({
+            hash: identityTxHash,
+          });
+          if (receipt.status !== 'success') {
+            throw new Error(
+              `Transaksi registerIdentity reverted (tx: ${identityTxHash})`,
+            );
+          }
+          console.log(
+            `✅ [AuthService] registerIdentity aktif on-chain untuk ${setupWalletDto.walletAddress} (tx: ${identityTxHash})`,
+          );
+        } catch (chainErr: unknown) {
+          const errMsg =
+            (chainErr as { shortMessage?: string; message?: string })
+              ?.shortMessage ||
+            (chainErr instanceof Error ? chainErr.message : String(chainErr));
+          throw new InternalServerErrorException(
+            `Gagal mendaftarkan identitas ke Sepolia: ${errMsg}`,
+          );
+        }
+      }
+
       return {
         success: true,
         message: 'Dompet tiket berhasil diaktifkan.',
         walletAddress: setupWalletDto.walletAddress,
+        ...(identityTxHash ? { identityTxHash } : {}),
       };
     });
   }

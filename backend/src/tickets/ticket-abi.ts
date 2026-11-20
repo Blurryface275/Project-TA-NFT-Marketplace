@@ -101,9 +101,10 @@ export const TICKET_CONTRACT_ABI = [
     inputs: [
       { name: 'tokenId', type: 'uint256', indexed: true },
       { name: 'eventId', type: 'uint256', indexed: true },
-      { name: 'categoryId', type: 'uint256', indexed: true },
-      { name: 'buyer', type: 'address', indexed: false },
-      { name: 'price', type: 'uint96' },
+      { name: 'categoryId', type: 'uint256', indexed: false },
+      { name: 'buyer', type: 'address', indexed: true },
+      { name: 'price', type: 'uint96', indexed: false },
+      { name: 'seatNumber', type: 'uint256', indexed: false },
     ],
   },
 ] as const;

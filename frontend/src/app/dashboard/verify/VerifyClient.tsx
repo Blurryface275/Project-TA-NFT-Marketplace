@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Html5Qrcode } from "html5-qrcode";
 import { verifyDualScanAction, DualScanState } from "./actions";
+import { formatTicketId } from "@/lib/utils";
 import {
   QrCode,
   UserCheck,
@@ -293,7 +294,7 @@ export default function VerifyClient() {
   const handleProcessDualScanManual = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const tokenIdNum = Number(manualTokenId);
+    const tokenIdNum = Number(manualTokenId.replace(/-/g, ""));
     if (!manualTokenId || isNaN(tokenIdNum) || tokenIdNum <= 0) {
       alert("Masukkan ID Tiket yang valid!");
       return;
@@ -685,11 +686,12 @@ export default function VerifyClient() {
               </label>
               <input
                 id="manual-token"
-                type="number"
-                min="1"
+                type="text"
+                inputMode="numeric"
+                maxLength={11}
                 value={manualTokenId}
-                onChange={(e) => setManualTokenId(e.target.value)}
-                placeholder="e.g. 1 or 5"
+                onChange={(e) => setManualTokenId(formatTicketId(e.target.value))}
+                placeholder="e.g. 123-456-789"
                 className="w-full bg-[#F0EDE4] border border-black/[0.08] rounded-xl px-4 py-3 text-sm font-mono font-bold text-[#171717] placeholder:text-[#736E65]/60 outline-none focus:border-[#D94520] transition"
                 disabled={isVerifying}
               />
